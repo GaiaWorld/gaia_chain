@@ -1,1 +1,3 @@
-# fb_app
+# app_chain
+
+the main chain logic
