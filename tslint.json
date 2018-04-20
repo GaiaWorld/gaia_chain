@@ -1,0 +1,155 @@
+// 该规则基于tslint-config-airbnb
+// https://github.com/progre/tslint-config-airbnb/blob/9732a9ef0e6ac2d4a1240233f280c4d87b5069d2/tslint.js
+// 依赖两个规则库
+// https://github.com/buzinas/tslint-eslint-rules
+// https://github.com/Microsoft/tslint-microsoft-contrib
+// tslint自带规则
+// https://palantir.github.io/tslint/rules/
+{
+    "extends": [
+        // tslint preset rules
+        "tslint:recommended",
+        "tslint-eslint-rules",
+        "tslint-microsoft-contrib"
+    ],
+    "rules": {
+        // tslint-microsoft-contrib
+        "no-backbone-get-set-outside-model": false,
+        // 导出的名称不一定要和文件名相同
+        "export-name": false,
+        // 不允许使用保留字，module除外
+        "no-reserved-keywords": true,
+        // 用字面量来创建数组
+        // 即，const arr = [],而不是 const arr = new Array()
+        "prefer-array-literal": true,
+        // Do not use insecure sources for random bytes. Use a secure random number generator instead. Bans all uses of Math.random and crypto.pseudoRandomBytes. Better alternatives are crypto.randomBytes and window.crypto.getRandomValues.
+        "insecure-random": false,
+        "no-suspicious-comment": false,
+        "no-multiline-string": false,
+        // tslint-eslint-rules
+        // 在数组内部不允许空格，错误的例子：const arr = [ 1, 2 ];
+        "array-bracket-spacing": [
+            true,
+            "never"
+        ],
+        // 对象的括号和变量之间需要空格， 例如： const obj = { foo: { zoo: 'bar' } };
+        "object-curly-spacing": [
+            true,
+            "always"
+        ],
+        // native rule
+        "no-console": false,
+        "eofline": false,
+        "no-boolean-literal-compare": false,
+        "strict-boolean-expressions": false,
+        "no-trailing-whitespace": false,
+        "interface-name": [
+            true,
+            "never-prefix"
+        ],
+        // 尽量使用const
+        "prefer-const": true,
+        // 禁止使用var
+        "no-var-keyword": true,
+        // 对象的key不需要按照字母表顺序排列
+        "object-literal-sort-keys": false,
+        // https://palantir.github.io/tslint/rules/typedef/
+        // 检查部分的类型定义是否存在
+        // call-signature 函数的返回值
+        // arrow-call-signature 箭头函数的返回值
+        // parameter 非箭头函数的参数
+        // arrow-parameter 箭头函数的参数
+        // property-declaration interface的属性
+        // member-variable-declaration 类的成员变量
+        "typedef": [
+            true,
+            "call-signature",
+            "arrow-call-signature",
+            "parameter",
+            "arrow-parameter",
+            "property-declaration",
+            "member-variable-declaration"
+        ],
+        // 可以使用相对引用
+        "no-relative-imports": false,
+        // https://palantir.github.io/tslint/rules/object-literal-key-quotes/
+        // 在必要的时候对象的key值加上引号
+        "object-literal-key-quotes": [
+            true,
+            "as-needed"
+        ],
+        // 强制使用单引号
+        "quotemark": [
+            true,
+            "single"
+        ],
+        // 只能使用箭头函数
+        "only-arrow-functions": true,
+        // 不允许给入参重新赋值
+        "no-parameter-reassignment": true,
+        // https://palantir.github.io/tslint/rules/align/
+        // 强制垂直对齐
+        // 禁止多次声明从同一模块引入
+        "no-duplicate-imports": true,
+        // 禁止同一行定义多个变量
+        "one-variable-per-declaration": [
+            true,
+            "ignore-for-loop"
+        ],
+        // 允许使用自增、自减
+        "no-increment-decrement": false,
+        // 使用===和!==而不是==和!=
+        "triple-equals": [
+            true
+        ],
+        // 强制为if/do/for/while使用括号
+        "curly": [
+            true,
+            "ignore-same-line"
+        ],
+        // 注释必须以空格开头
+        "comment-format": [
+            true,
+            "check-space"
+        ],
+        "align": false,
+        "indent": [
+            true,
+            "spaces",
+            4
+        ],
+        // 一致的缩进
+        "ter-indent": [
+            true,
+            4,
+            { "SwitchCase": 1 }
+        ],
+        "whitespace": [
+            true,
+            "check-branch",
+            "check-decl",
+            "check-operator",
+            "check-preblock"
+        ],
+        // 禁止使用String,Number和Boolean来new一个实例
+        // 但是不禁止String(foo)
+        // https://palantir.github.io/tslint/rules/no-construct/
+        "no-construct": true,
+        // 在使用parseInt时需要传入第二个参数，即转换为多少进制
+        "radix": true,
+        // 禁止不必要的this引用
+        "no-this-assignment": true,
+        // 数组类型强制使用T[],而不是Array<T>
+        "array-type": [
+            true,
+            "array"
+        ],
+        // Warns for an awaited value that is not a Promise.
+        "await-promise": false,
+        "linebreak-style": [
+            true,
+            "CRLF"
+        ],
+        "number-literal-format": false
+    }
+}
