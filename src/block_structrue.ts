@@ -22,7 +22,7 @@ let genesis = {
  */
 interface BlockHead {
     parentHash:Number;// 256-bit hash of the parent block’s header
-    coinBase:Number;// 160-bit address which cal all the txs.
+    forger:Number;// 160-bit address which cal all the txs.
     // UncleHash:Number;// 64 //Do we need this?
     // stateRootHash:Number;// 256-bit hash of the root node of the state trie for the whole blackchain
     txRootHash:Number;// 256-bit hash of the root node of the tx trie for the current block
@@ -33,6 +33,8 @@ interface BlockHead {
     timestamp: Number;// local time of when the block been created        
     blsRandom: Number;// https://dfinity.org/pdf-viewer/library/dfinity-consensus.pdf
     blsPubkey: Number;    
+    txHashs:Number[];// just for broadcost optimization
+    groupNumber:number;// committee
     // committee TBD
 }
 
@@ -58,7 +60,7 @@ interface HeaderChain {
  * struct of logs https://codeburst.io/deep-dive-into-ethereum-logs-a8d2047c7371
  */
 interface Log {
-    miner: Number;// 160-bit
+    forger: Number;// 160-bit
     blockHash: Number;// 256-bit hash of the block
     blockNumber: Number;// the block index    
     txHash:Number;// 256-bit hash of the current tx
@@ -83,8 +85,8 @@ interface Receipt {
 }
 
 interface Transaction {
-    blockHash: Number;// 256-bit hash of the block todo
-    blockNumber: Number;// the block index  
+    lastBlockHash: Number;// 256-bit hash of the block todo
+    lastBlockNumber: Number;// the block index  
     txHash:Number;// 256-bit hash of the current tx
     txIndex:Number;// the index of the current tx in the block
     fromAddr:Number;// 160-bit address that the tx from
@@ -101,27 +103,11 @@ interface Transaction {
 /**
  * it is just an address, both for user and contract
  */
-interface Account {
+interface State {
     nonce:Number;// data consistency，todo
     balance:Number;
     codeHash:Number;// 256-bit
     storage:Number[];// I am not sure the structure of the storage
     code:String;
     addr:Number;// 160-bit
-}
-
-interface ForgeCommittee {
-    groupNumber:Number;
-    groups:ForgeGroup[];
-    // Forge TBD 
-}
-
-interface ForgeGroup {
-    members:ForgeMember[];
-    // Forge TBD 
-}
-
-interface ForgeMember {
-    right:Number;
-    // TBD
 }
