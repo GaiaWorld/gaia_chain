@@ -69,7 +69,7 @@ interface Log {
 }
 
 interface Receipt {
-    blockHash: Number;// 256-bit hash of the block
+    blockHash: Number;// 256-bit hash of the block todo
     blockNumber: Number;// the block index    
     txHash:Number;// 256-bit hash of the current tx
     txIndex:Number;// the index of the current tx in the block
@@ -83,15 +83,15 @@ interface Receipt {
 }
 
 interface Transaction {
-    blockHash: Number;// 256-bit hash of the block
+    blockHash: Number;// 256-bit hash of the block todo
     blockNumber: Number;// the block index  
     txHash:Number;// 256-bit hash of the current tx
     txIndex:Number;// the index of the current tx in the block
     fromAddr:Number;// 160-bit address that the tx from
     toAddr:Number;// 160-bit address that the tx from
-    data:Number;// for contract it is the params, that signed by the vrs
+    data:Uint8Array;// for contract it is the params, that signed by the vrs
     value:Number;// for the tx it is the money
-    gas:Number;
+    gasLimit:Number;
     gasPrice:Number;
     v:Number;
     r:Number;
@@ -102,10 +102,12 @@ interface Transaction {
  * it is just an address, both for user and contract
  */
 interface Account {
-    nonce:Number;// data consistency
+    nonce:Number;// data consistency，todo
     balance:Number;
     codeHash:Number;// 256-bit
     storage:Number[];// I am not sure the structure of the storage
+    code:String;
+    addr:Number;// 160-bit
 }
 
 interface ForgeCommittee {
