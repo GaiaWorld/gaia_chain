@@ -27,7 +27,7 @@ interface ForgeMember {
 
 interface CommitteeConfig {
     groupNumber:Number;// the number of group. For the main chain it is 256
-    startDeposit:Number;// the lower limit of deposit. For main chain it is 1KGA
+    startDeposit:Number;// the lower limit of deposit. For main chain it is 1GA
     forgeTime:Number;// the default time for create a new block. For the main chain it is 3000 millisecond.
 }
 
