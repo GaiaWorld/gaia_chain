@@ -3,6 +3,8 @@ https://bitcoin.org/en/developer-reference#raw-transaction-format
 
 https://en.bitcoin.it/wiki/Protocol_documentation#tx
 
+https://bitcoin.org/en/developer-guide#peer-discovery
+
 补全：
     
     数据结构
