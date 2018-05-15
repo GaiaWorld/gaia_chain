@@ -15,16 +15,16 @@ const MAX_BLOCK_SIZE = 8 * 1024 * 1024;
 export class BlockHead {
     public parentHash: H256;  // 父块哈希，用keccak算法
     
-    public forgeHash: H160; // 受益者地址
-    public forgeSig: ....;  ///
+    public forgeHash: H160; // 锻造者地址
+    public forgeSign: H256; // 锻造者签名
     
-    public txRootHash: H256;      // 交易根节点哈希，用keccak算法
+    public txRootHash: H256;  // 交易根节点哈希，用keccak算法
     public maxSize: number;   // u32, 块大小，先限定8M，字节数
     public timestamp: number; // u64, 时间戳，创建时候的Unix时间
-    public blsRandom: Number;// https://dfinity.org/pdf-viewer/library/dfinity-consensus.pdf
+    public blsRandom: Number; // https://dfinity.org/pdf-viewer/library/dfinity-consensus.pdf
     public blsPubkey: Number;    
-    public groupNumber:number;// committee
-    public txHash: H256[];  // 本区块的hash数组
+    public groupNumber:number; // optional: committee，验证组号
+    public txHash: H256[];     // 本区块的hash数组
 
     // 下面为不发送到网络的字段，也不参与hash
     public index: number;     // u32, 区块编号，创世区块为0开始
