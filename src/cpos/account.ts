@@ -8,12 +8,4 @@ export class Account {
     public address: H160;   // 地址
     public nonce:   number; // 32位整数，表示 该账户已经发送过的交易数
     public balance: Int64;  // 余额，拥有多少yGaia
-
-    // 公钥
-    
-    constructor(address: H160, nonce: number, balance: Int64) {
-        this.address = address;
-        this.nonce = nonce;
-        this.balance = balance;
-    }
 }

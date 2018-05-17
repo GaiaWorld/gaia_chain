@@ -16,10 +16,12 @@ const MIN_DEPOSIT = new Int64(1000 * 1000000000000);
  */
 export class Forge {
     address: H160;      // 地址
-    randPubKey: H256;   // 随机数的公钥
+    randPubKey: H256;   // 随机数的公钥，椭圆曲线能不能拿来代替bls？？？
+
     initWeight: number; // 初始权重
     initHeight: number; // 加入时候的区块索引
     token: number;      // 总投票权
+    
     // 如果是自己节点，还有私钥
     randPrivKey: H256;
 
