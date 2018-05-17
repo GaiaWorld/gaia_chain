@@ -25,8 +25,8 @@ Value 区块头的内容；字段
 * 
 * txMerkle: U256;    // 交易merkle根，用keccak算法
 * 
-* index: U64;        // 同步可选；
-* totalWeight: U64;  // 同步可选；
+* index: U64;        // 快速索引；
+* totalWeight: U64;  // 快速索引；
 * groupNumber: U32;  // 同步可选；
 * headerHash: U256;  // 不同步；
 
@@ -34,11 +34,11 @@ Value 区块头的内容；字段
 
 问题：分叉环境下，如何快速定位分叉，形成链条？需不需要建立 区块链表？
 
-作用：区块头hash 到 该区块的交易hash的映射
+作用：区块头hash 到 该区块的交易的映射
 
 Key: U256; // 块头数据的Hash，U256
 
-Value 该区块关联的交易的hash数组
+Value 该区块关联的交易数组
 
 交易完整信息，和交易表冗余，加快速度；
 
@@ -56,33 +56,6 @@ Value 该区块关联的交易的hash数组
 * lastBlockHash: U64;   // ？必要性 256-bit hash of the block todo
 * lastBlockNumber: U64; // ？必要性 the block index  
 
-## 交易表 文件表 Transaction
-
-文件表；
-
-作用：交易hash 到 交易数据的集合
-
-Key: U256; // 交易数据的Hash
-
-Value 交易数据
-
-* blockID: U256;  // 此字段不参与hash计算；交易所在区块的hash，如果分叉区块同时有这笔交易？？
-* 
-* nonce: U64;    // 账户发出的交易数量，用于验证是否重复发送
-* fee: U64;      // U64, 为执行交易所需要的价格, 以 yGaia 为单位
-* to: H160;      // 接收者地址
-* value: U64;    // 转账额度，以 yGaia 为单位
-* sign: U520;    // 交易发送者的签名，v 1B，s 32B, r 32B
-* 
-* type: TXType;   // 类型 {Default, AddForge, RemoveForge}
-* userData: [U8]; // 用户数据，根据类型决定
-* 
-* txHash: H256;   // 上面的数据的hash
-* from: H160;     // 交易的发送者地址
-* 
-* lastBlockHash: U64;   // ？必要性 256-bit hash of the block todo
-* lastBlockNumber: U64; // ？必要性 the block index  
-*    问题：上面两个字段的作用我还是不理解，需要调研以太坊？
 
 ## 内存池表 内存表 Mempool
 
@@ -93,6 +66,8 @@ Value 交易数据
 功能需求：按交易费用进行排序，锻造者优先打包交易费用高的？
 
 Key: U256;   // 交易数据的Hash
+
+Value: 交易数据
 
 ## 账户表 文件表
 
@@ -127,7 +102,7 @@ Value：状态
 * balance: U64;    // 余额，拥有多少 yGaia
 * // 以后会有智能合约需要存储的数据
 
-## 区块高度索引表 内存表 BlockHeight
+## 区块高度索引表 文件表 BlockHeight
 
 作用：快速从区块高度命中区块
 
@@ -147,7 +122,7 @@ Value 区块hash
 
 问题1：如何保证锻造节点一定会将合法的锻造者加入委员会，还是说个别节点不让锻造者加入委员会也不重要？
 
-如果一定要保证：将所有委员的内容计算梅克尔hash，放到区块头？
+    如果一定要保证：将所有委员的内容计算梅克尔hash，放到区块头？
 
 问题2：如何发起退款；
 
@@ -159,7 +134,7 @@ Value
 * blsRandom: U256;     // bls随机数
 * blsPubKey: U256;     // 随机数对应的公钥
 * isRemove: bool;      // 是否已经申请退出
-* removeBlock: U256;   // 申请退出的那笔交易所在的区块Hash，离这个区块25600个高度之后才将钱退给该地址
+* removeBlock: U256;   // 申请退出的那笔交易所在的区块Hash，离这个区块256000个高度之后才将钱退给该地址
 * addBlock: U256;      // 锻造者加入或者离开区块时的区块Hash，离这个区块25600个高度之后才能加入委员会
 * groupNumber: U32;    // 当前分配到的组号，0-255
 * blsprivKey: U256;    // 对于节点自己的锻造者，保存自己的私钥
@@ -182,3 +157,31 @@ Committee {
     currentGroup: U32;    // 当前锻造者分组
     currentRandom: U256;  // 当前随机数
 }
+
+## 交易表 文件表 Transaction
+
+文件表；
+
+作用：交易hash 到 交易数据的集合
+
+Key: U256; // 交易数据的Hash
+
+Value 交易数据
+
+* blockID: U256;  // 此字段不参与hash计算；交易所在区块的hash，如果分叉区块同时有这笔交易？？
+* 
+* nonce: U64;    // 账户发出的交易数量，用于验证是否重复发送
+* fee: U64;      // U64, 为执行交易所需要的价格, 以 yGaia 为单位
+* to: H160;      // 接收者地址
+* value: U64;    // 转账额度，以 yGaia 为单位
+* sign: U520;    // 交易发送者的签名，v 1B，s 32B, r 32B
+* 
+* type: TXType;   // 类型 {Default, AddForge, RemoveForge}
+* userData: [U8]; // 用户数据，根据类型决定
+* 
+* txHash: H256;   // 上面的数据的hash
+* from: H160;     // 交易的发送者地址
+* 
+* lastBlockHash: U64;   // ？必要性 256-bit hash of the block todo
+* lastBlockNumber: U64; // ？必要性 the block index  
+*    问题：上面两个字段的作用我还是不理解，需要调研以太坊？

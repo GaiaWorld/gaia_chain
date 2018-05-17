@@ -59,7 +59,7 @@ peer.publish("addr", [addr1, addr2, ...]);
 
 跟一堆节点要高度，然后开始下载区块头；有了串成链的头，就立马下载对应的体；
 
-下载的头和体，简单验证后，就立即落地；
+下载的头和体，简单验证后，就立即落地，临时区块表；
 
 用另外的线程去取数据库，进行详细验证；
 
@@ -73,6 +73,10 @@ peer.rpc("getBestHeight", [], bestBlockHeight => {
 // 取区块头，一次返回2000个
 // endHeight = 0时候，尽可能多的返回
 // 对方返回当前主链的区块
+peer.rpc("getHeadersByHash",  [hash, count: I32], headers => {
+
+});
+
 peer.rpc("getHeaders", [startHeight, endHeight], headers => {
 
 });
@@ -98,11 +102,12 @@ rpc还是上面那些；
    + 对方收到后，到本地的内存池查对应的交易，从新组装块
    + 过滤之后，向本节点发rpc，getTransactionsByShortIDS
 
-// TransactionShortID: U32; ???
+// TransactionShortID: U48;
 peer.publich("header", Header + TransactionShortID[]);
 
 // 取交易
-peer.rpc("getTransactionsByShortIDS", [blockHash, TransactionShortID1, ...], txs => {
+// Offset1: TransactionShortID的索引
+peer.rpc("getTransactionsByShortIDS", [blockHash, Offset1, ...], txs => {
     
 });
 
