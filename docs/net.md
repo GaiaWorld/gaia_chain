@@ -16,6 +16,7 @@
    + 场景：本地已有区块，从下一个开始同步
    + rpc getBestHeight
    + rpc getHeaders
+   + rpc getHeadersByHash
    + rpc getBlocks
 * 广播区块
    + 时机：锻造出区块
