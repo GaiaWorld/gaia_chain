@@ -23,12 +23,12 @@ winit.initNext = function () {
       "pi/util/",
       "pi/widget/",
       "pi/worker/",
-      "app/run/"
+      "blockchain/main/"
     ]
     util.loadDir(sourceList, flags, fm, undefined, function (fileMap) {
       
-      var root = pi_modules.commonjs.exports.relativeGet("app/run/main").exports;
-      root.run();
+      var main = pi_modules.commonjs.exports.relativeGet("blockchain/main/main").exports;
+      main.main();
     }, function (r) {
       alert("加载目录失败, " + r.error + ":" + r.reason);
     }, undefined);

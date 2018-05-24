@@ -59,9 +59,9 @@
 			winit.init = function () {};
 			winit.flags = {};
 			winit.start = function () {
-				if (winit.debug) winit.loadJS([winit.domains[1]], "/gaia/app/boot/hotfix.js", "utf8", winit.initFail,
+				if (winit.debug) winit.loadJS([winit.domains[1]], "/gaia/boot/hotfix.js", "utf8", winit.initFail,
 					"load hotupdate error");
-				winit.loadJS([winit.domains[1]], "/gaia/app/boot/index.js?" + Math.random(), "utf8", winit.initFail,
+				winit.loadJS([winit.domains[1]], "/gaia/boot/index.js?" + Math.random(), "utf8", winit.initFail,
 					"load index error");
 			};
 			winit.start();
