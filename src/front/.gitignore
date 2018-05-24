@@ -1,0 +1,10 @@
+/.vscode
+/src/.vscode
+/src/.sync
+/scripts/.error
+/scripts/*.*depend
+/scripts/*.sh
+/dst
+/src/.depend
+/node_modules
+.temp
