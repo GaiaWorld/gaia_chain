@@ -23,12 +23,24 @@ winit.initNext = function () {
       "pi/util/",
       "pi/widget/",
       "pi/worker/",
-      "blockchain/main/"
-    ]
+      "blockchain/util/",
+      "blockchain/chain/",
+      "blockchain/verification/",
+      "blockchain/cpos/",
+      "blockchain/sync/",
+      "test/framework/",
+      "test/blockchain/util/",
+      "test/blockchain/chain/",
+      "test/blockchain/verification/",
+      "test/blockchain/cpos/",
+      "test/blockchain/sync/",
+      "test/blockchain/main/",
+    ];
+    
     util.loadDir(sourceList, flags, fm, undefined, function (fileMap) {
       
-      var main = pi_modules.commonjs.exports.relativeGet("blockchain/main/main").exports;
-      main.main();
+      var main = pi_modules.commonjs.exports.relativeGet("test/blockchain/main/main").exports;
+      main.runTest();
     }, function (r) {
       alert("加载目录失败, " + r.error + ":" + r.reason);
     }, undefined);
