@@ -120,7 +120,61 @@
     数据是从多个节点请求还是单个节点；
         如果多个，请求策略？全数据-分开？
     收到的数据分叉时的处理流程？数据同步流程。
-    
+
+2. cpos 
+
 2. 验证要点：头，交易，锻造
 
 3. 加密，随机
+
+
+1. 调研网络同步 4d
+
+2. cpos+网络同步 伪代码3d
+
+3. 验证 + 加密 + 随机 伪代码2d
+==
+4. 了解平台接口层 2d
+===
+1. cpos+同步 6d
+
+2. 验证要点：头，交易，锻造
+
+3. 加密，随机
+
+4. 调试
+
+------------------------------
+
+同步阻塞：6d
+
+虚拟机复用：启动性能，可以考虑协程；1-2d
+性能优化：调研1-2d
+异步回调：6d
+
+计算资源的统计：指令，内存，智能合约做准
+
+-------------- 小燕
+
+联调虚拟机：pi_serv 2d
+编译工具测试底层库：网络，存储，虚拟机 （ts，rust） 12d
+平台独立库的实现：
+
+-------------- 罗彬
+
+数据库联调和重构：
+代码review：没有错误和警告，符合编码规范,rust格式化工具，和编码规范的编写：
+维护文档:
+数据库/网络长期任务: 开发和维护
+
+Hi Stancia,
+    I am sorry to tell you that I have to suspend learning English from you. We hired an American employee who graduated from the University of California, Berkeley with a doctorate. We think he is the better person to speak abroad, as I am busy and English speech is not my strength. Maybe teacher Huang will give you more details this weekend. You are a good teacher, and I am so glad to meet you. Thank you very very much. I hope you have all the best in China.
+
+    Sure, we share the same opinion. I will still improve my English. Thank you, Stancia
+
+
+    
+    1. 我们的分叉会在几个区块以内结束
+    2. 我们需要初始投入的资金应该占据总资金量的百分之多少才是绝对安全的
+    3. 如果恶意节点想要控制整个网络，需要使用多大的资金量和采取何种手段
+    4. 我们能够避免长程攻击
