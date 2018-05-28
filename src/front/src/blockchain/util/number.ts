@@ -22,6 +22,10 @@ export class U64 {
     constructor() {
         this.buf = new Uint8Array(U64.SIZE);
     }
+
+    toString() {
+        
+    }
 }
 
 export class U160 {
@@ -31,6 +35,10 @@ export class U160 {
 
     constructor() {
         this.buf = new Uint8Array(U160.SIZE);
+    }
+
+    toString() {
+        
     }
 }
 
@@ -42,6 +50,10 @@ export class U256 {
     constructor() {
         this.buf = new Uint8Array(U256.SIZE);
     }
+
+    toString() {
+
+    }
 }
 
 export class U520 {
@@ -51,5 +63,9 @@ export class U520 {
 
     constructor() {
         this.buf = new Uint8Array(U520.SIZE);
+    }
+
+    toString() {
+        
     }
 }
