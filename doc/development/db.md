@@ -19,8 +19,8 @@ Value 区块头的内容；字段
 * 
 * forgeAddr: U160;   // 锻造者地址
 *   
-* blsRandom: H256;   // bls随机数，必要性？
-* blsPubkey: H256;   // bls随机公钥，必要性？
+* blsRandom: U256;   // bls随机数，必要性？
+* blsPubkey: U256;   // bls随机公钥，必要性？
 *     bls的作用和算法接口不了解，需要调研？
 * 
 * txMerkle: U256;    // 交易merkle根，用keccak算法
