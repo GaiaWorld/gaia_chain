@@ -7,10 +7,12 @@
 import { U32, U64, U160, U256, U520 } from "../util/number"
 import { CDB, CSession } from "../../pi/db/client"
 import { Item, Transaction as DBTransaction, DB } from "../../pi/db/db"
+import { BlockHeaderStruct } from "./blockheader_struct.s"
+import { BonBuffer } from "../../pi/util/bon"
 
 // ============================== export
 
-export class BlockHeader {
+export class BlockHeader extends BlockHeaderStruct {
     headerSign: U520;  // Forge's signature for the headers
     parentHash: U256;  // hash of parent's header
 
@@ -29,6 +31,12 @@ export class BlockHeader {
     totalWeight: U64;  // total weight from generic to this block
     groupNumber: U32;  // the group number of the forge which generate the block
     headerHash: U256;  // the header's hash
+
+    computeHash() {
+        let buffer = new BonBuffer();
+        let array = this.binEncode(buffer);
+        
+    }
 }
 
 /**

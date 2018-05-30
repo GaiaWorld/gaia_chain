@@ -1335,8 +1335,10 @@ pi_modules.commonjs.exports = (function () {
 			return;
 		}
 		info = depend.get(name + ".js");
-		if (!info)
+		if (!info) {
+			debugger;
 			throw new Error("mod not found, name:" + name + ", from:" + parent);
+		}
 		child = info.depend && info.depend.js ? info.depend.js : undefined;
 		mod = { id: name, exports: {}, info: info, loaded: false, children: child, parent: parent, buildFunc: undefined };
 		mod.__proto__ = cmdClass.prototype;
