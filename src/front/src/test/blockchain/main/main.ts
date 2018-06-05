@@ -5,10 +5,12 @@
 
 import {mocha} from "../../framework/mocha"
 
-import number from "../util/number";
-import ethereumjs_util from "../util/ethereumjs_util";
+import util_bn from "../util/bn";
+import util_buffer from "../util/buffer";
+import util_crypto from "../util/crypto";
+import util_number from "../util/number";
 
-let tests = [number, ethereumjs_util];
+let tests = [util_bn, util_buffer, util_crypto, util_number];
 
 export const runTest = () => {
     mocha.setup('bdd');
