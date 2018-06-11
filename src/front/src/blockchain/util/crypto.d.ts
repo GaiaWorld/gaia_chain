@@ -100,7 +100,7 @@ export class secp256k1 {
     /**
      * Recover a public key.
      */
-    static recover(msg: Buffer, sig: Buffer, param?: number, compress?: boolean): Buffer;
+    static recover(msg: Buffer, sig: Buffer, compress?: boolean): Buffer;
 
     /**
      * Recover a public key.

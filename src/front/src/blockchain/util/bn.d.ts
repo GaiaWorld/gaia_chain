@@ -23,7 +23,7 @@ export class BN {
      * @param base default 10
      * @param endian default "be"
      */
-    constructor(num?: number | string, base?: number, endian?: Endianness);
+    constructor(num?: number | string | Uint8Array, base?: number, endian?: Endianness);
 
     static isBN(num: BN): boolean;
     static max(left: BN, right: BN): BN;

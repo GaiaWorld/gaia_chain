@@ -86,7 +86,7 @@ export default () => {
                 let priv = ecc.generatePrivateKey();
                 let pub = ecc.publicKeyCreate(priv);
                 chai.assert.equal(ecc.publicKeyVerify(pub), true);
-                
+
                 let pubUn = ecc.publicKeyCreate(priv, false);
                 let uncompress = ecc.publicKeyConvert(pub, false);
                 chai.assert.equal(uncompress.toString("hex"), pubUn.toString("hex"));
@@ -108,16 +108,8 @@ export default () => {
                 let r = ecc.verify(hash, sign, pub);
                 chai.assert.equal(r, true);
 
-                let cmp = false;
-                for (let i = 0; i < 2; ++i) {
-                    let recover = ecc.recover(hash, sign, i, true);
-                    cmp = recover.toString("hex") == pub.toString("hex");
-                    if (cmp) {
-                        console.log("RS: " + i);
-                        break;
-                    }
-                }
-                chai.assert.equal(cmp, true);
+                let recover = ecc.recover(hash, sign, true);
+                chai.assert.equal(recover.toString("hex"), pub.toString("hex"));
             });
 
             it('2', function () {
@@ -126,22 +118,11 @@ export default () => {
 
                 let msg = Buffer.from("abcdefg");
                 let hash = crypto.hash256(msg);
-                
+
                 let sign = ecc.signDER(hash, priv);
 
                 let r = ecc.verifyDER(hash, sign, pub);
                 chai.assert.equal(r, true);
-
-                let cmp = false;
-                for (let i = 0; i < 2; ++i) {
-                    let recover = ecc.recoverDER(hash, sign, i, true);
-                    cmp = recover.toString("hex") == pub.toString("hex");
-                    if (cmp) {
-                        console.log("DER: " + i);
-                        break;
-                    }
-                }
-                chai.assert.equal(cmp, true);
             });
         });
 

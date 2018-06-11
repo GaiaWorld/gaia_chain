@@ -1,25 +1,53 @@
 /*
  * block
-
  */
 
 // ============================== import 
 
-import { U64, U160, U256, U520 } from "../util/number"
+import { BonBuffer } from "../../pi/util/bon"
+
+import { BN } from "../util/bn"
+import { Buffer } from "../util/buffer"
+import { U64, U256 } from "../util/number"
+
+import { Struct } from "../../pi/struct/struct_mgr"
+
 import { CDB, CSession } from "../../pi/db/client"
-import { Item, Transaction as DBTransaction, DB } from "../../pi/db/db"
-import { BlockStruct } from "./block_struct.s"
+import { Item, Transaction as DBTransaction } from "../../pi/db/db"
 
 // ============================== export
 
-export class Block extends BlockStruct {
-    key: U256;        // BlockHeader's Hash
+/**
+ * max cash count, unit uGAIA
+ */
+export const MAX_UGAYA_COUNT: U64 = new BN(10).pow(new BN(18));
+
+export class Block extends Struct {
+    headerHash: U256;        // BlockHeader's Hash
     txHashes: U256[]; // array of block's transaction hash
+
+    constructor() {
+        super();
+
+        this.headerHash = new BN(0, 10, "le");
+        this.txHashes = [];
+    }
+
+    bonDecode(bb: BonBuffer) {
+        let u8 = bb.readBin();
+        this.headerHash = new BN(u8, 10, "le");
+    }
+
+    bonEncode(bb: BonBuffer) {
+        bb.writeBin(this.headerHash.toBuffer("le"));
+        bb.writeArray(this.txHashes, elem => {
+            bb.writeBin(elem.toBuffer("le"));
+        });
+
+        return new Buffer(bb.getBuffer());
+    }
 }
 
-/**
- * connect block and db
- */
 export class BlockDB {
     db: CDB;
     session: CSession;
@@ -34,10 +62,10 @@ export class BlockDB {
     write(block: Block) {
         const writeCB = (tx: DBTransaction) => {
             let item = {
-                tab: BLOCK_TABLE_NAME,
-                key: block.key.toHex(),
+                tab: TABLE_NAME,
+                key: block.headerHash.toString(),
                 value: block,
-	            time: 0,
+                time: 0,
             } as Item;
 
             return tx.upsert([item], DEFAULT_TIMEOUT);
@@ -46,11 +74,11 @@ export class BlockDB {
         this.session.write(writeCB, DEFAULT_TIMEOUT);
     }
 
-    read(address: U160): Account {
+    read(hash: U256): Block {
         const readCB = (tx: DBTransaction) => {
             let item = {
-                tab: BLOCK_TABLE_NAME,
-                key: address.toString(),
+                tab: TABLE_NAME,
+                key: hash.toString(),
             } as Item;
 
             return tx.query([item], DEFAULT_TIMEOUT);
@@ -63,4 +91,4 @@ export class BlockDB {
 // ============================== implementation
 
 const DEFAULT_TIMEOUT = 10; // 10 ms
-const BLOCK_TABLE_NAME = "BlockTable";
+const TABLE_NAME = "BlockTable";
