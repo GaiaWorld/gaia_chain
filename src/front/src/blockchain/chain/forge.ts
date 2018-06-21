@@ -12,10 +12,11 @@ import { U32, U64, U160, U256 } from "../util/number"
 
 import { Struct } from "../../pi/struct/struct_mgr"
 
-import { CDB, CSession } from "../../pi/db/client"
-import { Item, Transaction as DBTransaction } from "../../pi/db/db"
-
 // ============================== export
+
+export const MIN_ADD_FORGE_HEIGHT = new BN(40000, 10, "le");
+
+export const MIN_EXIT_FORGE_HEIGHT = new BN(400000, 10, "le");
 
 export class Forger extends Struct {
     address: U160;          // address
@@ -24,7 +25,7 @@ export class Forger extends Struct {
     groupNumber: U32;       // current forge group number
 
     addBlockHeight: U64;    // the height of block when the forger add
-    removeBlockHeight: U64; // the height of block when the forger remove
+    exitBlockHeight: U64;   // the height of block when the forger remove
 
     // use for index
 
@@ -34,30 +35,34 @@ export class Forger extends Struct {
     totalWeight: U64;     // rankWeight + accWeight
     lastBlockHeight: U64; // the height of block when last modify accWeight
 
+    constructor() {
+        super();
+    }
+
     bonDecode(bb: BonBuffer) {
         let u8 = bb.readBin();
-        this.address = new BN(u8, 10, "le");
+        this.address = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.deposit = new BN(u8, 10, "le");
+        this.deposit = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.blsPubKey = new BN(u8, 10, "le");
+        this.blsPubKey = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.groupNumber = new BN(u8, 10, "le");
+        this.groupNumber = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.addBlockHeight = new BN(u8, 10, "le");
+        this.addBlockHeight = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.removeBlockHeight = new BN(u8, 10, "le");
+        this.exitBlockHeight = new BN(u8, 16, "le");
 
         u8 = bb.readBin();
-        this.initWeight = new BN(u8, 10, "le");
+        this.initWeight = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.accWeight = new BN(u8, 10, "le");
+        this.accWeight = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.rankWeight = new BN(u8, 10, "le");
+        this.rankWeight = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.totalWeight = new BN(u8, 10, "le");
+        this.totalWeight = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.lastBlockHeight = new BN(u8, 10, "le");
+        this.lastBlockHeight = new BN(u8, 16, "le");
     }
 
     bonEncode(bb: BonBuffer) {
@@ -66,7 +71,7 @@ export class Forger extends Struct {
         bb.writeBin(this.blsPubKey.toBuffer("le"));
         bb.writeBin(this.groupNumber.toBuffer("le"));
         bb.writeBin(this.addBlockHeight.toBuffer("le"));
-        bb.writeBin(this.removeBlockHeight.toBuffer("le"));
+        bb.writeBin(this.exitBlockHeight.toBuffer("le"));
 
         bb.writeBin(this.initWeight.toBuffer("le"));
         bb.writeBin(this.accWeight.toBuffer("le"));
@@ -87,49 +92,3 @@ export class ForgeCommittee {
     addWaits: Forger[];    // wait for forge
     removeWaits: Forger[]; // wait for exit forge
 }
-
-
-export class ForgerDB {
-    db: CDB;
-    session: CSession;
-
-    constructor() {
-        this.db = new CDB();
-        this.session = new CSession();
-
-        this.session.open(this.db);
-    }
-
-    write(forger: Forger) {
-        const writeCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: forger.address.toString(),
-                value: forger,
-                time: 0,
-            } as Item;
-
-            return tx.upsert([item], DEFAULT_TIMEOUT);
-        };
-
-        this.session.write(writeCB, DEFAULT_TIMEOUT);
-    }
-
-    read(address: U160): Forger {
-        const readCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: address.toString(),
-            } as Item;
-
-            return tx.query([item], DEFAULT_TIMEOUT);
-        };
-
-        return this.session.read(readCB, DEFAULT_TIMEOUT);
-    }
-}
-
-// ============================== implementation
-
-const DEFAULT_TIMEOUT = 10; // 10 ms
-const TABLE_NAME = "ForgerTable";

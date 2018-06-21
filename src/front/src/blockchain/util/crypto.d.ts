@@ -73,7 +73,7 @@ export class secp256k1 {
      * Sign a message.
      * @param {Buffer} msg hashed, hash256(data). 32Byte
      * @param {Buffer} key - Private key. 32Byte
-     * @returns {Buffer} R/S-formatted signature. 64Byte
+     * @returns {Buffer} R/S-formatted signature. 65Byte
      */
     static sign(msg: Buffer, key: Buffer): Buffer;
 
@@ -86,7 +86,7 @@ export class secp256k1 {
 
     /**
      * Verify a signature.
-     * @param {Buffer} sig - R/S formatted. 64Byte
+     * @param {Buffer} sig - R/S formatted. 65Byte
      * @param {Buffer} key - public key.  32Byte
      */
     static verify(msg: Buffer, sig: Buffer, key: Buffer): boolean;

@@ -4,7 +4,7 @@ import { chai } from "../../framework/chai"
 import { BN } from "../../../blockchain/util/bn"
 
 export default () => {
-    describe('util/BN', function () {
+    describe('util/bn', function () {
         describe('add', function () {
             it('1', function () {
                 let a = new BN(14);

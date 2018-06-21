@@ -13,15 +13,18 @@ import { U32, U64, U160, U256, U520 } from "../util/number"
 
 import { Struct } from "../../pi/struct/struct_mgr"
 
-import { CDB, CSession } from "../../pi/db/client"
-import { Item, Transaction as DBTransaction } from "../../pi/db/db"
-
 // ============================== export
+
+const T = 10 * 1000;
+
+export const BLOCK_VERSION = new BN("BLOCK_VERSION.001.00", 10, "le");
+
+export const MAX_INTERVAL_TIME = new BN(T, 10, "le");
 
 export class BlockHeader extends Struct {
     parentHash: U256;  // hash of parent's header
 
-    version: U32;      // version of the block
+    version: U160;     // version of the block
     timestamp: U64;    // unix time stamp
 
     blsRandom: U256;   // bls random ?
@@ -41,22 +44,22 @@ export class BlockHeader extends Struct {
     constructor() {
         super();
 
-        this.parentHash = new BN(0, 10, "le");
+        this.parentHash = new BN(0, 16, "le");
 
-        this.version = new BN(0, 10, "le");
-        this.timestamp = new BN(0, 10, "le");
+        this.version = new BN(0, 16, "le");
+        this.timestamp = new BN(0, 16, "le");
 
-        this.blsRandom = new BN(0, 10, "le");
-        this.blsPubkey = new BN(0, 10, "le");
-        this.txMerkle = new BN(0, 10, "le");
+        this.blsRandom = new BN(0, 16, "le");
+        this.blsPubkey = new BN(0, 16, "le");
+        this.txMerkle = new BN(0, 16, "le");
 
-        this.headerSign = new BN(0, 10, "le");
+        this.headerSign = new BN(0, 16, "le");
 
-        this.height = new BN(0, 10, "le");
-        this.totalWeight = new BN(0, 10, "le");
-        this.groupNumber = new BN(0, 10, "le");
-        this.headerHash = new BN(0, 10, "le");
-        this.forgeAddr = new BN(0, 10, "le");
+        this.height = new BN(0, 16, "le");
+        this.totalWeight = new BN(0, 16, "le");
+        this.groupNumber = new BN(0, 16, "le");
+        this.headerHash = new BN(0, 16, "le");
+        this.forgeAddr = new BN(0, 16, "le");
     }
 
     computeHash() {
@@ -75,31 +78,31 @@ export class BlockHeader extends Struct {
 
     bonDecode(bb: BonBuffer) {
         let u8 = bb.readBin();
-        this.headerHash = new BN(u8, 10, "le");
+        this.headerHash = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.version = new BN(u8, 10, "le");
+        this.version = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.timestamp = new BN(u8, 10, "le");
+        this.timestamp = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.blsRandom = new BN(u8, 10, "le");
+        this.blsRandom = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.blsPubkey = new BN(u8, 10, "le");
+        this.blsPubkey = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.txMerkle = new BN(u8, 10, "le");
+        this.txMerkle = new BN(u8, 16, "le");
 
         u8 = bb.readBin();
-        this.headerSign = new BN(u8, 10, "le");
+        this.headerSign = new BN(u8, 16, "le");
 
         u8 = bb.readBin();
-        this.height = new BN(u8, 10, "le");
+        this.height = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.totalWeight = new BN(u8, 10, "le");
+        this.totalWeight = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.groupNumber = new BN(u8, 10, "le");
+        this.groupNumber = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.headerHash = new BN(u8, 10, "le");
+        this.headerHash = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.forgeAddr = new BN(u8, 10, "le");
+        this.forgeAddr = new BN(u8, 16, "le");
     }
 
     bonEncode(bb: BonBuffer) {
@@ -121,48 +124,3 @@ export class BlockHeader extends Struct {
         return new Buffer(bb.getBuffer());
     }
 }
-
-export class HeaderDB {
-    db: CDB;
-    session: CSession;
-
-    constructor() {
-        this.db = new CDB();
-        this.session = new CSession();
-
-        this.session.open(this.db);
-    }
-
-    write(header: BlockHeader) {
-        const writeCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: header.headerHash.toString(),
-                value: header,
-                time: 0,
-            } as Item;
-
-            return tx.upsert([item], DEFAULT_TIMEOUT);
-        };
-
-        this.session.write(writeCB, DEFAULT_TIMEOUT);
-    }
-
-    read(address: U160): BlockHeader {
-        const readCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: address.toString(),
-            } as Item;
-
-            return tx.query([item], DEFAULT_TIMEOUT);
-        };
-
-        return this.session.read(readCB, DEFAULT_TIMEOUT);
-    }
-}
-
-// ============================== implementation
-
-const DEFAULT_TIMEOUT = 10; // 10 ms
-const TABLE_NAME = "HeaderTable";

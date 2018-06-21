@@ -13,9 +13,6 @@ import { U8, U64, U160, U256, U520 } from "../util/number"
 
 import { Struct } from "../../pi/struct/struct_mgr"
 
-import { CDB, CSession } from "../../pi/db/client"
-import { Item, Transaction as DBTransaction } from "../../pi/db/db"
-
 // ============================== export
 
 export enum TransactionType {
@@ -31,7 +28,8 @@ export class Transaction extends Struct {
     to: U160;      // the address of receiver
     value: U64;    // receiver's value
 
-    txType: U8;    // type, value in the TransactionType
+    txType: U8;      // type, value in the TransactionType
+    blsPubKey: U256; // the blsPubKey is valid only when type is AddForge 
 
     sign: U520;    // sender's signature, don't use for hash
 
@@ -41,14 +39,15 @@ export class Transaction extends Struct {
 
     constructor() {
         super();
-        this.count = new BN(0, 10, "le");
-        this.fee = new BN(0, 10, "le");
-        this.to = new BN(0, 10, "le");
-        this.value = new BN(0, 10, "le");
-        this.txType = new BN(0, 10, "le");
-        this.sign = new BN(0, 10, "le");
-        this.txHash = new BN(0, 10, "le");
-        this.from = new BN(0, 10, "le");
+        this.count = new BN(0, 16, "le");
+        this.fee = new BN(0, 16, "le");
+        this.to = new BN(0, 16, "le");
+        this.value = new BN(0, 16, "le");
+        this.txType = new BN(0, 16, "le");
+        this.blsPubKey = new BN(0, 16, "le");
+        this.sign = new BN(0, 16, "le");
+        this.txHash = new BN(0, 16, "le");
+        this.from = new BN(0, 16, "le");
     }
 
     computeHash() {
@@ -60,29 +59,33 @@ export class Transaction extends Struct {
         buf.writeBin(this.to.toBuffer("le"));
         buf.writeBin(this.value.toBuffer("le"));
         buf.writeBin(this.txType.toBuffer("le"));
-
+        buf.writeBin(this.blsPubKey.toBuffer("le"));
         let hashBuf = hash256(new Buffer(buf.getBuffer()));
         this.txHash = new BN(hashBuf);
+
+        return this.txHash;
     }
 
     bonDecode(bb: BonBuffer) {
         let u8 = bb.readBin();
-        this.count = new BN(u8, 10, "le");
+        this.count = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.fee = new BN(u8, 10, "le");
+        this.fee = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.to = new BN(u8, 10, "le");
+        this.to = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.value = new BN(u8, 10, "le");
+        this.value = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.txType = new BN(u8, 10, "le");
+        this.txType = new BN(u8, 16, "le");
+        u8 = bb.readBin();
+        this.blsPubKey = new BN(u8, 16, "le");
 
         u8 = bb.readBin();
-        this.sign = new BN(u8, 10, "le");
+        this.sign = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.txHash = new BN(u8, 10, "le");
+        this.txHash = new BN(u8, 16, "le");
         u8 = bb.readBin();
-        this.from = new BN(u8, 10, "le");
+        this.from = new BN(u8, 16, "le");
     }
 
     bonEncode(bb: BonBuffer) {
@@ -91,6 +94,7 @@ export class Transaction extends Struct {
         bb.writeBin(this.to.toBuffer("le"));
         bb.writeBin(this.value.toBuffer("le"));
         bb.writeBin(this.txType.toBuffer("le"));
+        bb.writeBin(this.blsPubKey.toBuffer("le"));
 
         bb.writeBin(this.sign.toBuffer("le"));
         bb.writeBin(this.txHash.toBuffer("le"));
@@ -99,48 +103,3 @@ export class Transaction extends Struct {
         return new Buffer(bb.getBuffer());
     }
 }
-
-export class TransactionDB {
-    db: CDB;
-    session: CSession;
-
-    constructor() {
-        this.db = new CDB();
-        this.session = new CSession();
-
-        this.session.open(this.db);
-    }
-
-    write(header: Transaction) {
-        const writeCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: header.txHash.toString(),
-                value: header,
-                time: 0,
-            } as Item;
-
-            return tx.upsert([item], DEFAULT_TIMEOUT);
-        };
-
-        this.session.write(writeCB, DEFAULT_TIMEOUT);
-    }
-
-    read(hash: U256): Transaction {
-        const readCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: hash.toString(),
-            } as Item;
-
-            return tx.query([item], DEFAULT_TIMEOUT);
-        };
-
-        return this.session.read(readCB, DEFAULT_TIMEOUT);
-    }
-}
-
-// ============================== implementation
-
-const DEFAULT_TIMEOUT = 10; // 10 ms
-const TABLE_NAME = "TransactionTable";

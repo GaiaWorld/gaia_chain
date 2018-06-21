@@ -38,7 +38,7 @@ export default () => {
         describe('ripemd160', function () {
             it('1', function () {
                 let msg = "3c9229289a6125f7fdf1885a77bb12c37a8d3b4962d936f7e3084dece32a3ca1";
-                let data = new BN(msg, 16);
+                let data = new BN(msg, 16, 'be');
                 let buf = data.toBuffer('be');
                 let hash = crypto.ripemd160(buf);
 
@@ -108,6 +108,8 @@ export default () => {
                 let r = ecc.verify(hash, sign, pub);
                 chai.assert.equal(r, true);
 
+                msg = Buffer.from("abcdef");
+                hash = crypto.hash256(msg);
                 let recover = ecc.recover(hash, sign, true);
                 chai.assert.equal(recover.toString("hex"), pub.toString("hex"));
             });

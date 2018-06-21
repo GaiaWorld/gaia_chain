@@ -4,7 +4,7 @@ import {chai} from "../../framework/chai"
 import { Buffer } from "../../../blockchain/util/buffer"
 
 export default () => {
-    describe('util/Buffer', function () {
+    describe('util/buffer', function () {
         describe('string', function () {
             it('1', function () {
                 var text = 'abc';

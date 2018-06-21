@@ -12,9 +12,6 @@ import { U32, U64, U160 } from "../util/number"
 
 import { Struct } from "../../pi/struct/struct_mgr"
 
-import { CDB, CSession } from "../../pi/db/client"
-import { Item, Transaction as DBTransaction } from "../../pi/db/db"
-
 // ============================== export
 
 export class Account extends Struct {
@@ -22,12 +19,12 @@ export class Account extends Struct {
     count: U32;      // the count of transactions from the account
     balance: U64;    // the current uGaia of the account
 
-    constructor() {
+    constructor(address?: U160, balance?: U64) {
         super();
 
-        this.address = new BN(0, 10, "le");
-        this.count = new BN(0, 10, "le");
-        this.balance = new BN(0, 10, "le");
+        this.address = address || new BN(0, 16, "le");
+        this.count = new BN(0, 16, "le");
+        this.balance = balance || new BN(0, 16, "le");
     }
 
     bonEncode(bb: BonBuffer) {
@@ -40,53 +37,10 @@ export class Account extends Struct {
 
     bonDecode(bb: BonBuffer) {
         let u8 = bb.readBin();
-        this.address = new BN(u8, 10, "le");
-        this.count = new BN(u8, 10, "le");
-        this.balance = new BN(u8, 10, "le");
+        this.address = new BN(u8, 16, "le");
+        u8 = bb.readBin();
+        this.count = new BN(u8, 16, "le");
+        u8 = bb.readBin();
+        this.balance = new BN(u8, 16, "le");
     }
 }
-
-export class AccountDB {
-    db: CDB;
-    session: CSession;
-
-    constructor() {
-        this.db = new CDB();
-        this.session = new CSession();
-
-        this.session.open(this.db);
-    }
-
-    write(account: Account) {
-        const writeCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: account.address.toString(),
-                value: account,
-                time: 0,
-            } as Item;
-
-            return tx.upsert([item], DEFAULT_TIMEOUT);
-        };
-
-        this.session.write(writeCB, DEFAULT_TIMEOUT);
-    }
-
-    read(address: U160): Account {
-        const readCB = (tx: DBTransaction) => {
-            let item = {
-                tab: TABLE_NAME,
-                key: address.toString(),
-            } as Item;
-
-            return tx.query([item], DEFAULT_TIMEOUT);
-        };
-
-        return this.session.read(readCB, DEFAULT_TIMEOUT);
-    }
-}
-
-// ============================== implementation
-
-const DEFAULT_TIMEOUT = 10; // 10 ms
-const TABLE_NAME = "AccountTable";
