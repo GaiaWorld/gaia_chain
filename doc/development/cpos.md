@@ -46,7 +46,7 @@ bls是签名算法，参数有: 私钥，Hash(消息(R(h-1), h))
    
 1 GAIA = 10^6 uGAIA 一万亿GAIA的总量已经到10^18次方，也就是2^59.7
    + 为了能让64位整数放的下，方便处理；最小单位是 uGAIA
-
+   
 ## 数据结构
 
 ``` typescript
@@ -105,11 +105,16 @@ Forge首次参与选举时，组号是：地址最后1Byte
 序列化时候，需要考虑定点数格式。
 
 accWeight = initWeight = H(R(h), h, address) * Log10(Deposit/100) ) );
-    ？？其中: H(x, y, z)的值是[1, 4]的浮点数，具体计算公式还没想好
+    其中: H(x, y, z)的值是[1, 4]的浮点数
+    具体计算公式：
+        h = sha256(sha256(x...y...z);
+        h = h % 128;
+        随机数：1+3h/128;
+            128可以改成任意2的冥（只要不超过double的整数表示），这样能保证定点分布。
 
 下次轮到该组锻造时，对该组内距离上次256区块的锻造者，accWeight加一次，共加到10倍initWeight
 
-``` js    
+``` js
 
     for (Forge in ForgeGroup) {
         if (Current - Forge.lastBlockHeight >= 256 && accWeight < 10 * initWeight) {
