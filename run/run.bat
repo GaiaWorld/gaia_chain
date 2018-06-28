@@ -1,0 +1,1 @@
+./bin/pi_serv.exe -c ../pi,../brigde,../app
