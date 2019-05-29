@@ -2,40 +2,61 @@
 import {H160} from "./util"
 
 /**
- * 交易类型
+ * transaction types
  */
-export enum TransactionType {
-    Default,      // 普通转账，userData为undefined
-    AddForge,     // 加入锻造委员会，userData为Forge
-    RemoveForge,  // 退出锻造委员会，userData为地址
+export enum TxType {
+    // normal spend transaction
+    SpendTx,
+    // user asks to enter forge group
+    AddForgerGroupTx,
+    // user exits forger group
+    ExitForgerGroupTx,
+    // penalty
+    PenaltyTx,
+    // 
+    PenaltyBonusTx,
 }
 
 /**
- * 交易
+ * 
  */
 export class Transaction {
-    nonce: number; // U64, 账户发出的交易数量
-    fee: number;   // U64, 为执行交易所需要的价格, 以 yGaia 为单位。
-    to: H160;      // 接收者地址
-    public value: number; // U64, 转账额度，以 yGaia 为单位
-    
-    public type: TransactionType; // 类型
-    public userData: Uint8Array;  // 用户数据，具体意义由类型决定
+    public nonce: number;
+    public fee: number;
+    public price: number;
+    public to: H160;
+    public value: number;
 
+    // transaction type
+    public type: TxType;
+    // two use cases for this field:
+    // 1. as normal account, it will be used as a transactoin note
+    // 2. as contract account, it contains call code for this transaction
+    public payload: Uint8Array;
+
+    // transaction signature
     public v: number;
     public r: number;
-    public s: number; // 和交易签名相关的变量, 用于确定交易的发送者。   
-
-/// 不需要序列化的
-    txHash: H256;  // 
-    from: H160;
-    
-    lastBlockHash: Number;   // ？必要性 256-bit hash of the block todo
-    lastBlockNumber: Number; // ？必要性 the block index  
-
+    public s: number;
 }
 
-// 区块链上的交易数据
-export class ChainTx {
+export class TxPool {
+    poolConfig: TxPoolConfig;
+    // All currently processable transactions
+    pending: Map<H160, Transaction[]>;
+    // Queued but non-processable transactions
+    queue: Map<H160, Transaction[]>;
+    // All transactions sorted by price
+    priced: Transaction[];
+}
 
+interface TxPoolConfig {
+    // minimum gas price this tx pool could accept
+    readonly priceLimit: number;
+    // Maximum number of executable transaction slots for all accounts
+    readonly maxExecutableTxs: number;
+    // Maximum number of non-executable transaction slots permitted per account
+    readonly maxNonExecutableTxs: number;
+    // life time of an non executable txs
+    readonly Expire: number;
 }

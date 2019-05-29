@@ -6,6 +6,12 @@
  * ------------- 数据结构 -------------
  */
 
+export class H160 {
+}
+
+export class H256 {
+}
+
 export class U8 {
 }
 
