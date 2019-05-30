@@ -1,5 +1,5 @@
 
-import {H160} from "./util"
+import {H160, H256} from "./util"
 
 /**
  * transaction types
@@ -22,7 +22,7 @@ export enum TxType {
  */
 export class Transaction {
     public nonce: number;
-    public fee: number;
+    public gas: number;
     public price: number;
     public to: H160;
     public value: number;
@@ -38,6 +38,21 @@ export class Transaction {
     public v: number;
     public r: number;
     public s: number;
+}
+
+export class Receipt {
+    // transaction success or fail
+    status: boolean;
+    // tx gas used
+    gasUsed: number;
+    // transaction hash
+    txHash: H256;
+    // block hash
+    blockHash: H256;
+    // block number
+    blockNumber: number;
+    // transaction index in Transaction[] array
+    txIndex: number;
 }
 
 export class TxPool {
