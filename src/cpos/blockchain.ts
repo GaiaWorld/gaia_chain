@@ -16,8 +16,13 @@ export class Header {
     public height: number;
     // previous block hash
     public prevHash: H256;
+    
     // transactions root hash
     public txHash: H256;
+    // state root hash
+    public stateRoot: H256;
+    // receipt root hash
+    public receiptRoot: H256;
 
     // total weight for all block
     public totalWeight: number;
