@@ -13,8 +13,6 @@ export enum TxType {
     ExitForgerGroupTx,
     // penalty
     PenaltyTx,
-    // 
-    PenaltyBonusTx,
 }
 
 /**
@@ -26,6 +24,8 @@ export class Transaction {
     public price: number;
     public to: H160;
     public value: number;
+
+    public lastOutputValue: number;
 
     // transaction type
     public type: TxType;
@@ -53,14 +53,16 @@ export class Receipt {
     blockNumber: number;
     // transaction index in Transaction[] array
     txIndex: number;
+    // tx result log
+    log: Log[];
 }
 
 export class TxPool {
     poolConfig: TxPoolConfig;
-    // All currently processable transactions
-    pending: Map<H160, Transaction[]>;
-    // Queued but non-processable transactions
-    queue: Map<H160, Transaction[]>;
+    // // All currently processable transactions
+    // pending: Map<H160, Transaction[]>;
+    // // Queued but non-processable transactions
+    // queue: Map<H160, Transaction[]>;
     // All transactions sorted by price
     priced: Transaction[];
 }
@@ -68,10 +70,12 @@ export class TxPool {
 interface TxPoolConfig {
     // minimum gas price this tx pool could accept
     readonly priceLimit: number;
-    // Maximum number of executable transaction slots for all accounts
-    readonly maxExecutableTxs: number;
-    // Maximum number of non-executable transaction slots permitted per account
-    readonly maxNonExecutableTxs: number;
+    // // Maximum number of executable transaction slots for all accounts
+    // readonly maxExecutableTxs: number;
+    // // Maximum number of non-executable transaction slots permitted per account
+    // readonly maxNonExecutableTxs: number;
     // life time of an non executable txs
-    readonly Expire: number;
+    readonly expire: number;
+    // unconfirmed tx size
+    readonly maxSize: number;
 }

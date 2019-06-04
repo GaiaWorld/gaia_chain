@@ -1,0 +1,125 @@
+
+https://bitcoin.org/en/developer-reference#raw-transaction-format
+
+https://en.bitcoin.it/wiki/Protocol_documentation#tx
+
+https://bitcoin.org/en/developer-guide#peer-discovery
+
+补全：
+    
+    数据结构
+        ts的类型：？
+    网络
+        1. 定时器？
+        2. DNS种子解析？
+        3. RPC机制？
+    加密
+    存储
+    
+0. 协议，TCP-MQTT
+
+    ping-pong，用mqtt的
+        过20分钟，如果那个连接还没有任何响应，就断开
+
+    version-verack，握手，用mqtt的？
+
+    getaddr: rpc, 取地址
+
+    addr：发自己的地址
+
+    getheaders: rpc，取区块头，有上限1000个交易
+        比特币版本：starthashs, endhash，如果endhashs为0，则发送到上限
+    
+    gettx: rpc，根据hash取交易，有上限，1000个交易
+    
+    headers：mqtt消息，发区块头，有上限1000个交易    
+    tx: mqtt消息，发交易，有上限，1000个交易
+        安全问题，ddos攻击？
+
+1. 初始化
+
+    单向：自己连接别人，和别人连接自己的peer的数量，各限定10个；
+    
+    DNS，种子节点，跟每个节点要一个ip；
+
+    每十秒钟，去掉连接不上的(比如10分钟peer都没有发消息过来的)；跟之前收到的地址要最好的（比如失败次数最小的，时间最新的），撑到上限为止；
+
+    需要加大连接的数量，比如1000 ？？？为了快速广播？
+        广播优先锻造者！
+
+    verack = {}
+
+    version = {  // 可以不需要
+        version: u32;            // p2p 网络协议版本
+        timestamp: u64;          // 以秒计算的标准UNIX时间戳，why：？？？
+        addr_me: net_addr;	     // why：？？？可能为了穿透
+        addr_you: net_addr;      // why：？？？可能为了穿透
+        start_height: u32;	     // 发送节点接收到的最新block的高度，用途：？？？
+        nonce:	u64;             // 随机id，没必要，因为我们有tls？
+            随机值，如果为0，接收者忽略这个字段；
+            否则如果再收到一个同样值的version包，就要断开，Why：？？？
+    }
+
+2. 节点发现
+    
+    // 定时器，每过一段时间，获取一次地址？
+    // 内部有个nodetable，存着获得的地址，有个上限；
+    // 需不需要定时清理连不上的地址？
+    rpc getdddr = {}
+
+    // 广播
+    mqtt addr = {
+        count: var_int,
+        addr_list: (u32 + net_addr)[count]	
+    }
+
+    u32是地址时间戳，如果时间戳为0，除非已经确认地址有效，否则不会转发；
+
+3. 同步
+
+    // 不需要
+    getheaders = {
+        version: u32;           // 
+        count: var_int;
+        starts: H256[count];   // 从新到老？？？
+        stop: H256;            // 如果为0，尽可能多的返回，上限2000
+    }
+
+    // 我们可能需要用这种
+    从头开始：从高度多少到多少的；多个节点并发
+        某个区块的hash，往下多少个？
+
+    // 头部 + 交易的短hash
+    headerandtxs = {
+        count: var_int;
+        headers: block_headers[];
+        // 
+    }
+
+    rpc gettx = {
+        version: u32;
+        count: var_int;
+        : H256[count];
+    }
+
+    tx = {
+        交易[]
+    }
+
+    拉：过一段时间
+        随机找节点要最新的头部，getheaders，取hash值
+            比特币：不明白，需要将头部hash给过去？？？
+        peer根据hash值取对应的头部；一次性取出来，一次2000个头部；
+
+        有效头部的交易hash，如果自己的pool没有，用gettx方法拉取；
+
+    推：
+        每次锻造一个新块，对所有的节点，发送block头；
+        收到 新 块 后，随机选取几个节点，发送block头；
+
+        交易：收到tx方法后，选取几个节点广播
+
+------------
+
+交易，lock time，why ???
+

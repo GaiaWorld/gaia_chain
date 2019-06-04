@@ -18,9 +18,9 @@ export class Header {
     public prevHash: H256;
     
     // transactions root hash
-    public txHash: H256;
+    public txRootHash: H256;
     // state root hash
-    public stateRoot: H256;
+    // public stateRoot: H256;
     // receipt root hash
     public receiptRoot: H256;
 
@@ -40,7 +40,7 @@ export class Header {
     // random number for this block
     public blockRandom: H256;
     // random number signature signed by forger
-    public Sig: H256;
+    public signature: H256;
 }
 
 export class Body {

@@ -11,9 +11,9 @@ export class Forger {
     address: H160;
     pubKey: H256;
     // initial weight
-    initWeight: number;
+    lastWeight: number;
     // at which height being a forger
-    initHeight: number;
+    lastHeight: number;
     // how many tokens this forger staking
     stake: number;
 }
