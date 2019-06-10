@@ -3,7 +3,7 @@
  */
 export class Queue<T> {
 
-    private elements: Array<T>;
+    private elements: T[];
     private _size: number | undefined;
 
     public constructor(capacity?: number) {
@@ -12,12 +12,12 @@ export class Queue<T> {
     }
 
     public push(o: T) {
-        if (o == null) {
+        if (o === null) {
             return false;
         }
-        //如果传递了size参数就设置了队列的大小
-        if (this._size != undefined && !isNaN(this._size)) {
-            if (this.elements.length == this._size) {
+        // 如果传递了size参数就设置了队列的大小
+        if (this._size !== undefined && !isNaN(this._size)) {
+            if (this.elements.length === this._size) {
                 this.pop();
             }
         }
@@ -34,7 +34,7 @@ export class Queue<T> {
     }
 
     public empty(): boolean {
-        return this.size() == 0;
+        return this.size() === 0;
     }
 
     public clear() {
