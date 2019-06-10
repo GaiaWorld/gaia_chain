@@ -1,0 +1,15 @@
+/.temp/temp
+*.depend
+/scripts/*.error
+*.s.ts
+/node_modules
+/package-lock.json
+/scripts_server/.error
+/src/pi
+/src/pi_pt
+/dst
+/scripts/dump
+/.vscode
+/scripts/lmdb
+/scripts/file
+/src/.vscode/settings.json
