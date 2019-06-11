@@ -2,7 +2,7 @@
  * block chain
  */
 
-import { H160, H256 } from '../consensus/util';
+import { H160, H256 } from '../pi_pt/rust/hash_value';
 import { Account } from './account';
 import { Transaction } from './transaction';
 
@@ -46,9 +46,27 @@ export class Header {
 export class Body {
     // block body contains all transactions
     public txs: Transaction[];
+
+    public constructor(txs: Transaction[]) {
+        this.txs = txs;
+    }
 }
 
 export class Block {
-    public head: Header;
+    public header: Header;
     public body: Body;
+
+    public constructor(header: Header, body: Body) {
+        this.header = header;
+        this.body = body;
+    }
+}
+
+export interface BlockChain {
+    height(): number;
+    balance(addr: H160): number;
+    // get header from block number or block hash
+    getHeader(hd: number | string): Header;
+    // get body
+    getBody(bd: number | string): Header;
 }

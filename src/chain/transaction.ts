@@ -1,5 +1,5 @@
 
-import { H160, H256 } from '../consensus/util';
+import { H160, H256 } from '../pi_pt/rust/hash_value';
 
 /**
  * transaction types
