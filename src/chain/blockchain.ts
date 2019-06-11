@@ -2,9 +2,9 @@
  * block chain
  */
 
+import { H160, H256 } from '../consensus/util';
 import { Account } from './account';
 import { Transaction } from './transaction';
-import { H160, H256 } from './util';
 
 /**
  * header

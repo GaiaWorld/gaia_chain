@@ -13,6 +13,9 @@
         "tslint-microsoft-contrib"
     ],
     "rules": {
+        "missing-jsdoc": false,
+        "completed-docs": false,
+        "max-classes-per-file": false,
         // tslint-microsoft-contrib
         "no-backbone-get-set-outside-model": false,
         // 导出的名称不一定要和文件名相同
