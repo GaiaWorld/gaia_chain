@@ -1,5 +1,5 @@
 
-import {H160, H256} from "./util"
+import { H160, H256 } from '../consensus/util';
 
 /**
  * transaction types
@@ -12,7 +12,7 @@ export enum TxType {
     // user exits forger group
     ExitForgerGroupTx,
     // penalty
-    PenaltyTx,
+    PenaltyTx
 }
 
 /**
@@ -28,7 +28,7 @@ export class Transaction {
     public lastOutputValue: number;
 
     // transaction type
-    public type: TxType;
+    public txType: TxType;
     // two use cases for this field:
     // 1. as normal account, it will be used as a transactoin note
     // 2. as contract account, it contains call code for this transaction
@@ -42,29 +42,29 @@ export class Transaction {
 
 export class Receipt {
     // transaction success or fail
-    status: boolean;
+    public status: boolean;
     // tx gas used
-    gasUsed: number;
+    public gasUsed: number;
     // transaction hash
-    txHash: H256;
+    public txHash: H256;
     // block hash
-    blockHash: H256;
+    public blockHash: H256;
     // block number
-    blockNumber: number;
+    public blockNumber: number;
     // transaction index in Transaction[] array
-    txIndex: number;
+    public txIndex: number;
     // tx result log
-    log: Log[];
+    public log: Log[];
 }
 
 export class TxPool {
-    poolConfig: TxPoolConfig;
+    public poolConfig: TxPoolConfig;
     // // All currently processable transactions
     // pending: Map<H160, Transaction[]>;
     // // Queued but non-processable transactions
     // queue: Map<H160, Transaction[]>;
     // All transactions sorted by price
-    priced: Transaction[];
+    public priced: Transaction[];
 }
 
 interface TxPoolConfig {
