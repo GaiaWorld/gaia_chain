@@ -1,60 +1,23 @@
-import { Queue } from "../util/queue";
-
 /**
  * Information about a peer node
  */
+// ==================================================import
+import { Queue } from "../util/queue";
+import { Inv, NetMsg} from "./msg";
 
- /**
-  * 所有的对等节点类型
-  */
-enum NODE_TYPE  {
+// ==================================================export 
+/**
+ * 所有的对等节点类型
+ */
+export enum NODE_TYPE  {
     FULL_NODE = 1
     //TODO:
 }
 
+export const MIN_POINT = -10;
 /**
- * 定义一个标准的消息结构体
+ * peer node
  */
-interface NetMsg {
-
-}
-
-/**
- * 定义了所有的消息类型
- */
-interface MSG_TYPE {
-    VERSION : 0,//版本确认
-    VERACK,//握手确认
-    
-    GETADDR,//获取地址
-    ADDR,//发送地址
-    GETDATA,//include TXS and BLOCKS 还有个字段用于表示是需要获取TX详细信息还是block详细信息
-    TX, //发送交易
-    BLOCK,//发送区块
-    GETHEADERS,//The getheaders message requests a headers message that provides block headers starting from a particular point in the block chain.
-    HEADERS,//发送区块头
-    GETMEMTXPOOL,//requests the TXIDs of transactions that the receiving node has verified as valid but which have not yet appeared in a block
-    INV,//announce new tx or blocks, or reply GETTXPOOL message
-
-    MERKLEBLOCK,//在demo版本中暂时不适用该字段
-    //不存在向对方获取缓存池中的区块的情况，只会获取bestchain的区块
-    NOTFOUND,//reply to a getdata message which requested an object the receiving node does not have available for relay.
-    REJECT,//拒绝请求
-
-    PING,
-    PONG
-}
-
-interface INV_MSG_TYPE {
-    UNDEFINED:0,
-    MSG_TX:1,
-    MSG_BLOCK:2
-} 
-
-interface Inv {
-    hash: number;
-    MsgType: INV_MSG_TYPE;//实际取值只会是TX和BLOCK
-}
 export class PNode { 
     //websocket
     nNodeType:NODE_TYPE;
@@ -101,4 +64,7 @@ export class PNode {
     nMyStartingHeight:number;//我从哪个高度开始请求对方的数据
     nSendVersion:string;//我告诉对方我的版本,我可以告诉不同的对等节点不同的版本
     strLocalAddr:string;//我的IP和端口
+    //peer
+    nPublicKey:string;//公钥，可以生成地址
+    nPoint:number;//默认是0，每次违反协议则-1分，-10分则加入黑名单
 }
