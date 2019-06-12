@@ -12,5 +12,7 @@ export const CommitteeConfig =  {
     MAX_ACCUMULATED_HEIGHT: 150000,
 
     // stake can withdraw after a certain blocks
-    WITHDRAW_RESERVE_BLOCKS: 256000
+    WITHDRAW_RESERVE_BLOCKS: 256000,
+    // how many groups
+    COMMITTE_GROUP: 256
 };
