@@ -1,4 +1,5 @@
-import { Queue } from "../util/queue";
+import { Header } from '../chain/blockchain';
+import { Queue } from '../util/queue';
 
 /**
  * Information about a peer node
@@ -9,7 +10,7 @@ import { Queue } from "../util/queue";
   */
 enum NODE_TYPE  {
     FULL_NODE = 1
-    //TODO:
+    // TODO:
 }
 
 /**

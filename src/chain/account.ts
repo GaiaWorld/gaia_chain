@@ -2,7 +2,7 @@
  * account
  */
 
-import { H160 } from '../consensus/util';
+import { H160 } from '../pi_pt/rust/hash_value';
 
 export class Account {
     public address: H160;
