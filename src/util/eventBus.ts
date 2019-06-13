@@ -21,7 +21,9 @@ export class GaiaEventBus {
 
     public postEvent(evt: GaiaEvent): void {
         this.listener.forEach((value: Listener, _: string) => {
-            value.target.push(evt);
+            if (value.evtName.indexOf(evt.evtName) > 0) {
+                value.target.push(evt);
+            }
         });
     }
 
