@@ -78,6 +78,8 @@ export class Body {
     }
 }
 
+export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
+
 export class Block {
     public header: Header;
     public body: Body;
@@ -85,6 +87,10 @@ export class Block {
     public constructor(header: Header, body: Body) {
         this.header = header;
         this.body = body;
+    }
+
+    public size(): number {
+        return;
     }
 }
 

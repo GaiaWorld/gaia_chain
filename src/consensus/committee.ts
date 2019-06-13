@@ -2,7 +2,7 @@
  * forge committee
  */
 
-import { Block, BlockChain, Body, Header } from '../chain/blockchain';
+import { Block, BlockChain, Body, Header, MAX_BLOCK_SIZE } from '../chain/blockchain';
 import { MemPool } from '../mempool/tx';
 import { CommitteeConfig } from '../params/committee';
 import { H160, H256 } from '../pi_pt/rust/hash_value';
@@ -58,7 +58,7 @@ export class ForgerCommittee {
 
     public constructor(bc: BlockChain, mp: MemPool, evtBus: GaiaEventBus, privKey: H256 = null, mode: RunningMode = RunningMode.Verifier) {
         // tslint:disable-next-line:prefer-array-literal
-        this.groups = new Array<Forger[]>(CommitteeConfig.COMMITTE_GROUP);
+        this.groups = new Array<Forger[]>(CommitteeConfig.COMMITTEE_GROUPS);
         this.bc = bc;
         this.mp = mp;
         this.mode = mode;
@@ -68,7 +68,7 @@ export class ForgerCommittee {
         // listen events
         evtBus.addListener({
             id: 'ForgerCommittee',
-            evtName: ['AddToCommittee', 'ExitCommittee'],
+            evtName: ['AddToCommittee', 'ExitCommittee', 'NewBlock'],
             target: this.events
         });
     }
@@ -90,6 +90,7 @@ export class ForgerCommittee {
                         if (this.verifyBlock(<Block>event.data)) {
                             if (this.bc.insertBlock(<Block>event.data)) {
                                 this.increaseWeight();
+                                this.adjustGroup();
                             } else {
                                 // TODO: this is orphan block ?
                             }
@@ -106,7 +107,7 @@ export class ForgerCommittee {
                 const address = privKeyToAddress(this.privKey);
                 const forger = this.getForgerFromGroup(address);
                 // which round?
-                const round = this.bc.height() % CommitteeConfig.COMMITTE_GROUP;
+                const round = this.bc.height() % CommitteeConfig.COMMITTEE_GROUPS;
                 // check if we can forge block, if we are the most weighted node, generate block and broadcast
                 // TODO: we didn't hanle when the most weighted comittee not responsive
                 if (forger.groupNumber === round && this.bestWeightAddr().tohex() === address.tohex()) {
@@ -118,7 +119,7 @@ export class ForgerCommittee {
     }
 
     private getForgerFromGroup(addr: H160): Forger {
-        for (let i = 0; i < CommitteeConfig.COMMITTE_GROUP; i++) {
+        for (let i = 0; i < CommitteeConfig.COMMITTEE_GROUPS; i++) {
             for (const member of this.groups[i]) {
                 if (member.address === addr) {
                     return member;
@@ -131,7 +132,7 @@ export class ForgerCommittee {
 
     // get current weigth of a node
     private getMemberWeight(addr: H160): number {
-        const round = this.bc.height() % CommitteeConfig.COMMITTE_GROUP;
+        const round = this.bc.height() % CommitteeConfig.COMMITTEE_GROUPS;
         const members = this.groups[round];
         for (const forger of members) {
             if (forger.address === addr) {
@@ -201,10 +202,10 @@ export class ForgerCommittee {
     // incrase node weight every round until it gets maximum weight allowed
     private increaseWeight(): void {
         const height = this.bc.height();
-        if (height % CommitteeConfig.COMMITTE_GROUP === 0) {
+        if (height % CommitteeConfig.COMMITTEE_GROUPS === 0) {
             for (const group of this.groups) {
                 for (const member of group) {
-                    const maxWeight = member.initWeigth * CommitteeConfig.COMMITTE_GROUP;
+                    const maxWeight = member.initWeigth * CommitteeConfig.COMMITTEE_GROUPS;
                     if (member.lastHeight + member.initWeigth > maxWeight) {
                         member.lastHeight = maxWeight;
                     } else {
@@ -223,18 +224,26 @@ export class ForgerCommittee {
         }
 
         // check size
+        if (bd.size() < 0 || bd.size() > MAX_BLOCK_SIZE) {
+            return false;
+        }
 
         // check tx root hash
+        if (bd.header.txRootHash !== bd.body.txRootHash()) {
+            return false;
+        }
 
         // check timestamp
-
-        // ....
+        if (Math.abs(bd.header.timestamp / 1000 - 60 * 60 * 2)) {
+            return false;
+        }
+        // TODO: add more checks
 
         return true;
     }
 
     private bestWeightAddr(): H160 {
-        const round = this.bc.height() % CommitteeConfig.COMMITTE_GROUP;
+        const round = this.bc.height() % CommitteeConfig.COMMITTEE_GROUPS;
         const sorted = this.groups[round].sort();
 
         return sorted[0].address;
