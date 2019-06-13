@@ -1,3 +1,5 @@
+import { NODE_TYPE } from "./pNode";
+
 /**
  * msg struct
  */
@@ -11,7 +13,7 @@ export interface MsgHeader{
     nMsgType:MSG_TYPE;
     nChecksum:number;//使用MD5校验，只保证消息体在网络传输中没有被毁坏，不保证消息没有被恶意串改
     nMsgSize:number;//消息体的大小
-    nVersion:number;//这个是网络协议的版本，不是共识版本
+    nVersion:number;//这个是应用层网络协议的版本，不是共识版本
     nSendTime:number;//消息发送时的本地时间
 }
 
@@ -23,11 +25,23 @@ export interface NetMsg {
     msgData:JSON;
 }
 
+export interface ShakeHandsInfo {
+    strVersion:string;//共识版本
+    nStartingHeight:number;//本质上是我的当前区块高度
+    nServiceFlags:number;//我可以对外提供的服务
+    nNodeType:NODE_TYPE;//默认都是全节点
+    strLocalAddr:string;//主要在p2p内网穿透时有用
+    nPublicKey:string;//公钥
+    nLocalHostNonce:number;//我给对等节点分配的nonce
+    bPing:boolean;
+    bPong:boolean;
+}
+
 /**
  * all message type
  */
 export const enum MSG_TYPE   {
-    VERSION = "version",//共识版本
+    SHAKEHANDS = "shakehands",//确认共识版本等基础信息
     VERACK = "verack",//握手确认
     
     GETADDR = "getaddr",//获取地址

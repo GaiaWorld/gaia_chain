@@ -6,3 +6,11 @@
 export class ConnMgr{
     
 }
+
+/**
+ * 获取一个新的Nonce
+ */
+export const getNextConnNonce = ():number => {
+    return ++connNonce;
+}
+let connNonce = 0; 
