@@ -242,6 +242,8 @@ export class ForgerCommittee {
         }
         // remove from privous group
         const removed = members.splice(index, 1)[0];
+        // reset weight
+        removed.lastHeight = removed.initWeigth;
         // add to new group
         this.groups[newGroupNumber].push(removed);
     }
