@@ -21,6 +21,8 @@ export class Forger {
     public lastWeight: number;
     // at which height being a forger
     public lastHeight: number;
+    // which group number we are in
+    public groupNumber: number;
     // how many tokens this forger staking
     public stake: number;
 }
@@ -93,9 +95,11 @@ export class ForgerCommittee {
                     this.generateBlock();
                     this.adjustGroup();
                 }
+
             // running in verifier mode
             } else {
                 // TODO
+
             }
         }
     }
@@ -125,8 +129,9 @@ export class ForgerCommittee {
         const header = this.bc.getHeader(height);
         const data = header.forger.tohex() + header.blockRandom.tohex() + height.toString(16);
         const rate = parseInt(sha256(data).tohex().slice(data.length - 4), 16) % 4;
-        // TODO
         const weight = (Math.log(balance * 0.01) / Math.log(10)) * rate;
+        const hash = sha256(data).tohex();
+        const newGroupNumber = parseInt(hash.slice(hash.length - 2), 16);
 
         forger.address = addr;
         forger.lastHeight = height;
@@ -134,6 +139,7 @@ export class ForgerCommittee {
         forger.pubKey = pubKey;
         forger.lastHeight = weight;
         forger.stake = balance;
+        forger.groupNumber = newGroupNumber;
 
         if (this.waitsForAdd.get(addr)) {
             throw new Error('double enter committee group');
