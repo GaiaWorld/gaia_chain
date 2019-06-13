@@ -26,3 +26,7 @@ export const sign = (privKey: H256, msg: string): H256 => {
 export const verify = (pubKey: H512, msg: string): boolean => {
     return true;
 };
+
+export const blsRand = (): H256 => {
+    return;
+};

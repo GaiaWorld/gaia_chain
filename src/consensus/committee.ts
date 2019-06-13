@@ -5,8 +5,8 @@
 import { Block, BlockChain, Body, Header } from '../chain/blockchain';
 import { MemPool } from '../mempool/tx';
 import { CommitteeConfig } from '../params/committee';
-import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
-import { privKeyToAddress, pubKeyToAddress, sha256 } from '../util/crypto';
+import { H160, H256 } from '../pi_pt/rust/hash_value';
+import { blsRand, privKeyToAddress, pubKeyToAddress, sha256 } from '../util/crypto';
 import { GaiaEvent, GaiaEventBus } from '../util/eventBus';
 
 /**
@@ -50,19 +50,21 @@ export class ForgerCommittee {
     // node running mode
     private mode: RunningMode;
     // miner private key
-    private privKey: H512;
+    private privKey: H256;
     // event bus
     private evtBus: GaiaEventBus;
     // event container
     private events: GaiaEvent[];
 
-    public constructor(bc: BlockChain, mp: MemPool, evtBus: GaiaEventBus, mode: RunningMode = RunningMode.Verifier) {
+    public constructor(bc: BlockChain, mp: MemPool, evtBus: GaiaEventBus, privKey: H256 = null, mode: RunningMode = RunningMode.Verifier) {
         // tslint:disable-next-line:prefer-array-literal
         this.groups = new Array<Forger[]>(CommitteeConfig.COMMITTE_GROUP);
         this.bc = bc;
         this.mp = mp;
         this.mode = mode;
         this.evtBus = evtBus;
+        // miner private key
+        this.privKey = privKey;
         // listen events
         evtBus.addListener({
             id: 'ForgerCommittee',
@@ -76,32 +78,55 @@ export class ForgerCommittee {
         // tslint:disable-next-line:no-constant-condition
         while (true) {
             const event = this.events.shift();
-            if (event && event.evtName === 'AddToCommittee') {
-                this.addToCommittee(<H256>event.data);
-            } else if (event && event.evtName === 'ExitCommittee') {
-                this.exitCommitee(<H256>event.data);
-            } else {
-                // TODO
+            if (event) {
+                switch (event.evtName) {
+                    case 'AddToCommittee':
+                        this.addToCommittee(<H256>event.data);
+                        break;
+                    case 'ExitCommittee':
+                        this.exitCommitee(<H256>event.data);
+                        break;
+                    case 'NewBlock':
+                        if (this.verifyBlock(<Block>event.data)) {
+                            if (this.bc.insertBlock(<Block>event.data)) {
+                                this.increaseWeight();
+                            } else {
+                                // TODO: this is orphan block ?
+                            }
+                        } else {
+                            // TODO: we detect a mallicious node, collect evidence
+                        }
+                        break;
+                    default:
+                }
             }
+
             // running in minner mode
             if (this.mode === RunningMode.Minner) {
-                const address = privKeyToAddress(this.privKey).tohex();
-                const groupNumber = parseInt(address.slice(address.length - 2), 16);
+                const address = privKeyToAddress(this.privKey);
+                const forger = this.getForgerFromGroup(address);
                 // which round?
                 const round = this.bc.height() % CommitteeConfig.COMMITTE_GROUP;
                 // check if we can forge block, if we are the most weighted node, generate block and broadcast
-                if (groupNumber === round && this.bestWeightAddr().tohex() === address) {
-                    // TODO
+                // TODO: we didn't hanle when the most weighted comittee not responsive
+                if (forger.groupNumber === round && this.bestWeightAddr().tohex() === address.tohex()) {
                     this.generateBlock();
                     this.adjustGroup();
                 }
-
-            // running in verifier mode
-            } else {
-                // TODO
-
             }
         }
+    }
+
+    private getForgerFromGroup(addr: H160): Forger {
+        for (let i = 0; i < CommitteeConfig.COMMITTE_GROUP; i++) {
+            for (const member of this.groups[i]) {
+                if (member.address === addr) {
+                    return member;
+                }
+            }
+        }
+
+        return null;
     }
 
     // get current weigth of a node
@@ -191,16 +216,13 @@ export class ForgerCommittee {
     }
 
     // check if the block is valid
-    private verifyBlock(bh: Header): boolean {
+    private verifyBlock(bd: Block): boolean {
         // check sig
-        if (!bh.verify(bh.forgerPubkey, bh.serialize())) {
+        if (!bd.header.verify(bd.header.forgerPubkey, bd.header.serialize())) {
             return false;
         }
 
         // check size
-        if (bh.blockSize < 0 || bh.blockSize > 10 * 1024 * 1024) {
-            return false;
-        }
 
         // check tx root hash
 
@@ -219,10 +241,23 @@ export class ForgerCommittee {
     }
 
     private generateBlock(): void {
+        const forger = this.getForgerFromGroup(privKeyToAddress(this.privKey));
+        const currentHeight = this.bc.height();
+        const currentHeader = this.bc.getHeader(currentHeight);
+
         const header = new Header();
         const body = new Body(this.mp.txs());
         const txRootHash = body.txRootHash();
         header.txRootHash = txRootHash;
+        header.height = currentHeight + 1;
+        header.prevHash = currentHeader.hash();
+        header.weight = forger.lastWeight;
+        header.totalWeight = currentHeader.totalWeight + header.weight;
+        header.blockRandom = blsRand();
+        header.forger = forger.address;
+        header.forgerPubkey = forger.pubKey;
+        header.groupNumber = 0;
+        header.sign(this.privKey);
 
         // TODO: add reward
         this.evtBus.postEvent({

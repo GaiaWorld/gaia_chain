@@ -13,8 +13,6 @@ import { Transaction } from './transaction';
 export class Header {
     // block version used to upgrade protocol
     public version: number;
-    // block size
-    public blockSize: number;
     // block height
     public height: number;
     // previous block hash
@@ -43,7 +41,7 @@ export class Header {
     // random number for this block
     public blockRandom: H256;
     // random number signature signed by forger
-    public signature: H256;
+    public signature: H512;
 
     public constructor() {
         this.version = 1;
@@ -54,11 +52,15 @@ export class Header {
         this.signature = sign(privKey, this.serialize());
     }
 
-    public verify(pubKey: H512, header: string): boolean {
+    public verify(pubKey: H256, header: string): boolean {
         return verify(pubKey, header);
     }
 
     public serialize(): string {
+        return;
+    }
+
+    public hash(): H256 {
         return;
     }
 }
@@ -93,4 +95,6 @@ export interface BlockChain {
     getHeader(hd: number | string): Header;
     // get body
     getBody(bd: number | string): Header;
+    // insert a single block
+    insertBlock(block: Block): boolean;
 }
