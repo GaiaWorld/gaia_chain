@@ -94,7 +94,7 @@ export class Block {
     }
 }
 
-export interface BlockChain {
+export interface Chain {
     height(): number;
     balance(addr: H160): number;
     // get header from block number or block hash
@@ -102,5 +102,7 @@ export interface BlockChain {
     // get body
     getBody(bd: number | string): Header;
     // insert a single block
-    insertBlock(block: Block): boolean;
+    insertBlock(block: Block | Block[]): boolean;
+    // get totall weight
+    getTotalWeight(): number;
 }

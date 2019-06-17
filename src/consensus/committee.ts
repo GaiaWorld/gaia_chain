@@ -2,7 +2,7 @@
  * forge committee
  */
 
-import { Block, BlockChain, Body, Header, MAX_BLOCK_SIZE } from '../chain/blockchain';
+import { Block, Body, Chain, Header, MAX_BLOCK_SIZE } from '../chain/blockchain';
 import { MemPool } from '../mempool/tx';
 import { CommitteeConfig } from '../params/committee';
 import { H160, H256 } from '../pi_pt/rust/hash_value';
@@ -44,7 +44,7 @@ export class ForgerCommittee {
     // users that request to be a forger but not take effective yet
     private waitsForAdd:  Map<H160, Forger>;
     // block chain
-    private bc: BlockChain;
+    private chain: Chain;
     // mem pool
     private mp: MemPool;
     // node running mode
@@ -56,10 +56,10 @@ export class ForgerCommittee {
     // event container
     private events: GaiaEvent[];
 
-    public constructor(bc: BlockChain, mp: MemPool, evtBus: GaiaEventBus, privKey: H256 = null, mode: RunningMode = RunningMode.Verifier) {
+    public constructor(chain: Chain, mp: MemPool, evtBus: GaiaEventBus, privKey: H256 = null, mode: RunningMode = RunningMode.Verifier) {
         // tslint:disable-next-line:prefer-array-literal
         this.groups = new Array<Forger[]>(CommitteeConfig.COMMITTEE_GROUPS);
-        this.bc = bc;
+        this.chain = chain;
         this.mp = mp;
         this.mode = mode;
         this.evtBus = evtBus;
@@ -88,7 +88,7 @@ export class ForgerCommittee {
                         break;
                     case 'NewBlock':
                         if (this.verifyBlock(<Block>event.data)) {
-                            if (this.bc.insertBlock(<Block>event.data)) {
+                            if (this.chain.insertBlock(<Block>event.data)) {
                                 this.increaseWeight();
                                 this.adjustGroup();
                             } else {
@@ -107,7 +107,7 @@ export class ForgerCommittee {
                 const address = privKeyToAddress(this.privKey);
                 const forger = this.getForgerFromGroup(address);
                 // which round?
-                const round = this.bc.height() % CommitteeConfig.COMMITTEE_GROUPS;
+                const round = this.chain.height() % CommitteeConfig.COMMITTEE_GROUPS;
                 // check if we can forge block, if we are the most weighted node, generate block and broadcast
                 // TODO: we didn't hanle when the most weighted comittee not responsive
                 if (forger.groupNumber === round && this.bestWeightAddr().tohex() === address.tohex()) {
@@ -132,7 +132,7 @@ export class ForgerCommittee {
 
     // get current weigth of a node
     private getMemberWeight(addr: H160): number {
-        const round = this.bc.height() % CommitteeConfig.COMMITTEE_GROUPS;
+        const round = this.chain.height() % CommitteeConfig.COMMITTEE_GROUPS;
         const members = this.groups[round];
         for (const forger of members) {
             if (forger.address === addr) {
@@ -146,13 +146,13 @@ export class ForgerCommittee {
         const forger = new Forger();
 
         const addr = pubKeyToAddress(pubKey);
-        const balance = this.bc.balance(addr);
+        const balance = this.chain.balance(addr);
         if (balance < CommitteeConfig.MIN_TOKEN) {
             return false;
         }
 
-        const height = this.bc.height();
-        const header = this.bc.getHeader(height);
+        const height = this.chain.height();
+        const header = this.chain.getHeader(height);
         const data = header.forger.tohex() + header.blockRandom.tohex() + height.toString(16);
         const rate = parseInt(sha256(data).tohex().slice(data.length - 4), 16) % 4;
         const weight = (Math.log(balance * 0.01) / Math.log(10)) * rate;
@@ -180,7 +180,7 @@ export class ForgerCommittee {
     private exitCommitee(addr: H160): void {
         const forger = this.waitsForRemove.get(addr);
         if (forger) {
-            if (forger.lastHeight + CommitteeConfig.WITHDRAW_RESERVE_BLOCKS >= this.bc.height()) {
+            if (forger.lastHeight + CommitteeConfig.WITHDRAW_RESERVE_BLOCKS >= this.chain.height()) {
                 this.waitsForRemove.delete(addr);
                 // TODO: refund
             }
@@ -201,7 +201,7 @@ export class ForgerCommittee {
 
     // incrase node weight every round until it gets maximum weight allowed
     private increaseWeight(): void {
-        const height = this.bc.height();
+        const height = this.chain.height();
         if (height % CommitteeConfig.COMMITTEE_GROUPS === 0) {
             for (const group of this.groups) {
                 for (const member of group) {
@@ -243,7 +243,7 @@ export class ForgerCommittee {
     }
 
     private bestWeightAddr(): H160 {
-        const round = this.bc.height() % CommitteeConfig.COMMITTEE_GROUPS;
+        const round = this.chain.height() % CommitteeConfig.COMMITTEE_GROUPS;
         const sorted = this.groups[round].sort();
 
         return sorted[0].address;
@@ -251,8 +251,8 @@ export class ForgerCommittee {
 
     private generateBlock(): void {
         const forger = this.getForgerFromGroup(privKeyToAddress(this.privKey));
-        const currentHeight = this.bc.height();
-        const currentHeader = this.bc.getHeader(currentHeight);
+        const currentHeight = this.chain.height();
+        const currentHeader = this.chain.getHeader(currentHeight);
 
         const header = new Header();
         const body = new Body(this.mp.txs());
@@ -276,8 +276,8 @@ export class ForgerCommittee {
     }
 
     private adjustGroup(): void {
-        const height = this.bc.height();
-        const header = this.bc.getHeader(height);
+        const height = this.chain.height();
+        const header = this.chain.getHeader(height);
         const data = header.forger.tohex() + header.blockRandom.tohex() + height.toString(16);
         const hash = sha256(data).tohex();
 
