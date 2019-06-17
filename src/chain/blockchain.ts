@@ -3,6 +3,7 @@
  */
 
 import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
+import { Storage } from '../store/storage';
 import { sign, verify } from '../util/crypto';
 import { Account } from './account';
 import { Transaction } from './transaction';
@@ -98,11 +99,55 @@ export interface Chain {
     height(): number;
     balance(addr: H160): number;
     // get header from block number or block hash
-    getHeader(hd: number | string): Header;
+    getHeader(hd: number | H256): Header;
     // get body
-    getBody(bd: number | string): Header;
+    getBody(bd: number | H256): Header;
     // insert a single block
     insertBlock(block: Block | Block[]): boolean;
     // get totall weight
     getTotalWeight(): number;
+}
+
+export class BlockChain implements Chain {
+    // chain head hash
+    public head: H256;
+    // blockchain store
+    public store: Storage;
+    // more fileds ...
+
+    public constructor(store: Storage) {
+        this.store = store;
+    }
+
+    public height(): number {
+        return;
+    }
+
+    public balance(addr: H160): number {
+        return;
+    }
+
+    public getHeader(hd: number | H256): Header {
+        this.store.get(<H256>hd);
+
+        return;
+    }
+
+    public getBody(bd: number | H256): Header {
+        this.store.get(<H256>bd);
+
+        return;
+    }
+
+    public insertBlock(block: Block | Block[]): boolean {
+        return;
+    }
+
+    public getTotalWeight(): number {
+        return;
+    }
+
+    public getChainHead(): H256 {
+        return this.head;
+    }
 }
