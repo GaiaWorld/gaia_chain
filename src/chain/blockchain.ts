@@ -6,7 +6,7 @@ import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
 import { Storage } from '../store/storage';
 import { sign, verify } from '../util/crypto';
 import { Account } from './account';
-import { Transaction } from './transaction';
+import { Receipt, Transaction } from './transaction';
 
 /**
  * header
@@ -102,10 +102,20 @@ export interface Chain {
     getHeader(hd: number | H256): Header;
     // get body
     getBody(bd: number | H256): Header;
+    // get block
+    getBlock(block: number | H256): Block;
+    // get block hash
+    getBlockHash(block: number): H256;
     // insert a single block
     insertBlock(block: Block | Block[]): boolean;
     // get totall weight
     getTotalWeight(): number;
+    // get genesis hash
+    getGenesisHash(): H256;
+    // get transaction info
+    getTxInfo(txHash: H256): Transaction;
+    // get transaction receipt
+    getTxReceiptInfo(txHash: H256): Receipt;
 }
 
 export class BlockChain implements Chain {
@@ -113,10 +123,23 @@ export class BlockChain implements Chain {
     public head: H256;
     // blockchain store
     public store: Storage;
+    // genesis config
+    public genesis: JSON;
     // more fileds ...
 
-    public constructor(store: Storage) {
+    public constructor(store: Storage, genesis: JSON) {
         this.store = store;
+        this.genesis = genesis;
+    }
+
+    // create a new canonical chain
+    public static NEW_CANONICAL_CHAIN(): BlockChain {
+        return;
+    }
+
+    // build a chain from database
+    public static IMPORT_FROM_DB(): BlockChain {
+        return;
     }
 
     public height(): number {
@@ -139,6 +162,14 @@ export class BlockChain implements Chain {
         return;
     }
 
+    public getBlock(block: number | H256): Block {
+        return;
+    }
+
+    public getBlockHash(block: number): H256 {
+        return;
+    }
+
     public insertBlock(block: Block | Block[]): boolean {
         return;
     }
@@ -149,5 +180,17 @@ export class BlockChain implements Chain {
 
     public getChainHead(): H256 {
         return this.head;
+    }
+
+    public getGenesisHash(): H256 {
+        return;
+    }
+
+    public getTxInfo(txHash: H256): Transaction {
+        return;
+    }
+
+    public getTxReceiptInfo(txHash: H256): Receipt {
+        return;
     }
 }
