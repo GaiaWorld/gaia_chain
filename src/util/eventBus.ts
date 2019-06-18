@@ -19,9 +19,15 @@ export interface GaiaEvent {
 export class GaiaEventBus {
     private listener: Map<string, Listener>;
 
+    public constructor() {
+        this.listener = new Map();
+    }
+
     public postEvent(evt: GaiaEvent): void {
         this.listener.forEach((value: Listener, _: string) => {
-            value.target.push(evt);
+            if (value.evtName.indexOf(evt.evtName) > 0) {
+                value.target.push(evt);
+            }
         });
     }
 

@@ -14,5 +14,5 @@ export const CommitteeConfig =  {
     // stake can withdraw after a certain blocks
     WITHDRAW_RESERVE_BLOCKS: 256000,
     // how many groups
-    COMMITTE_GROUP: 256
+    COMMITTEE_GROUPS: 256
 };
