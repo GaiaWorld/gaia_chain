@@ -5,6 +5,8 @@
 import { PNode } from "../pNode";
 import { NetMsg } from "../msg";
 import { startConn } from "../netProcess";
+import { Transaction } from "../../chain/transaction";
+import { Block } from "../../chain/blockchain";
 
 /**
  * 更新对等节点的最新通讯时间
@@ -56,11 +58,38 @@ export const shakeHands = (netMsg:NetMsg,pNode:PNode) => {
  * @param netMsg 
  * @param pNode 
  */
-export const getTxs = (netMsg:NetMsg,pNode:PNode) => {
-    
+export const getTxs = (netMsg:NetMsg,pNode:PNode):Array<Transaction>|void => {
+    //TODO:此处直接调用core的getTx方法
 }
 
-export const getBlocks = (netMsg:NetMsg,pNode:PNode) => {
-
+/**
+ * 这个方法还可以优化，理论上只需要body就行了，并不需要header
+ * 一次最多请求100个区块
+ * @param netMsg 
+ * @param pNode 
+ */
+export const getBlocks = (netMsg:NetMsg,pNode:PNode):Array<Block>|void => {
+    //TODO:此处直接调用core的getBlock方法
 }
 
+/**
+ * 一次最多请求10000个区块头
+ * @param netMsg 
+ * @param pNode 
+ */
+export const getHeaders = (netMsg:NetMsg,pNode:PNode):Array<Headers>|void=>{
+    //TODO:此处直接调用core的getHeader方法
+}
+
+/**
+ * 这个RPC应该是隔一段时间主动调用一次
+ * @param netMsg 
+ * @param pNode 
+ */
+export const getMemPool = (netMsg:NetMsg,pNode:PNode):Array<Transaction>|void=>{
+    //TODO:此处直接调用core的getmemPool方法，返回所以pool中的交易的hash值
+}
+
+export const getAddress = (netMsg:NetMsg,pNode:PNode):Array<String>|void=>{
+    //TODO:根据我们地址的积分优先返回积分高的的ip,最多返回40个
+}

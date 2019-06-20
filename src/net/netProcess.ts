@@ -9,10 +9,6 @@ import { PNode } from "./pNode";
  * the network process
  */
 
-// the main func of processing all message
-const processMsg = ():void => {
-    
-}
 
 const checkVersion = ():boolean => {
     return false;
@@ -79,83 +75,6 @@ export const startConn = (ip:string) => {
  * @param netMsg 
  * @param pNode 
  */
-
- 
-const processMessage = (netMsg:NetMsg,pNode:PNode) => {
-    switch(netMsg.msgHeader.nMsgType){
-        case MSG_TYPE.SHAKEHANDS:
-            /**
-             * 如果通过本地节点的各种检测则回应VERACK消息给对等节点
-             * 并且可以和该节点进行区块数据的交换
-             */
-            break;
-        case MSG_TYPE.VERACK:
-            /**
-             * 对方返回了自己的节点信息，已经通过了对方的认证
-             * 可以和对方进行区块数据的交换
-             */
-            break;
-        case MSG_TYPE.GETADDR:
-            /**
-             * 在P2P网络中对方节点希望获取到更多的节点IP
-             * 为了防止形成局域网，所有网络地址中必须有1/3是通过对方的广播获取的
-             * 只有2/3是通过GETADDR获取的
-             */
-            break;
-        case MSG_TYPE.ADDR:
-            /**
-             * 通过本地算法返回不超过20个IP地址
-             * 为了防止形成局域网，所有网络地址中必须有1/3是通过对方的广播获取的
-             * 只有2/3是通过GETADDR获取的
-             */
-            break;
-        case MSG_TYPE.GETDATA:
-            /**
-             * 这是一个明确告知对方需要哪一个交易数据或者哪一个区块数据
-             */
-            break;
-        case MSG_TYPE.TX://
-            /**
-             * 返回给对方具体的交易信息,是GETDATA的回应消息
-             */
-            break;
-        case MSG_TYPE.BLOCK:
-            /**
-             * 返回给对方区块详细信息，是GETDATA的回应消息
-             */
-            break;
-        case MSG_TYPE.GETHEADERS:
-            /**
-             * 请求区块头消息
-             */
-            break;
-        case MSG_TYPE.HEADERS:
-            /**
-             * 返回具体的区块头消息，是GETHEADERS的回应消息
-             */
-            break;
-        case MSG_TYPE.GETMEMTXPOOL:
-            /**
-             * 请求放在缓存池中的孤立交易
-             */
-            break;
-        case MSG_TYPE.INV:
-            /**
-             * 是GETMEMTXPOOL的回应消息，同时也是主动广播的消息
-             */
-            break;
-        case MSG_TYPE.NOTFOUND:
-            break;
-        case MSG_TYPE.REJECT:
-            break;
-        case MSG_TYPE.PING:
-            break;
-        case MSG_TYPE.PONG:
-            break;
-        default:
-            break;
-    }
-}
 
 
 // ============================================ native

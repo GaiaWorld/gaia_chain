@@ -13,4 +13,5 @@ export class ConnMgr{
 export const getNextConnNonce = ():number => {
     return ++connNonce;
 }
+
 let connNonce = 0; 

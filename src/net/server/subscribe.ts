@@ -77,9 +77,9 @@ export const subscribeBlock= ()=> {
     }
     if(netMsg.msgData.MsgType == INV_MSG_TYPE.MSG_TX){
         if(needBlock(netMsg)){
-            getBlocks(makeMsg(MSG_TYPE.GETBLOCK,[netMsg.invMsg]),(blocks)=>{
+            getHeaders(makeMsg(MSG_TYPE.GETHEADERS,[netMsg.invMsg]),(headers)=>{
                 //此处调用core的newTxReach
-                newBlocksReach(blocks)
+                newheadersReach(headers)
             })
         }
     }
