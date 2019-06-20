@@ -46,9 +46,10 @@ export const enum MSG_TYPE   {
     
     GETADDR = "getaddr",//获取地址
     ADDR = "addr",//发送地址
-    GETDATA = "getdata",//include TXS and BLOCKS 还有个字段用于表示是需要获取TX详细信息还是block详细信息
+    GETTX = "gettx",
     TX = "tx", //发送交易
-    BLOCK = "block",//发送区块
+    GETBLOCK="getblock",//其实返回的是body
+    BLOCK = "block",//发送区块，本质上是body
     GETHEADERS = "getheaders",//The getheaders message requests a headers message that provides block headers starting from a particular point in the block chain.
     HEADERS = "headers",//发送区块头
     GETMEMTXPOOL = "getmemtxpool",//requests the TXIDs of transactions that the receiving node has verified as valid but which have not yet appeared in a block
@@ -75,6 +76,7 @@ export const enum INV_MSG_TYPE {
  * inventory message, announce new tx or blocks, or reply GETTXPOOL message
  */
 export interface Inv {
+    height:number;//交易所在的区块高度，或者区块本身的高度
     hash: number;
     MsgType: INV_MSG_TYPE;//实际取值只会是TX和BLOCK
 }
@@ -82,6 +84,6 @@ export interface Inv {
 /**
  * message 
  */
-export const makeMsg = (msgType:MSG_TYPE,data:JSON):NetMsg=>{
+export const makeMsg = (msgType:MSG_TYPE,data:any):NetMsg=>{
     
 }

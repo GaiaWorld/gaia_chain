@@ -1,5 +1,5 @@
 import { getPeers } from "./p2p";
-import { ShakeHandsInfo, NetMsg, MSG_TYPE } from "./msg";
+import { ShakeHandsInfo, NetMsg, MSG_TYPE, makeMsg } from "./msg";
 import { getVersion, getTipHeight, getServiceFlags, getNodeType, getLocalAddr } from "./virtualEnv";
 import { getCurrentPubkey } from "../pubkeyMgr";
 import { getNextConnNonce, ConnMgr } from "./connMgr";
@@ -36,25 +36,15 @@ const startNetService = () => {
 /**
  * 本质上是向对方发送SHAKE_HANDS的消息
  */
-const startNetClients = () => {
+export const startNetClients = () => {
     /**
      * TODO:从本地文件中读取
      */
     const peers = getPeers();
     peers.forEach((ip)=>{
-        const shakeHandsInfo = {
-            strVersion:getVersion(),//共识版本
-            nStartingHeight:getTipHeight(),//本质上是我的当前区块高度
-            nServiceFlags:getServiceFlags(),//我可以对外提供的服务
-            nNodeType:getNodeType(),//默认都是全节点
-            strLocalAddr:getLocalAddr(),//主要在p2p内网穿透时有用
-            nPublicKey:getCurrentPubkey(),//公钥
-            nLocalHostNonce:getNextConnNonce(),//我给对等节点分配的nonce
-            bPing:true,
-            bPong:true
-        } as ShakeHandsInfo;
+        
 
-        startConn(ip, shakeHandsInfo);
+        startConn(ip);
     })
     // for()
 }
@@ -64,43 +54,34 @@ const startNetClients = () => {
  * @param ip 
  * @param shakeHandsInfo 
  */
-const startConn = (ip:string,shakeHandsInfo:ShakeHandsInfo) => {
+export const startConn = (ip:string) => {
+    const shakeHandsInfo = {
+        strVersion:getVersion(),//共识版本
+        nStartingHeight:getTipHeight(),//本质上是我的当前区块高度
+        nServiceFlags:getServiceFlags(),//我可以对外提供的服务
+        nNodeType:getNodeType(),//默认都是全节点
+        strLocalAddr:getLocalAddr(),//主要在p2p内网穿透时有用
+        nPublicKey:getCurrentPubkey(),//公钥
+        nLocalHostNonce:getNextConnNonce(),//我给对等节点分配的nonce
+        bPing:true,
+        bPong:true
+    } as ShakeHandsInfo;
     //TODO:将SHAKEHANDS消息发送给对等节点
     //TODO:如果对方没有回应，则将该节点的积分-1
     //TODO:需要存储对等节点相关的信息
+    //TODO:调用对等节点的shakeHands方法，如果正确返回，则将对等节点的isServer置为true
+    makeMsg(MSG_TYPE.SHAKEHANDS, shakeHandsInfo);
 }
 
-/**
- * 初步校验消息本身有没有在传输过程中被破坏
- * 主要就是校验消息头
- * 包括MD5和消息协议的版本是否一致,以及数据结构是否符合要求
- * 消息类型是否正确
- * @param netMsg 
- * @param pNode 
- */
-const isMsgAvaiable = (netMsg:NetMsg,pNode:PNode):boolean => {
-    return true;
-}
 
-/**
- * 更新对等节点的最新通讯时间
- * 如果时间明显不合理，比如小于上一个通讯时间或者明显大于当前时间则不更新
- * @param netMsg 
- * @param pNode 
- */
-const updateMsgTime= (netMsg:NetMsg,pNode:PNode):boolean=> {
-    return true;
-}
 /**
  * 链接的最核心函数，所有的消息都是在该函数中处理的
  * @param netMsg 
  * @param pNode 
  */
+
+ 
 const processMessage = (netMsg:NetMsg,pNode:PNode) => {
-    if(!isMsgAvaiable(netMsg,pNode)){
-        return ;
-    }
-    updateMsgTime(netMsg,pNode);
     switch(netMsg.msgHeader.nMsgType){
         case MSG_TYPE.SHAKEHANDS:
             /**
@@ -133,7 +114,7 @@ const processMessage = (netMsg:NetMsg,pNode:PNode) => {
              * 这是一个明确告知对方需要哪一个交易数据或者哪一个区块数据
              */
             break;
-        case MSG_TYPE.TX:
+        case MSG_TYPE.TX://
             /**
              * 返回给对方具体的交易信息,是GETDATA的回应消息
              */
