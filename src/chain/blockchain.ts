@@ -5,7 +5,6 @@
 import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
 import { Storage } from '../store/storage';
 import { sign, verify } from '../util/crypto';
-import { Account } from './account';
 import { Receipt, Transaction } from './transaction';
 
 /**
