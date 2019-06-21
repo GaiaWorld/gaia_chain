@@ -1,3 +1,3 @@
 set RUST_BACKTRACE=full
-..\..\pi_pt\bin\pi_serv -c ../dst,gaia
+..\..\pi_pt\bin\pi_serv_debug -c ../dst,pi_pt,chain,consensus
 pause;
