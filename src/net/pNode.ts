@@ -2,8 +2,7 @@
  * Information about a peer node
  */
 // ==================================================import
-import { Queue } from "../util/queue";
-import { Inv, NetMsg} from "./msg";
+import { Inv} from "./msg";
 
 // ==================================================export 
 /**

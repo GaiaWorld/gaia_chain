@@ -1,7 +1,8 @@
-import { NODE_TYPE } from "./pNode";
-import { Inv } from "./msg";
-import { Header, Block } from "../chain/blockchain";
-import { Transaction } from "../chain/transaction";
+import { Block, Header } from '../chain/blockchain';
+import { Transaction } from '../chain/transaction';
+// tslint:disable-next-line: ordered-imports
+import { Inv } from './msg';
+import { NODE_TYPE } from './pNode';
 
 /**
  * 临时文件，放置了所有上层应该提供给net层的接口
@@ -12,7 +13,7 @@ import { Transaction } from "../chain/transaction";
  */
 export const getVersion = ():string => {
 
-    return "0.0.1";
+    return '0.0.1';
 }
 
 /**
@@ -44,7 +45,7 @@ export const getNodeType = ():NODE_TYPE => {
  */
 export const getLocalAddr = ():string => {
 
-    return "127.0.0.1:80";
+    return '127.0.0.1:80';
 }
 
 

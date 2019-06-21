@@ -5,8 +5,8 @@
 import { PNode } from "../pNode";
 import { NetMsg } from "../msg";
 import { startConn } from "../netProcess";
-import { Transaction } from "../../chain/transaction";
 import { Block } from "../../chain/blockchain";
+import { Transaction } from "../../chain/transaction";
 
 /**
  * 更新对等节点的最新通讯时间
