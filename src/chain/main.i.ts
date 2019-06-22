@@ -6,6 +6,8 @@ import { Item } from '../pi_pt/db';
 import { Tr } from '../pi_pt/db/mgr';
 import { Forger } from './schema.s';
 
+import { persistBucket } from '../util/db';
+
 declare var env: Env;
 
 const test = (): void => {
@@ -16,20 +18,18 @@ const test = (): void => {
     f.stake = 0;
     f.groupNumber = 0;
 
-    const items: Item[] = [{
-        ware: 'file',
-        tab: Forger._$info.name,
-        key: 'hello',
-        value: f
-    }];
-    env.dbMgr.write((tr: Tr) => {
-        tr.modify(items, 1000, false);
-    });
+    const bkt = persistBucket(Forger._$info.name);
+    f.pk = 'hello1';
+    bkt.put('hello1', f);
+    f.pk = 'hello2';
+    bkt.put('hello2', f);
+    f.pk = 'hello3';
+    bkt.put('hello3', f);
 
-    env.dbMgr.read((tr: Tr) => {
-        const values = tr.query(items, 1000, false);
-        console.log('values: ', values);
-    });
+    console.log(bkt.get('hello1'));
+    console.log(bkt.get('hello2'));
+    console.log(bkt.get('hello3'));
+
 };
 
 const start = (): void => {
