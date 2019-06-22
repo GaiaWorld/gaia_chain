@@ -1,0 +1,10 @@
+export const HEADER_KEY_PREFIX = 'H';
+export const BODY_KEY_PREFIX = 'B';
+export const HEADER_CHAIN_KEY_PREFIX = 'HC';
+export const FORGER_KEY_PREFIX = 'F';
+export const FORGER_COMMITTEE_KEY_PREFIX = 'FC';
+export const PEERS_KEY_PREFIX = 'P';
+export const TRANSACTION_KEY_PREFIX = 'T';
+export const LOG_KEY_PREFIX = 'L';
+export const RECEIPT_KEY_PREFIX = 'R';
+export const ACCOUNT_KEY_PREFIX = 'A';
