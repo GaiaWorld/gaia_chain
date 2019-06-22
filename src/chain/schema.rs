@@ -1,6 +1,7 @@
 // forger
-#[db=file,primary=address]
+#[db=file,primary=pk]
 struct Forger {
+    pk: String,
     address: String,
     pubKey: String,
     initWeigth: usize,
@@ -11,7 +12,7 @@ struct Forger {
 }
 
 // forger committee
-#[db=file]
+#[db=file,primary=pk]
 struct ForgerCommittee {
     pk: String,
     waitsForRemove: HashMap<String, Forger>,
@@ -20,10 +21,11 @@ struct ForgerCommittee {
 }
 
 // peer
-#[db=file,primary=rid]
+#[db=file,primary=peerId]
 struct Peers {
-    rid: String,
+    peerId: String,
     capabilities: u32,
+    address: String,
 }
 
 enum TxType {
@@ -76,8 +78,9 @@ struct Receipt {
 }
 
 // block header
-#[db=file,primary=height]
+#[db=file,primary=pk]
 struct Header {
+    pk: String,
     version: u32,
     height: usize,
     prevHash: String,
@@ -94,15 +97,27 @@ struct Header {
 }
 
 // block body
-#[db=file,primary=headerHash]
+#[db=file,primary=pk]
 struct Body {
+    pk: String,
     headerHash: String,
     txs: [Transaction],
 }
 
+// header chain
+#[db=file,primary=pk]
+struct HeaderChain {
+    pk: String,
+    head: usize,
+    height: usize,
+    genesisHash: String,
+    pervHash: String,
+}
+
 // account
-#[db=file,primary=address]
+#[db=file,primary=pk]
 struct Account {
+    pk: String,
     address: String,
     nonce: usize,
     inputAmount: usize,
@@ -112,5 +127,7 @@ struct Account {
 
 #[db=memory]
 struct TxPool {
-    txs: HashMap<String, [Transaction]>,
+    address: String,
+    txHash: String,
+    tx: Transaction,
 }
