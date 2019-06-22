@@ -38,7 +38,15 @@ export const createMemoryBucket = (bucketName: string, bucketMetaInfo: TabMeta):
     return createBucket('memory', bucketName, bucketMetaInfo);
 };
 
-export class Bucket {
+export const persistBucket = (bktName: string): Bucket => {
+    return new Bucket('file', bktName);
+};
+
+export const memoryBucket = (bktName: string): Bucket => {
+    return new Bucket('memory', bktName);
+};
+
+class Bucket {
 
     private bucketName: string;
     private dbType: DbType;
