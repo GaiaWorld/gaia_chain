@@ -2,86 +2,12 @@
  * block chain
  */
 
-import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
-import { Storage } from '../store/storage';
-import { sign, verify } from '../util/crypto';
-import { Forger, HeaderChain } from './schema.s';
-import { Receipt, Transaction } from './transaction';
+import { H160, H256 } from '../pi_pt/rust/hash_value';
+import { Body, Forger, ForgerCommittee, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { Inv } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode';
 import { memoryBucket, persistBucket } from '../util/db';
-
-/**
- * header
- */
-export class Header {
-    // block version used to upgrade protocol
-    public version: number;
-    // block height
-    public height: number;
-    // previous block hash
-    public prevHash: H256;
-    
-    // transactions root hash
-    public txRootHash: H256;
-    // state root hash
-    // public stateRoot: H256;
-    // receipt root hash
-    public receiptRoot: H256;
-
-    // total weight for all block
-    public totalWeight: number;
-    // weight for current block
-    public weight: number;
-    // forger address
-    public forger: H160;
-    // which group is this forger belong to
-    public groupNumber:number;
-    // when this block created
-    public timestamp: number;
-
-    // forger public key
-    public forgerPubkey: H256;
-    // random number for this block
-    public blockRandom: H256;
-    // random number signature signed by forger
-    public signature: H512;
-
-    public constructor() {
-        this.version = 1;
-        this.timestamp = Date.now();
-    }
-
-    public sign(privKey: H256): void {
-        this.signature = sign(privKey, this.serialize());
-    }
-
-    public verify(pubKey: H256, header: string): boolean {
-        return verify(pubKey, header);
-    }
-
-    public serialize(): string {
-        return;
-    }
-
-    public hash(): H256 {
-        return;
-    }
-}
-
-export class Body {
-    // block body contains all transactions
-    public txs: Transaction[];
-
-    public constructor(txs: Transaction[]) {
-        this.txs = txs;
-    }
-
-    public txRootHash(): H256 {
-        return;
-    }
-}
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -92,10 +18,6 @@ export class Block {
     public constructor(header: Header, body: Body) {
         this.header = header;
         this.body = body;
-    }
-
-    public size(): number {
-        return;
     }
 }
 
@@ -122,82 +44,9 @@ export interface Chain {
     getTxReceiptInfo(txHash: H256): Receipt;
 }
 
-export class BlockChain implements Chain {
-    // chain head hash
-    public head: H256;
-    // blockchain store
-    public store: Storage;
-    // genesis config
-    public genesis: JSON;
-    // more fileds ...
-
-    public constructor(store: Storage, genesis: JSON) {
-        this.store = store;
-        this.genesis = genesis;
-    }
-
-    // create a new canonical chain
-    public static NEW_CANONICAL_CHAIN(): BlockChain {
-        return;
-    }
-
-    // build a chain from database
-    public static IMPORT_FROM_DB(): BlockChain {
-        return;
-    }
-
-    public height(): number {
-        return;
-    }
-
-    public balance(addr: H160): number {
-        return;
-    }
-
-    public getHeader(hd: number | H256): Header {
-        this.store.get(<H256>hd);
-
-        return;
-    }
-
-    public getBody(bd: number | H256): Header {
-        this.store.get(<H256>bd);
-
-        return;
-    }
-
-    public getBlock(block: number | H256): Block {
-        return;
-    }
-
-    public getBlockHash(block: number): H256 {
-        return;
-    }
-
-    public insertBlock(block: Block | Block[]): boolean {
-        return;
-    }
-
-    public getTotalWeight(): number {
-        return;
-    }
-
-    public getChainHead(): H256 {
-        return this.head;
-    }
-
-    public getGenesisHash(): H256 {
-        return;
-    }
-
-    public getTxInfo(txHash: H256): Transaction {
-        return;
-    }
-
-    public getTxReceiptInfo(txHash: H256): Receipt {
-        return;
-    }
-}
+export const getGenesisHash = (): string => {
+    return 'genesisHash';    
+};
 
 export const getVersion = (): number => {
     return 1;
@@ -230,25 +79,126 @@ export const needBlock = (invMsg: Inv): boolean => {
 };
 
 export const getTx = (invMsg: Inv): Transaction => {
-    return;
+    const bkt = memoryBucket(TxPool._$info.name);
+
+    return bkt.get<string, [TxPool]>(invMsg.hash)[0].tx;
 };
 
 export const getHeader = (invMsg: Inv): Header => {
-    return;
+    const bkt = persistBucket(Header._$info.name);
+
+    return bkt.get<string, [Header]>(invMsg.hash)[0];
 };
 
-export const getBlock = (invMsg:Inv): Block => {
-    return;
+export const getBlock = (invMsg: Inv): Block => {
+    const headerBkt = persistBucket(Header._$info.name);
+    const bodyBkt = persistBucket(Body._$info.name);
+
+    const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
+    const body = bodyBkt.get<string, [Body]>(invMsg.hash)[0];
+
+    return new Block(header, body);
 };
 
 export const newTxsReach = (txs: Transaction[]): void => {
-    return;
+    for (const tx of txs) {
+        if (validateTx(tx)) {
+            switch (tx.txType) {
+                case TxType.ForgerGroupTx:
+                    if (tx.forgerGroupTx && tx.forgerGroupTx.AddGroup) {
+                        addCommitteeGroup(tx);
+                    } else if (tx.forgerGroupTx && !tx.forgerGroupTx.AddGroup) {
+                        exitCommitteeGroup(tx);
+                    }
+                    break;
+                case TxType.SpendTx:
+                    const txpoolBkt = memoryBucket(TxPool._$info.name);
+                    const tp = new TxPool();
+                    tp.tx = tx;
+                    tp.txHash = calcTxHash(tx);
+                    txpoolBkt.put<string, TxPool>(tp.txHash, tp);
+                    break;
+                case TxType.PenaltyTx:
+                    // TODO
+                    break;
+    
+                default:
+            }
+        }
+    }
 };
 
 export const newBlocksReach = (blocks: Block[]): void => {
+    // validate blocks
+    // add to chain store
+    // broadcast new height to peers
+    const headerBkt = persistBucket(Header._$info.name);
+    const bodyBkt = persistBucket(Body._$info.name);
+    for (const block of blocks) {
+        // TODO: add to orphans pool if no parent found
+        validateBlock(block);
+        headerBkt.put<string, Header>(calcHeaderHash(block.header), block.header);
+        bodyBkt.put<string, Body>(calcHeaderHash(block.header), block.body);
+    }
+
+    // TODO: notify peers that we changed our height
+
     return;
 };
 
-export const newheadersReach = (headers: Header[]): void => {
+export const newHeadersReach = (headers: Header[]): void => {
+    // validate headers
+    // retrive corresponding body
+    // reassemly to a complete block
+    // add to chain store
+    const bkt = persistBucket(Header._$info.name);
+    for (const header of headers) {
+        validateHeader(header);
+        // TODO: retrive body
+        bkt.put<string, Header>(calcHeaderHash(header), header);
+    }
+
+    return;
+};
+
+// ================================================
+// helper function
+const calcTxHash = (tx: Transaction): string => {
+    return '0x123456789abcdef';
+};
+
+const calcHeaderHash = (header: Header): string => {
+    return '0x123456789abcdef';
+};
+
+const validateHeader = (header: Header): boolean => {
+    return true;
+};
+
+const validateBlock = (block: Block): boolean => {
+    // version
+    // timestamp
+    // size
+    // forger signature
+    // validate txs
+    // ...
+    
+    return true;
+};
+
+const validateTx = (tx: Transaction): boolean => { 
+    // tx type
+    // balance
+    // signature
+    // ...
+
+    return true;
+};
+
+const addCommitteeGroup = (tx: Transaction): void => {
+    return;
+};
+
+const exitCommitteeGroup = (tx: Transaction): void => {
     return;
 };

@@ -30,12 +30,24 @@ struct Peers {
 
 enum TxType {
     SpendTx = 1,
-    AddForgerGroupTx = 2,
-    ExitForgerGroupTx = 3,
-    PenaltyTx = 4,
+    ForgerGroupTx = 2,
+    PenaltyTx = 3,
 }
 
-// transaction
+struct ForgerGroupTx {
+    // true: add
+    // false exit
+    AddGroup: bool,
+    address: String,
+    pubKey: String,
+    stake: usize,
+}
+
+struct PenaltyTx {
+    // TODO
+}
+
+// spend tx
 #[db=file,primary=pk]
 struct Transaction {
     pk: String,
@@ -47,6 +59,8 @@ struct Transaction {
     value: usize,
     lastOutputValue: usize,
     txType: TxType,
+    forgerGroupTx: Option<ForgerGroupTx>,
+    penaltyTx: Option<PenaltyTx>,
     payload: [u8],
     signature: [u8],
 }
@@ -125,9 +139,18 @@ struct Account {
     codeHash: String,
 }
 
-#[db=memory]
+#[db=memory,primary=pk]
 struct TxPool {
+    pk: String,
     address: String,
     txHash: String,
     tx: Transaction,
+}
+
+#[db=memory,primary=pk]
+struct Orphans {
+    pk: String,
+    height: usize,
+    blockHash: String,
+    block: Block,
 }
