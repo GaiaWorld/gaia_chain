@@ -5,7 +5,12 @@
 import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
 import { Storage } from '../store/storage';
 import { sign, verify } from '../util/crypto';
+import { Forger, HeaderChain } from './schema.s';
 import { Receipt, Transaction } from './transaction';
+
+import { Inv } from '../net/msg';
+import { NODE_TYPE } from '../net/pNode';
+import { memoryBucket, persistBucket } from '../util/db';
 
 /**
  * header
@@ -193,3 +198,57 @@ export class BlockChain implements Chain {
         return;
     }
 }
+
+export const getVersion = (): number => {
+    return 1;
+};
+
+export const getTipHeight = (): number => {
+    const bkt = persistBucket(HeaderChain._$info.name);
+
+    return bkt.get<string, [HeaderChain]>('HC')[0].height;
+};
+
+export const getServiceFlags = ():number => {
+    // TODO
+    return 1;
+};
+
+export const getNodeType = (): NODE_TYPE => {
+    // all node are full node at present
+    return NODE_TYPE.FULL_NODE;
+};
+
+export const needTX = (invMsg: Inv): boolean => {
+
+    return true;
+};
+
+export const needBlock = (invMsg: Inv): boolean => {
+
+    return true;
+};
+
+export const getTx = (invMsg: Inv): Transaction => {
+    return;
+};
+
+export const getHeader = (invMsg: Inv): Header => {
+    return;
+};
+
+export const getBlock = (invMsg:Inv): Block => {
+    return;
+};
+
+export const newTxsReach = (txs: Transaction[]): void => {
+    return;
+};
+
+export const newBlocksReach = (blocks: Block[]): void => {
+    return;
+};
+
+export const newheadersReach = (headers: Header[]): void => {
+    return;
+};
