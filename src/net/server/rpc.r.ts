@@ -1,26 +1,16 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-
-import { Block } from "../../chain/blockchain";
-import { Transaction } from "../../chain/transaction";
 import { con2Server, getOwnNetAddr, makeShankeHandsInfo } from "../client/launch";
-import { ShakeHandsInfo } from "./rpc.s";
+import { ShakeHandsInfo, TxArray, BodyArray, HeaderArray, AddrArray, InvArray } from "./rpc.s";
 import { checkShakeHandsInfo } from "../virtualEnv";
 import { getConByNetAddr } from "../connMgr";
 
-/**
- * 初步校验消息本身有没有在传输过程中被破坏
- * 主要就是校验消息头
- * 包括MD5和消息协议的版本是否一致,以及数据结构是否符合要求
- * 消息类型是否正确
- * @param netMsg 
- * @param pNode 
- */
-// export const isMsgAvaiable = (netMsg:NetMsg):boolean => {
-//     return true;
-// }
 
+/**
+ * 
+ * @param info 
+ */
 // #[rpc=rpcServer]
 export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
     //TODO:核心是判断双方的共识版本是否一致，如果一致则通过，并且将isClient置为true
@@ -37,45 +27,57 @@ export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
 
 /**
  * 
- * @param netMsg 
- * @param pNode 
+ * @param hashs 
  */
-export const getTxs = (hashs:Array<string>):Array<Transaction>|void => {
+// #[rpc=rpcServer]
+export const getTxs = (hashs:Array<string>):TxArray => {
     //TODO:此处直接调用core的getTx方法
+    return new TxArray;
 }
 
 /**
- * 这个方法还可以优化，理论上只需要body就行了，并不需要header
+ * 本质上返回的是body
  * 一次最多请求100个区块
- * @param netMsg 
- * @param pNode 
+ * @param hashs 
  */
-export const getBlocks = (hashs:Array<string>):Array<Block>|void => {
+// #[rpc=rpcServer]
+export const getBlocks = (hashs:Array<string>):BodyArray => {
     //TODO:此处直接调用core的getBlock方法
+    return new BodyArray;
 }
 
 /**
  * 一次最多请求10000个区块头
- * @param netMsg 
- * @param pNode 
+ * @param hashs 
  */
-export const getHeaders = (hashs:Array<string>):Array<Headers>|void=>{
+// #[rpc=rpcServer]
+export const getHeaders = (hashs:Array<string>):HeaderArray=>{
     //TODO:此处直接调用core的getHeader方法
+    return new HeaderArray;
 }
 
 /**
  * 这个RPC应该是隔一段时间主动调用一次
- * @param netMsg 
- * @param pNode 
  */
-export const getMemPool = ():Array<Transaction>|void=>{
+// #[rpc=rpcServer]
+export const getMemPool = ():InvArray=>{
     //TODO:此处直接调用core的getmemPool方法，返回所以pool中的交易的hash值
+    return new InvArray;
 }
 
-export const getAddress = ():Array<String>|void=>{
+/**
+ * 
+ */
+// #[rpc=rpcServer]
+export const getAddress = ():AddrArray=>{
     //TODO:根据我们地址的积分优先返回积分高的的ip,最多返回40个
+    return new AddrArray;
 }
 
+/**
+ * 
+ */
+// #[rpc=rpcServer]
 export const getCurTime = ():number => {
     return 0;
 }

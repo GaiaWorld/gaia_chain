@@ -14,11 +14,3 @@ export const enum INV_MSG_TYPE {
     MSG_TX = "msg_tx",
     MSG_BLOCK = "msg_block"
 } 
-/**
- * inventory message, announce new tx or blocks, or reply GETTXPOOL message
- */
-export interface Inv {
-    height:number;//交易所在的区块高度，或者区块本身的高度
-    hash: number;
-    MsgType: INV_MSG_TYPE;//实际取值只会是TX和BLOCK
-}
