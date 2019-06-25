@@ -199,8 +199,8 @@ export class BlockChain implements Chain {
     }
 }
 
-export const getVersion = (): number => {
-    return 1;
+export const getVersion = (): string => {
+    return '0.0.0.1';
 };
 
 export const getTipHeight = (): number => {

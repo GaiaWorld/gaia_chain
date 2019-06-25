@@ -1,5 +1,4 @@
 import { getPeers } from "./p2p";
-import { ShakeHandsInfo, MSG_TYPE, makeMsg } from "./msg";
 import { getVersion, getTipHeight, getServiceFlags, getNodeType, getLocalAddr } from "./virtualEnv";
 import { getCurrentPubkey } from "../pubkeyMgr";
 import { getNextConnNonce} from "./connMgr";

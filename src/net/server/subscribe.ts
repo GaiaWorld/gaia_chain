@@ -1,5 +1,5 @@
 import { Inv, MSG_TYPE, INV_MSG_TYPE, makeMsg } from "../msg";
-import { isMsgAvaiable } from "./rpc";
+import { isMsgAvaiable } from "./rpc.r";
 import { needTX, newTxsReach, needBlock, newBlocksReach } from "../virtualEnv";
 
 /**

@@ -3,6 +3,7 @@ import { Transaction } from '../chain/transaction';
 // tslint:disable-next-line: ordered-imports
 import { Inv } from './msg';
 import { NODE_TYPE } from './pNode';
+import { ShakeHandsInfo } from './server/rpc.s';
 
 /**
  * 临时文件，放置了所有上层应该提供给net层的接口
@@ -126,4 +127,12 @@ export const newBlocksReach = (blocks:Array<Block>)=> {
  */
 export const newheadersReach = (headers:Array<Header>) => {
 
+}
+
+/**
+ * 判断双方的版本是否一致
+ * @param info 
+ */
+export const checkShakeHandsInfo = (info:ShakeHandsInfo) => {
+    return true;
 }

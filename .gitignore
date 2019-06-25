@@ -2,6 +2,8 @@
 *.depend
 /scripts/*.error
 *.s.ts
+*.p.ts
+*.c.ts
 /node_modules
 /package-lock.json
 /scripts_server/.error
