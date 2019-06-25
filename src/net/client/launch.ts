@@ -6,6 +6,8 @@ import { getLocalAddr } from "../virtualEnv";
 import { getCurrentPubkey } from "../../pubkeyMgr";
 import { PNode } from "../pNode";
 import { ShakeHandsInfo } from "../server/rpc.s";
+import { StructMgr } from "../../pi/struct/struct_mgr";
+import * as schema from "../../chain/schema.s";
 
 /**
  * the main loop of client
