@@ -1,8 +1,9 @@
+import { Inv } from "./server/rpc.s";
+
 /**
  * Information about a peer node
  */
 // ==================================================import
-import { Inv} from "./msg";
 
 // ==================================================export 
 /**

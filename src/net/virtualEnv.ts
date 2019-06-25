@@ -1,9 +1,9 @@
-import { Block, Header } from '../chain/blockchain';
-import { Transaction } from '../chain/transaction';
+
 // tslint:disable-next-line: ordered-imports
-import { Inv } from './msg';
 import { NODE_TYPE } from './pNode';
-import { ShakeHandsInfo } from './server/rpc.s';
+import { ShakeHandsInfo, Inv } from './server/rpc.s';
+import { Header } from '../chain/schema.s';
+import { Block } from '../chain/blockchain';
 
 /**
  * 临时文件，放置了所有上层应该提供给net层的接口

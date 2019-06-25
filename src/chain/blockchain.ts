@@ -5,9 +5,9 @@
 import { H160, H256 } from '../pi_pt/rust/hash_value';
 import { Body, Forger, ForgerCommittee, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
-import { Inv } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode';
 import { memoryBucket, persistBucket } from '../util/db';
+import { Inv } from '../net/server/rpc.s';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
