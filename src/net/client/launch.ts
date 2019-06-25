@@ -6,6 +6,7 @@ import { getLocalAddr } from "../virtualEnv";
 import { getCurrentPubkey } from "../../pubkeyMgr";
 import { PNode } from "../pNode";
 import { ShakeHandsInfo } from "../server/rpc.s";
+import { shakeHands } from "../server/rpc.p";
 
 /**
  * the main loop of client
@@ -64,13 +65,14 @@ export const con2Server = (netAddr: string) => {
             //TODO:需要存储对等节点相关的信息
             //TODO:调用对等节点的shakeHands方法，如果正确返回，则将对等节点的isServer置为true
             let client = getConByNetAddr(netAddr)
-              client && client.request("shakeHands", shakeHandsInfo, TIME_OUT, (r:ShakeHandsInfo)=>{
+              client && client.request(shakeHands, shakeHandsInfo, TIME_OUT, (r:ShakeHandsInfo)=>{
                   let pNode = getPeerNode(netAddr);
                   if(!pNode){
                       pNode = new PNode;
                   }
                   pNode = updatePeerNodeByShakeHands(pNode, shakeHandsInfo);
                   setPeerNode(netAddr, pNode);
+                  console.log("sucesss~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
               })
           }
       })(netAddr),((netAddr)=>{

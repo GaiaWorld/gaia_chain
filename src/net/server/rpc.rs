@@ -13,6 +13,10 @@ struct ShakeHandsInfo {
     bPong:bool
 }
 
+struct hashArray{
+    arr:&[String]
+}
+
 struct TxArray{
     arr:&[Transaction]
 }
