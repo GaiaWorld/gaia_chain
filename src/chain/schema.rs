@@ -95,7 +95,7 @@ struct Receipt {
 #[db=file,primary=pk]
 struct Header {
     pk: String,
-    version: u32,
+    version: String,
     height: usize,
     prevHash: String,
     txRootHash: String,
@@ -152,5 +152,6 @@ struct Orphans {
     pk: String,
     height: usize,
     blockHash: String,
-    block: Block,
+    header: Header,
+    body: Body,
 }

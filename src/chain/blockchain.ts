@@ -131,11 +131,11 @@ export const newTxsReach = (txs: Transaction[]): void => {
 export const newBlocksReach = (blocks: Block[]): void => {
     // validate blocks
     // add to chain store
-    // broadcast new height to peers
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
     for (const block of blocks) {
         // TODO: add to orphans pool if no parent found
+        // TODO: advertise new height to peers
         validateBlock(block);
         headerBkt.put<string, Header>(calcHeaderHash(block.header), block.header);
         bodyBkt.put<string, Body>(calcHeaderHash(block.header), block.body);
@@ -178,6 +178,7 @@ const validateHeader = (header: Header): boolean => {
 const validateBlock = (block: Block): boolean => {
     // version
     // timestamp
+    // parent hash
     // size
     // forger signature
     // validate txs
