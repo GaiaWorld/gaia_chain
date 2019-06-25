@@ -9,16 +9,16 @@ import { getConByNetAddr } from "../connMgr";
 // #[rpc=rpcServer]
 export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
     if(checkShakeHandsInfo(info)){
-        if(!getConByNetAddr(info.strLocalServerAddr)){
-            con2Server(getOwnNetAddr())
-        }
+        // if(!getConByNetAddr(info.strLocalServerAddr)){
+        //     con2Server(getOwnNetAddr())
+        // }
     return makeShankeHandsInfo();
     }
 }
 
 // #[rpc=rpcServer]
 export const getTxs = (hashs:hashArray):TxArray => {
-    
+
     return new TxArray;
 }
 
