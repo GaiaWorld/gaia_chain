@@ -173,6 +173,18 @@ const calcHeaderHash = (header: Header): string => {
 };
 
 const validateHeader = (header: Header): boolean => {
+    if (header.version !== getVersion()) {
+        return false;
+    }
+
+    if (Math.abs(header.timestamp - Date.now()) > 1000 * 5) {
+        return false;
+    }
+
+    if (!headerSignatureValid(header)) {
+        return  false;
+    }
+
     return true;
 };
 
@@ -186,7 +198,7 @@ const validateBlock = (block: Block): boolean => {
         return false;
     }
     // size
-    if (blockSize(block) > 1024 * 1024 * 10) {
+    if (blockPayloadSize(block) > 1024 * 1024 * 10) {
         return false;
     }
     // forger signature
@@ -199,17 +211,29 @@ const validateBlock = (block: Block): boolean => {
             return false;
         }
     }
+
+    // tx root hash
+    if (!validateTxRootHash(block)) {
+        return false;
+    }
+
+    // tx receipt hash
+    // TODO
     // ...
     
     return true;
 };
 
-const blockSize = (block: Block): number => {
+const blockPayloadSize = (block: Block): number => {
     return 1024 * 1024 * 10 - 1;
 };
 
 const blockSignatureValid = (block: Block): boolean => {
-    return verify(block.header.signature, block.header.forgerPubkey, calcHeaderHash(block.header));
+    return verify(block.header.signature, block.header.forgerPubkey, block.header.blockRandom);
+};
+
+const headerSignatureValid = (header: Header): boolean => {
+    return verify(header.signature, header.forgerPubkey, header.blockRandom);
 };
 
 const validateTx = (tx: Transaction): boolean => { 
@@ -229,6 +253,11 @@ const validateTx = (tx: Transaction): boolean => {
     }
     // ...
 
+    return true;
+};
+
+const validateTxRootHash = (block: Block): boolean => {
+    // TODO: merkle hash of all txs
     return true;
 };
 
