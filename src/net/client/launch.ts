@@ -1,13 +1,11 @@
 import { DEFAULT_PEER, OWN_NET_ADDR } from "../server/cfg/net";
 import { RpcClient } from "../../pi_pt/net/rpc_client";
 import { getConByNetAddr, getNextConnNonce, setConByNetAddr, getPeerNode, setPeerNode } from "../connMgr";
-import { getTipHeight, getVersion, getServiceFlags, getNodeType } from "../../chain/blockchain";
+import { getTipHeight, getVersion, getServiceFlags, getNodeType } from "../virtualEnv";
 import { getLocalAddr } from "../virtualEnv";
 import { getCurrentPubkey } from "../../pubkeyMgr";
 import { PNode } from "../pNode";
 import { ShakeHandsInfo } from "../server/rpc.s";
-import { StructMgr } from "../../pi/struct/struct_mgr";
-import * as schema from "../../chain/schema.s";
 
 /**
  * the main loop of client
@@ -56,9 +54,7 @@ export const con2Server = (netAddr: string) => {
   if(client){
       //TODO:if it is disconnected, reconnet
   }else{
-      console.log(`before`)
       let client = RpcClient.create(`ws://${netAddr}`);
-      console.log(`after`)
       client.connect(KEEP_ALIVE, ''+ getNextConnNonce(), TIME_OUT, ((netAddr)=>{
           return () => {
               console.log(`${netAddr} is connected`)
