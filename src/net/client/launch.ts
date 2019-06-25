@@ -1,4 +1,4 @@
-import { DEFAULT_PEER, OWN_NET_ADDR } from "../../cfg/net";
+import { DEFAULT_PEER, OWN_NET_ADDR } from "../server/cfg/net";
 import { RpcClient } from "../../pi_pt/net/rpc_client";
 import { getConByNetAddr, getNextConnNonce, setConByNetAddr, getPeerNode, setPeerNode } from "../connMgr";
 import { getTipHeight, getVersion, getServiceFlags, getNodeType } from "../../chain/blockchain";
