@@ -56,7 +56,9 @@ export const con2Server = (netAddr: string) => {
   if(client){
       //TODO:if it is disconnected, reconnet
   }else{
-      let client = RpcClient.create(netAddr);
+      console.log(`before`)
+      let client = RpcClient.create(`ws://${netAddr}`);
+      console.log(`after`)
       client.connect(KEEP_ALIVE, ''+ getNextConnNonce(), TIME_OUT, ((netAddr)=>{
           return () => {
               console.log(`${netAddr} is connected`)
