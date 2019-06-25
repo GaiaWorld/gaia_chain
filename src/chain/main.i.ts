@@ -1,14 +1,9 @@
 /**
  * main function
  */
-import { Env } from '../pi/lang/env';
-import { Item } from '../pi_pt/db';
-import { Tr } from '../pi_pt/db/mgr';
-import { Forger } from './schema.s';
-
 import { persistBucket } from '../util/db';
-
-declare var env: Env;
+import { setTimer } from '../util/task';
+import { Forger } from './schema.s';
 
 const test = (): void => {
     const f = new Forger();
@@ -35,6 +30,10 @@ const test = (): void => {
 const start = (): void => {
     test();
     console.log('starting gaia ......');
+
+    setTimer(() => {
+        console.log('xxxxxxxxxxxxxxxx');
+    }, null, 5000);
 };
 
 start();
