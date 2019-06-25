@@ -23,7 +23,7 @@ export const sign = (privKey: H256, msg: string): H256 => {
     return;
 };
 
-export const verify = (pubKey: H512, msg: string): boolean => {
+export const verify = (sig: string, pubKey: string, msg: string): boolean => {
     return true;
 };
 

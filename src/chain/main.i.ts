@@ -29,11 +29,12 @@ const test = (): void => {
 
 const start = (): void => {
     test();
-    console.log('starting gaia ......');
 
     setTimer(() => {
         console.log('xxxxxxxxxxxxxxxx');
     }, null, 5000);
+
+    console.log('starting gaia ......');
 };
 
 start();

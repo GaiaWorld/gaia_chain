@@ -61,8 +61,8 @@ struct Transaction {
     txType: TxType,
     forgerGroupTx: Option<ForgerGroupTx>,
     penaltyTx: Option<PenaltyTx>,
-    payload: [u8],
-    signature: [u8],
+    payload: String,
+    signature: String,
 }
 
 // Log
