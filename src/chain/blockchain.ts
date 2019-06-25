@@ -7,6 +7,7 @@ import { Body, Forger, ForgerCommittee, Header, HeaderChain, Receipt, Transactio
 
 import { Inv } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode';
+import { verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -131,11 +132,11 @@ export const newTxsReach = (txs: Transaction[]): void => {
 export const newBlocksReach = (blocks: Block[]): void => {
     // validate blocks
     // add to chain store
-    // broadcast new height to peers
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
     for (const block of blocks) {
         // TODO: add to orphans pool if no parent found
+        // TODO: advertise new height to peers
         validateBlock(block);
         headerBkt.put<string, Header>(calcHeaderHash(block.header), block.header);
         bodyBkt.put<string, Body>(calcHeaderHash(block.header), block.body);
@@ -177,22 +178,62 @@ const validateHeader = (header: Header): boolean => {
 
 const validateBlock = (block: Block): boolean => {
     // version
+    if (block.header.version !== getVersion()) {
+        return false;
+    }
     // timestamp
+    if (Math.abs(block.header.timestamp - Date.now()) > 1000 * 5) {
+        return false;
+    }
     // size
+    if (blockSize(block) > 1024 * 1024 * 10) {
+        return false;
+    }
     // forger signature
+    if (!blockSignatureValid(block)) {
+        return false;
+    }
     // validate txs
+    for (const tx of block.body.txs) {
+        if (!validateTx(tx)) {
+            return false;
+        }
+    }
     // ...
     
     return true;
 };
 
+const blockSize = (block: Block): number => {
+    return 1024 * 1024 * 10 - 1;
+};
+
+const blockSignatureValid = (block: Block): boolean => {
+    return verify(block.header.signature, block.header.forgerPubkey, calcHeaderHash(block.header));
+};
+
 const validateTx = (tx: Transaction): boolean => { 
     // tx type
+    if (tx.txType === TxType.ForgerGroupTx && !tx.forgerGroupTx) {
+        return false;
+    }
+
+    if (tx.txType === TxType.PenaltyTx && !tx.penaltyTx) {
+        return false;
+    }
     // balance
+    // TODO
     // signature
+    if (!txSignatureValid(tx)) {
+        return false;
+    }
     // ...
 
     return true;
+};
+
+const txSignatureValid = (tx: Transaction): boolean => {
+    return verify(tx.signature, tx.from, calcTxHash(tx));
 };
 
 const addCommitteeGroup = (tx: Transaction): void => {
