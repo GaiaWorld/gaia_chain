@@ -14,6 +14,7 @@ import { shakeHands } from "../server/rpc.p";
 
 // =========================================== export 
 
+
 /**
  * start the client 
  */
@@ -59,7 +60,7 @@ export const con2Server = (netAddr: string) => {
       client.connect(KEEP_ALIVE, ''+ getNextConnNonce(), TIME_OUT, ((netAddr)=>{
           return () => {
               console.log(`${netAddr} is connected`)
-              let shakeHandsInfo = makeShankeHandsInfo();
+              let shakeHandsInfo = makeShakeHandsInfo();
             //TODO:将SHAKEHANDS消息发送给对等节点
             //TODO:如果对方没有回应，则将该节点的积分-1
             //TODO:需要存储对等节点相关的信息
@@ -72,7 +73,6 @@ export const con2Server = (netAddr: string) => {
                   }
                   pNode = updatePeerNodeByShakeHands(pNode, shakeHandsInfo);
                   setPeerNode(netAddr, pNode);
-                  console.log("sucesss~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
               })
           }
       })(netAddr),((netAddr)=>{
@@ -87,7 +87,7 @@ export const con2Server = (netAddr: string) => {
 /**
  * 生成握手信息
  */
-export const makeShankeHandsInfo = ():ShakeHandsInfo => {
+export const makeShakeHandsInfo = ():ShakeHandsInfo => {
     let shakeHandsInfo = new ShakeHandsInfo;
     shakeHandsInfo.strVersion = getVersion();
     shakeHandsInfo.nStartingHeight = getTipHeight();
