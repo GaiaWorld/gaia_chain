@@ -6,7 +6,8 @@ import { H160, H256 } from '../pi_pt/rust/hash_value';
 import { Body, Forger, ForgerCommittee, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode';
-import { verify } from '../util/crypto';
+import { Inv } from '../net/server/rpc.s';
+import { sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { Inv } from '../net/server/rpc.s';
 
@@ -165,11 +166,23 @@ export const newHeadersReach = (headers: Header[]): void => {
 // ================================================
 // helper function
 const calcTxHash = (tx: Transaction): string => {
-    return '0x123456789abcdef';
+    return sha256(serializeTx(tx));
+};
+
+const serializeTx = (tx: Transaction): string => {
+    return 'tx';
+};
+
+const serializeBlock = (block: Block): string => {
+    return 'block';
+};
+
+const serializeHeader = (header: Header): string => {
+    return 'header';
 };
 
 const calcHeaderHash = (header: Header): string => {
-    return '0x123456789abcdef';
+    return sha256(serializeHeader(header));
 };
 
 const validateHeader = (header: Header): boolean => {

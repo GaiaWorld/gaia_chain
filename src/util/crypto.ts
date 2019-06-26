@@ -16,8 +16,8 @@ export const privKeyToAddress = (privKey: H512): H160 => {
     return H160.fromBuf(new Uint8Array(20));
 };
 
-export const sha256 = (data: string): Uint8Array => {
-    return digest(DigestAlgorithm.SHA256, new TextEncoder().encode(data)).asSliceU8();
+export const sha256 = (data: string): string => {
+    return H256.fromBuf(digest(DigestAlgorithm.SHA256, new TextEncoder().encode(data)).asSliceU8()).tohex();
 };
 
 export const sign = (privKey: string, msg: string): string => {
