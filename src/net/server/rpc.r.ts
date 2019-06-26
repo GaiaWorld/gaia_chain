@@ -1,7 +1,7 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-import { con2Server, getOwnNetAddr, makeShankeHandsInfo } from "../client/launch";
+import { con2Server, getOwnNetAddr, makeShakeHandsInfo } from "../client/launch";
 import { ShakeHandsInfo, TxArray, BodyArray, HeaderArray, AddrArray, InvArray, hashArray } from "./rpc.s";
 import { checkShakeHandsInfo } from "../virtualEnv";
 import { getConByNetAddr } from "../connMgr";
@@ -12,7 +12,7 @@ export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
         // if(!getConByNetAddr(info.strLocalServerAddr)){
         //     con2Server(getOwnNetAddr())
         // }
-    return makeShankeHandsInfo();
+    return makeShakeHandsInfo();
     }
 }
 
