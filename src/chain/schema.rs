@@ -20,6 +20,20 @@ struct ForgerCommittee {
     groups: [[Forger]],
 }
 
+#[db=file]
+struct CommitteeConfig {
+    // minium tokens to become a forger
+    minToken: usize,
+    // the default time for create a new block. For the main chain it is 3000 millisecond.
+    blockIterval: usize,
+    // maximum height for one forger to accumulate weight priority
+    maxAccHeight: usize,
+    // stake can withdraw after a certain blocks
+    withdrawReserveBlocks: usize,
+    // how many groups
+    maxGroupNumber: usize,
+}
+
 // peer
 #[db=file,primary=peerId]
 struct Peers {
