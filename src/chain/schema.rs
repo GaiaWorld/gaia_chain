@@ -161,6 +161,12 @@ struct TxPool {
     tx: Transaction,
 }
 
+#[db=file,primary=pk]
+struct MiningConfig {
+    pk: String,
+    beneficiary: String,
+}
+
 #[db=memory,primary=pk]
 struct Orphans {
     pk: String,
