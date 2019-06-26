@@ -6,7 +6,7 @@ import { getLocalAddr } from "../virtualEnv";
 import { getCurrentPubkey } from "../../pubkeyMgr";
 import { PNode } from "../pNode";
 import { ShakeHandsInfo } from "../server/rpc.s";
-import { shakeHands } from "../server/rpc.p";
+import { shakeHands, subscribeTx, subscribeBlock } from "../server/rpc.p";
 
 /**
  * the main loop of client
@@ -73,6 +73,12 @@ export const con2Server = (netAddr: string) => {
                   }
                   pNode = updatePeerNodeByShakeHands(pNode, shakeHandsInfo);
                   setPeerNode(netAddr, pNode);
+                  client && client.request(subscribeTx, netAddr, TIME_OUT, (r)=>{
+                      r && console.log(`subscribe tx success`);
+                  })
+                  client && client.request(subscribeBlock, netAddr, TIME_OUT, (r)=>{
+                    r && console.log(`subscribe block success`);
+                })
               })
           }
       })(netAddr),((netAddr)=>{
@@ -108,4 +114,4 @@ const updatePeerNodeByShakeHands = (pNode:PNode, shakeHandsInfo:ShakeHandsInfo):
     return pNodeCopy;
 }
 const KEEP_ALIVE = 10000;
-const TIME_OUT = 5000;
+export const TIME_OUT = 5000;

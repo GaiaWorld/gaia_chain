@@ -50,5 +50,6 @@ export const getPeerNode = (netAddr:string):PNode|void => {
  * 
  */
 export const setPeerNode = (netAddr:string, pNode:PNode):void => {
-    return pNodeMap.set(netAddr, pNode);
+    pNodeMap.set(netAddr, pNode);
+    return ;
 }

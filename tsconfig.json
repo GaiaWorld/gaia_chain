@@ -2,6 +2,7 @@
     "compilerOptions": {
         //需要添加的两行
         "noUnusedLocals": true,
-        "noUnusedParameters": true
+        "noUnusedParameters": true,
+        "target": "es6"
     }
 }

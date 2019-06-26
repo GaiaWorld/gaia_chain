@@ -1,4 +1,6 @@
 import { launch } from "../client/launch";
+import { notifyNewTx, notifyNewBlock } from "./subscribe";
+import { Inv } from "./rpc.s";
 /**
  * start the net serser
  */
@@ -9,4 +11,9 @@ import { launch } from "../client/launch";
 setTimeout(() => {
     launch();
 }, 5000);
+
+setTimeout(()=>{
+    notifyNewTx(new Inv);
+    notifyNewBlock(new Inv)
+},10000)
 // launch();
