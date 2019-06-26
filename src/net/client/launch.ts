@@ -67,6 +67,7 @@ export const con2Server = (netAddr: string) => {
             //TODO:调用对等节点的shakeHands方法，如果正确返回，则将对等节点的isServer置为true
             let client = getConByNetAddr(netAddr)
               client && client.request(shakeHands, shakeHandsInfo, TIME_OUT, (r:ShakeHandsInfo)=>{
+                  console.log(`shakehands success`)
                   let pNode = getPeerNode(netAddr);
                   if(!pNode){
                       pNode = new PNode;
