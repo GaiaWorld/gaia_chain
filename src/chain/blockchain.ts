@@ -9,7 +9,6 @@ import { NODE_TYPE } from '../net/pNode';
 import { Inv } from '../net/server/rpc.s';
 import { sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
-import { Inv } from '../net/server/rpc.s';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 

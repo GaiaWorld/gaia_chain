@@ -13,6 +13,7 @@
         "tslint-microsoft-contrib"
     ],
     "rules": {
+        "prefer-type-cast": false,
         "missing-jsdoc": false,
         "completed-docs": false,
         "max-classes-per-file": false,
