@@ -3,7 +3,7 @@
  */
 
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
+import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode';
 import { Inv } from '../net/server/rpc.s';
