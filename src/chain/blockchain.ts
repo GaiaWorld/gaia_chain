@@ -204,6 +204,14 @@ const validateHeader = (header: Header): boolean => {
     return true;
 };
 
+const generateBlock = (): Block => {
+    // TOOD: generate empty block
+    const header = new Header();
+    const body = new Body();
+
+    return new Block(header, body);
+};
+
 const validateBlock = (block: Block): boolean => {
     // version
     if (block.header.version !== getVersion()) {
