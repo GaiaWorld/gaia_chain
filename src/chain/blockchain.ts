@@ -3,11 +3,11 @@
  */
 
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, Forger, ForgerCommittee, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
+import { Body, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode';
 import { Inv } from '../net/server/rpc.s';
-import { sha256, verify } from '../util/crypto';
+import { pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -162,6 +162,10 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
+export const runCommittee = (config: CommitteeConfig): void => {
+    // syncing status
+};
+
 // ================================================
 // helper function
 const calcTxHash = (tx: Transaction): string => {
@@ -277,10 +281,57 @@ const txSignatureValid = (tx: Transaction): boolean => {
     return verify(tx.signature, tx.from, calcTxHash(tx));
 };
 
+const deriveGroupNumber = (address: string, rnd: string, height: number): number => {
+    const hash = sha256(address + rnd + height.toString(16));
+
+    return parseInt(hash.slice(hash.length - 2), 16);
+};
+
+const deriveRate = (address: string, rnd: string, height: number): number => {
+    const data = address + rnd + height.toString(16);
+    const rate = parseInt(sha256(data).slice(data.length - 4), 16) % 4;
+
+    return rate;
+};
+
 const addCommitteeGroup = (tx: Transaction): void => {
+    if (tx.txType !== TxType.ForgerGroupTx && !tx.forgerGroupTx) {
+        throw new Error('expect ForgeerGroupTx tx type');
+    }
+
+    const bkt = persistBucket(ForgerGroupTx._$info.name);
+    const committee = bkt.get<string, [ForgerCommittee]>('FC')[0];
+    const forger = new Forger();
+    const inv = new Inv();
+    inv.height = getTipHeight();
+    const block = getBlock(inv);
+    forger.lastHeight = getTipHeight();
+    forger.pubKey = tx.forgerGroupTx.pubKey;
+    forger.stake = tx.forgerGroupTx.stake;
+    forger.groupNumber = deriveGroupNumber(forger.address, block.header.blockRandom, forger.lastHeight);
+    const rate = deriveRate(forger.address, block.header.blockRandom, forger.lastHeight);
+    forger.initWeigth = (Math.log(forger.stake * 0.01) / Math.log(10)) * rate;
+    forger.lastWeight = 0;
+    forger.address = pubKeyToAddress(forger.pubKey);
+
+    committee.waitsForAdd.set(tx.forgerGroupTx.pubKey, forger);
+
     return;
 };
 
 const exitCommitteeGroup = (tx: Transaction): void => {
+    if (tx.txType !== TxType.ForgerGroupTx && !tx.forgerGroupTx) {
+        throw new Error('expect ForgeerGroupTx tx type');
+    }
+
+    const bkt = persistBucket(ForgerGroupTx._$info.name);
+    const committee = bkt.get<string, [ForgerCommittee]>('FC')[0];
+
+    const forger = new Forger();
+    // only set this field
+    forger.lastHeight = getTipHeight();
+
+    committee.waitsForRemove.set(tx.forgerGroupTx.pubKey, forger);
+
     return;
 };
