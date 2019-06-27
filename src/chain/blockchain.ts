@@ -70,34 +70,24 @@ export const getNodeType = (): NODE_TYPE => {
     return NODE_TYPE.FULL_NODE;
 };
 
-export const needTX = (invMsg: Inv): boolean => {
-
-    return true;
-};
-
-export const needBlock = (invMsg: Inv): boolean => {
-
-    return true;
-};
-
 export const getTx = (invMsg: Inv): Transaction => {
-    const bkt = memoryBucket(TxPool._$info.name);
+    const bkt = persistBucket(Transaction._$info.name);
 
-    return bkt.get<string, [TxPool]>(invMsg.hash)[0].tx;
+    return bkt.get<string, [Transaction]>('T' + `${invMsg.hash}`)[0];
 };
 
 export const getHeader = (invMsg: Inv): Header => {
     const bkt = persistBucket(Header._$info.name);
 
-    return bkt.get<string, [Header]>(invMsg.hash)[0];
+    return bkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
 };
 
 export const getBlock = (invMsg: Inv): Block => {
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
 
-    const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
-    const body = bodyBkt.get<string, [Body]>(invMsg.hash)[0];
+    const header = headerBkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
+    const body = bodyBkt.get<string, [Body]>('B' + `${invMsg.hash}`)[0];
 
     return new Block(header, body);
 };
@@ -105,6 +95,8 @@ export const getBlock = (invMsg: Inv): Block => {
 export const newTxsReach = (txs: Transaction[]): void => {
     for (const tx of txs) {
         if (validateTx(tx)) {
+            const txBkt = persistBucket(Transaction._$info.name);
+            txBkt.put<string, Transaction>('T' + `${calcTxHash(tx)}`, tx);
             switch (tx.txType) {
                 case TxType.ForgerGroupTx:
                     if (tx.forgerGroupTx && tx.forgerGroupTx.AddGroup) {
@@ -130,17 +122,15 @@ export const newTxsReach = (txs: Transaction[]): void => {
     }
 };
 
-export const newBlocksReach = (blocks: Block[]): void => {
+export const newBlocksReach = (bodys: Body[]): void => {
     // validate blocks
     // add to chain store
-    const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
-    for (const block of blocks) {
+    for (const body of bodys) {
         // TODO: add to orphans pool if no parent found
         // TODO: advertise new height to peers
-        validateBlock(block);
-        headerBkt.put<string, Header>(calcHeaderHash(block.header), block.header);
-        bodyBkt.put<string, Body>(calcHeaderHash(block.header), block.body);
+        // TODO: validateBlock(block);
+        bodyBkt.put<string, Body>('B' + `${body.headerHash}`, body);
     }
 
     // TODO: notify peers that we changed our height
@@ -157,7 +147,7 @@ export const newHeadersReach = (headers: Header[]): void => {
     for (const header of headers) {
         validateHeader(header);
         // TODO: retrive body
-        bkt.put<string, Header>(calcHeaderHash(header), header);
+        bkt.put<string, Header>('H' + `${calcHeaderHash(header)}`, header);
     }
 
     return;
