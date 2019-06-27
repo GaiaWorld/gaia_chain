@@ -19,7 +19,9 @@ const start = (): void => {
             console.log('maxGroupNumber: ', cc.maxGroupNumber);
             if (getTipHeight() % cc.maxGroupNumber === miningCfg.groupNumber) {
                 if (bestAddr === miningCfg.beneficiary) {
-                    generateBlock();
+                    const block = generateBlock();
+                    console.log('blcok header: ------------ ', block.header);
+                    console.log('block.body  : ------------ ', block.body.txs);
                 }
             }
         }, null, 2000);

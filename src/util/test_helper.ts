@@ -2,7 +2,8 @@
  * test helpers
  */
 
-import { CommitteeConfig, Forger, ForgerCommittee } from '../chain/schema.s';
+import { calcTxHash } from '../chain/blockchain';
+import { CommitteeConfig, Forger, ForgerCommittee, Transaction } from '../chain/schema.s';
 import { getRand, pubKeyToAddress, sha256 } from './crypto';
 import { persistBucket } from './db';
 
@@ -40,4 +41,29 @@ export const buildForgerCommittee = (): void => {
     }
 
     bkt.put('FC', fc);
+};
+
+export const generateTxs = (len: number): Transaction[] => {
+    const txBkt = persistBucket(Transaction._$info.name);
+    const res = [];
+    for (let i = 0; i < len; i++) {
+        const t = new Transaction();
+        t.gas = getRand(1)[0];
+        t.txType = 0;
+        t.from = sha256(i.toString());
+        t.to = sha256(i.toString() + i.toString());
+        t.price = getRand(1)[0];
+        t.signature = sha256(i.toString() + i.toString() + i.toString());
+        t.value = getRand(1)[0];
+        t.nonce = getRand(1)[0];
+        t.payload = 'payload';
+        t.lastOutputValue = getRand(1)[0];
+
+        t.pk = 'T' + `${calcTxHash(t)}`;
+        txBkt.put(t.pk, t);
+
+        res.push(t);
+    }
+
+    return res;
 };

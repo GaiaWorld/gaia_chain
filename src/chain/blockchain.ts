@@ -7,8 +7,9 @@ import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, 
 
 import { NODE_TYPE } from '../net/pNode';
 import { Inv } from '../net/server/rpc.s';
-import { pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { getRand, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
+import { generateTxs } from '../util/test_helper';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -261,33 +262,77 @@ export const newBlockChain = (): void => {
 
 export const generateBlock = (): Block => {
     console.log('generate block .....');
-    // TOOD: generate empty block
+    const headerBkt = persistBucket(Header._$info.name);
+    const bodyBkt = persistBucket(Body._$info.name);
+    const miningCfg = getMiningConfig();
+
+    // TOOD: generate mock block
     const header = new Header();
+    header.forger = pubKeyToAddress(miningCfg.beneficiary);
+    header.forgerPubkey = miningCfg.beneficiary;
+    header.height = getTipHeight();
+    header.prevHash = sha256('0');
+    header.receiptRoot = sha256('0');
+    header.signature = sha256('0');
+    header.timestamp = Date.now();
+    header.totalWeight = getTotalWeight();
+    header.txRootHash = sha256('0');
+    header.version = getVersion();
+    header.weight = 100;
+    header.blockRandom = getRand(32).toString();
+    header.groupNumber = 0;
+
+    header.pk = 'H' + `${calcHeaderHash(header)}`;
+
+    headerBkt.put(header.pk, header);
+
     const body = new Body();
+    body.headerHash = calcHeaderHash(header);
+    body.pk = 'B' + `${body.headerHash}`;
+    // TODO: 
+    body.txs = generateTxs(5);
+
+    bodyBkt.put(body.pk, body);
 
     return new Block(header, body);
 };
 
-// ================================================
-// helper function
-const calcTxHash = (tx: Transaction): string => {
+export const calcTxHash = (tx: Transaction): string => {
     return sha256(serializeTx(tx));
 };
 
-const serializeTx = (tx: Transaction): string => {
-    return 'tx';
+export const calcHeaderHash = (header: Header): string => {
+    return sha256(serializeHeader(header));
 };
 
-const serializeBlock = (block: Block): string => {
-    return 'block';
+// ================================================
+// helper function
+const getTotalWeight = (): number => {
+    return 10000000;
+};
+
+const serializeTx = (tx: Transaction): string => {
+    if (tx.txType === TxType.SpendTx) {
+        return tx.from + tx.gas.toString() + tx.lastOutputValue.toString()
+                + tx.nonce.toString() + tx.payload + tx.price.toString()
+                + tx.to + tx.value.toString();
+    } else if (tx.txType === TxType.ForgerGroupTx) {
+        return tx.from + tx.gas.toString() + tx.lastOutputValue.toString()
+                + tx.nonce.toString() + tx.payload + tx.price.toString()
+                + tx.to + tx.value.toString() + tx.forgerGroupTx.AddGroup
+                + tx.forgerGroupTx.address + tx.forgerGroupTx.pubKey
+                + tx.forgerGroupTx.stake.toString();
+    } else if (tx.txType === TxType.PenaltyTx) {
+        return 'penaltyTx';
+    }
 };
 
 const serializeHeader = (header: Header): string => {
-    return 'header';
-};
-
-const calcHeaderHash = (header: Header): string => {
-    return sha256(serializeHeader(header));
+    return header.blockRandom + header.forger + header.forgerPubkey
+             + header.groupNumber.toString() + header.height.toString()
+             + header.prevHash + header.receiptRoot + header.timestamp.toString()
+             + header.totalWeight.toString() + header.txRootHash
+             + header.version + header.weight.toString();
 };
 
 const validateHeader = (header: Header): boolean => {
