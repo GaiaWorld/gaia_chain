@@ -52,10 +52,6 @@ export const getCurTime = ():number => {
     return 0;
 }
 
-// #[rpc=rpcServer]
-export const subscribeTx = (netAddr:string):boolean => {
-    return subscribeKeyFromMemory(netAddr, "tx");
-}
 
 const subscribeKeyFromMemory = (pNetAddr:string, key:string) => {
     let bkt = memoryBucket(SubTable._$info.name);
@@ -76,6 +72,12 @@ const subscribeKeyFromMemory = (pNetAddr:string, key:string) => {
 
     return true;
 }
+
+// #[rpc=rpcServer]
+export const subscribeTx = (netAddr:string):boolean => {
+    return subscribeKeyFromMemory(netAddr, "tx");
+}
+
 // #[rpc=rpcServer]
 export const subscribeBlock = (netAddr:string):boolean => {
     return subscribeKeyFromMemory(netAddr, "block");

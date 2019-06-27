@@ -13,6 +13,6 @@ setTimeout(() => {
 }, 5000);
 
 setTimeout(()=>{
-    notifyNewTx(new Inv);
+    // notifyNewTx(new Inv);
     notifyNewBlock(new Inv)
 },10000)
