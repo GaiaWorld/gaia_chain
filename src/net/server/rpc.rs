@@ -13,14 +13,6 @@ struct ShakeHandsInfo {
     bPong:bool
 }
 
-struct hashArray{
-    arr:&[String]
-}
-struct hashArrayNet{
-    net:String,
-    r:hashArray
-}
-
 struct TxArray{
     arr:&[Transaction]
 }
@@ -50,6 +42,11 @@ struct InvNet{
 
 struct InvArray{
     arr:&[Inv]
+}
+
+struct InvArrayNet{
+    net:String,
+    r:InvArray
 }
 
 #[primary=key,db=memory]

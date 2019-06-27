@@ -2,7 +2,7 @@
 // tslint:disable-next-line: ordered-imports
 import { NODE_TYPE } from './pNode';
 import { ShakeHandsInfo, Inv } from './server/rpc.s';
-import { Header } from '../chain/schema.s';
+import { Header,Body, Transaction } from '../chain/schema.s';
 import { Block } from '../chain/blockchain';
 
 /**
@@ -83,7 +83,8 @@ export const needBlock = (invMsg:Inv):boolean => {
  * @param invMsg 
  */
 export const getTx = (invMsg:Inv):Transaction|void => {
-    return 
+    
+    return ;
 }
 
 /**
@@ -98,7 +99,7 @@ export const getHeader = (invMsg:Inv):Header|void => {
  * 
  * @param invMsg 
  */
-export const getBlock = (invMsg:Inv):Block|void => {
+export const getBlock = (invMsg:Inv):Body|void => {
     return
 }
 
@@ -117,7 +118,7 @@ export const newTxsReach = (txs:Array<Transaction>)=>{
  * core自己进行处理
  * @param blocks 
  */
-export const newBlocksReach = (blocks:Array<Block>)=> {
+export const newBlocksReach = (blocks:Array<Body>)=> {
 
 }
 
@@ -135,4 +136,8 @@ export const newheadersReach = (headers:Array<Header>) => {
  */
 export const checkShakeHandsInfo = (info:ShakeHandsInfo) => {
     return true;
+}
+
+export const getPoolTxs = ():Array<Inv> => {
+    return [];
 }

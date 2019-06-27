@@ -87,8 +87,3 @@ export const makeShakeHandsInfo = ():ShakeHandsInfo => {
 
     return shakeHandsInfo;
 }
-
-const updatePeerNodeByShakeHands = (pNode:PNode, shakeHandsInfo:ShakeHandsInfo):PNode => {
-    let pNodeCopy = new PNode();
-    return pNodeCopy;
-}
