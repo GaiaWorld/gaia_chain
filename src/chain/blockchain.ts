@@ -3,12 +3,12 @@
  */
 
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, Forger, ForgerCommittee, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
+import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode';
-import { verify } from '../util/crypto';
-import { memoryBucket, persistBucket } from '../util/db';
 import { Inv } from '../net/server/rpc.s';
+import { pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { memoryBucket, persistBucket } from '../util/db';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -162,18 +162,54 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
+export const runCommittee = (config: CommitteeConfig): void => {
+    // syncing status
+};
+
 // ================================================
 // helper function
 const calcTxHash = (tx: Transaction): string => {
-    return '0x123456789abcdef';
+    return sha256(serializeTx(tx));
+};
+
+const serializeTx = (tx: Transaction): string => {
+    return 'tx';
+};
+
+const serializeBlock = (block: Block): string => {
+    return 'block';
+};
+
+const serializeHeader = (header: Header): string => {
+    return 'header';
 };
 
 const calcHeaderHash = (header: Header): string => {
-    return '0x123456789abcdef';
+    return sha256(serializeHeader(header));
 };
 
 const validateHeader = (header: Header): boolean => {
+    if (header.version !== getVersion()) {
+        return false;
+    }
+
+    if (Math.abs(header.timestamp - Date.now()) > 1000 * 5) {
+        return false;
+    }
+
+    if (!headerSignatureValid(header)) {
+        return  false;
+    }
+
     return true;
+};
+
+const generateBlock = (): Block => {
+    // TOOD: generate empty block
+    const header = new Header();
+    const body = new Body();
+
+    return new Block(header, body);
 };
 
 const validateBlock = (block: Block): boolean => {
@@ -186,7 +222,7 @@ const validateBlock = (block: Block): boolean => {
         return false;
     }
     // size
-    if (blockSize(block) > 1024 * 1024 * 10) {
+    if (blockPayloadSize(block) > 1024 * 1024 * 10) {
         return false;
     }
     // forger signature
@@ -199,17 +235,29 @@ const validateBlock = (block: Block): boolean => {
             return false;
         }
     }
+
+    // tx root hash
+    if (!validateTxRootHash(block)) {
+        return false;
+    }
+
+    // tx receipt hash
+    // TODO
     // ...
     
     return true;
 };
 
-const blockSize = (block: Block): number => {
+const blockPayloadSize = (block: Block): number => {
     return 1024 * 1024 * 10 - 1;
 };
 
 const blockSignatureValid = (block: Block): boolean => {
-    return verify(block.header.signature, block.header.forgerPubkey, calcHeaderHash(block.header));
+    return verify(block.header.signature, block.header.forgerPubkey, block.header.blockRandom);
+};
+
+const headerSignatureValid = (header: Header): boolean => {
+    return verify(header.signature, header.forgerPubkey, header.blockRandom);
 };
 
 const validateTx = (tx: Transaction): boolean => { 
@@ -232,14 +280,66 @@ const validateTx = (tx: Transaction): boolean => {
     return true;
 };
 
+const validateTxRootHash = (block: Block): boolean => {
+    // TODO: merkle hash of all txs
+    return true;
+};
+
 const txSignatureValid = (tx: Transaction): boolean => {
     return verify(tx.signature, tx.from, calcTxHash(tx));
 };
 
+const deriveGroupNumber = (address: string, rnd: string, height: number): number => {
+    const hash = sha256(address + rnd + height.toString(16));
+
+    return parseInt(hash.slice(hash.length - 2), 16);
+};
+
+const deriveRate = (address: string, rnd: string, height: number): number => {
+    const data = address + rnd + height.toString(16);
+    const rate = parseInt(sha256(data).slice(data.length - 4), 16) % 4;
+
+    return rate;
+};
+
 const addCommitteeGroup = (tx: Transaction): void => {
+    if (tx.txType !== TxType.ForgerGroupTx && !tx.forgerGroupTx) {
+        throw new Error('expect ForgeerGroupTx tx type');
+    }
+
+    const bkt = persistBucket(ForgerGroupTx._$info.name);
+    const committee = bkt.get<string, [ForgerCommittee]>('FC')[0];
+    const forger = new Forger();
+    const inv = new Inv();
+    inv.height = getTipHeight();
+    const block = getBlock(inv);
+    forger.lastHeight = getTipHeight();
+    forger.pubKey = tx.forgerGroupTx.pubKey;
+    forger.stake = tx.forgerGroupTx.stake;
+    forger.groupNumber = deriveGroupNumber(forger.address, block.header.blockRandom, forger.lastHeight);
+    const rate = deriveRate(forger.address, block.header.blockRandom, forger.lastHeight);
+    forger.initWeigth = (Math.log(forger.stake * 0.01) / Math.log(10)) * rate;
+    forger.lastWeight = 0;
+    forger.address = pubKeyToAddress(forger.pubKey);
+
+    committee.waitsForAdd.set(tx.forgerGroupTx.pubKey, forger);
+
     return;
 };
 
 const exitCommitteeGroup = (tx: Transaction): void => {
+    if (tx.txType !== TxType.ForgerGroupTx && !tx.forgerGroupTx) {
+        throw new Error('expect ForgeerGroupTx tx type');
+    }
+
+    const bkt = persistBucket(ForgerGroupTx._$info.name);
+    const committee = bkt.get<string, [ForgerCommittee]>('FC')[0];
+
+    const forger = new Forger();
+    // only set this field
+    forger.lastHeight = getTipHeight();
+
+    committee.waitsForRemove.set(tx.forgerGroupTx.pubKey, forger);
+
     return;
 };

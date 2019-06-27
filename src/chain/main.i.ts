@@ -14,11 +14,8 @@ const test = (): void => {
     f.groupNumber = 0;
 
     const bkt = persistBucket(Forger._$info.name);
-    f.pk = 'hello1';
     bkt.put('hello1', f);
-    f.pk = 'hello2';
     bkt.put('hello2', f);
-    f.pk = 'hello3';
     bkt.put('hello3', f);
 
     console.log(bkt.get('hello1'));
