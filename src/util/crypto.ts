@@ -5,6 +5,7 @@
 import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
 import { digest, DigestAlgorithm } from '../pi_pt/rust/pi_crypto/digest';
 import { sign as sign2, verify as verify2 } from '../pi_pt/rust/pi_crypto/ed25519';
+import { genSecureRandBytes } from '../pi_pt/rust/pi_crypto/random';
 
 export const pubKeyToAddress = (pubKey: string): string => {
     // mock address
@@ -32,6 +33,10 @@ export const verify = (sig: string, pubKey: string, msg: string): boolean => {
 
 export const blsRand = (): H256 => {
     return;
+};
+
+export const getRand = (len: number): Uint8Array => {
+    return genSecureRandBytes(len).asSliceU8();
 };
 
 export const buf2Hex = (buf: Uint8Array, lowercase: boolean = true): string => {
