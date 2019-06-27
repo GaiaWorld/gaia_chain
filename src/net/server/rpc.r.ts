@@ -88,22 +88,8 @@ export const subscribeBlock = (netAddr:string):boolean => {
   */
 
  // #[rpc=rpcServer]
- export const broadcastTx = (invMsg:InvNet):boolean=>{
-    console.log("new tx reach!!!!");
-    //TODO:此处core需要自己处理，如果需要就需要再调用getTxs真的去获取交易
-    return true;
-}
-
-/**
- * 主动向外广播区块信息
- * 在广播的内部有一些更细节的处理，会判断对等节点是否已经有该block了，有了就不发
- * @param invMsg 
- */
-
-// #[rpc=rpcServer]
-export const broadcastBlock = (invMsg:InvNet)=>{
-    console.log("new block reach!!!!");
-    //TODO:此处core需要自己处理，如果需要就需要再调用getHeaders真的去获取交易头
+ export const broadcastInv = (invMsg:InvNet):boolean=>{
+    console.log(`new ${invMsg.r.MsgType} reach from ${invMsg.net}'s client!!!!`);
     return true;
 }
 

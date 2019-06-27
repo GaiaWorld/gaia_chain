@@ -24,6 +24,16 @@ export const launch = () => {
     if (netAddr !== ownNetAddr) {
         clientRequest(netAddr, shakeHands, makeShakeHandsInfo(),(r,pNetAddr)=>{
             console.log(`success shakehands with ${pNetAddr}`);
+            clientRequest(netAddr, subscribeTx, getOwnNetAddr(), (r)=>{
+                if(r){
+                    console.log(`subscribe tx success`);
+                }
+            })
+            clientRequest(netAddr, subscribeBlock, getOwnNetAddr(), (r)=>{
+                if(r){
+                    console.log(`subscribe block success`);
+                }
+            })
         })
     }
   })

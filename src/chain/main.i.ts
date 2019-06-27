@@ -28,7 +28,7 @@ const start = (): void => {
     test();
 
     setTimer(() => {
-        console.log('xxxxxxxxxxxxxxxx');
+        console.log('xxxxxxxxx');
     }, null, 5000);
 
     console.log('starting gaia ......');

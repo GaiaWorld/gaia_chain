@@ -1,7 +1,9 @@
-import { Inv } from "./rpc.s";
+import { Inv, InvNet, SubTable } from "./rpc.s";
 import { getConByNetAddr, conMap } from "../connMgr";
-import { broadcastTx, broadcastBlock } from "./rpc.p";
-import { TIME_OUT } from "../client/launch";
+import { broadcastInv } from "./rpc.p";
+import { memoryBucket } from "../../util/db";
+import { clientRequest } from "./rpc.r";
+import { getOwnNetAddr } from "../client/launch";
 
 /**
  * 作为服务器允许对等节点订阅的主题，并且主动给对等节点发送相应的信息
@@ -12,23 +14,21 @@ import { TIME_OUT } from "../client/launch";
  * @param invMsg 
  */
 export const notifyNewTx = (invMsg:Inv)=>{
-    
-    let txSet = getSubMap(TX);
-    console.log(`txSet.size is : ${txSet.size}`);
-    if(txSet && txSet.size>0){
-        txSet.forEach((netAddr:string)=>{
-            console.log(`netAddr is : ${netAddr}`)
-            for (let key of conMap.keys()){
-                console.log(`key is : ${key}` )
-            }
-            let client = getConByNetAddr(netAddr);
-            if(client){
-                client.request(broadcastTx, invMsg, TIME_OUT,(r:boolean)=>{
-                    r && console.log(`broadcast tx success`);
-                })
-                //broadcastBlock
-            }
-        });
+    notifyNewInv("tx",invMsg);
+}
+
+const notifyNewInv = (key:string, invMsg:Inv) => {
+    let invNet = new InvNet;
+    invNet.net = getOwnNetAddr();
+    invNet.r = invMsg;
+    let bkt = memoryBucket(SubTable._$info.name);
+    let column = bkt.get<string, SubTable>(key)[0];
+    if(column && column.value && column.value.length > 0){
+        column.value.length.forEach((netAddr)=>{
+            clientRequest(netAddr,broadcastInv, invNet, ()=>{
+                console.log(`success notify a ${key}`);
+            })
+        })
     }
 }
 
@@ -37,28 +37,5 @@ export const notifyNewTx = (invMsg:Inv)=>{
  * @param invMsg 
  */
 export const notifyNewBlock = (invMsg:Inv) => {
-    let blockSet = getSubMap(BLOCK);
-    if(blockSet && blockSet.size>0){
-        blockSet.forEach((netAddr:string)=>{
-            let client = getConByNetAddr(netAddr);
-            if(client){
-                client.request(broadcastBlock, invMsg, TIME_OUT,(r:boolean)=>{
-                    r && console.log(`broadcast block success`);
-                })
-                //broadcastBlock
-            }
-        });
-    }
+    notifyNewInv("block",invMsg);
 }
-
-export const getSubMap = (key:string):Set<string> => {
-    console.log(`in sub map the size is : ${subMap.get(key).size}`)
-    return subMap.get(key);
-}
-
-
-export const subMap = new Map<string,Set<string>>();
-export const TX = "tx";
-export const BLOCK = "block";
-subMap.set(TX, new Set);
-subMap.set(BLOCK, new Set);

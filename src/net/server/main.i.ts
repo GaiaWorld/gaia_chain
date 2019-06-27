@@ -8,12 +8,11 @@ import { Inv } from "./rpc.s";
 //启动rpc server
 // cloneServerNode(getNativeObj("rpcServer"));
 
-setTimeout(() => {
-    launch();
-}, 5000);
+// setTimeout(() => {
+//     launch();
+// }, 5000);
 
-// setTimeout(()=>{
-//     notifyNewTx(new Inv);
-//     notifyNewBlock(new Inv)
-// },10000)
-// launch();
+setTimeout(()=>{
+    notifyNewTx(new Inv);
+    notifyNewBlock(new Inv)
+},10000)
