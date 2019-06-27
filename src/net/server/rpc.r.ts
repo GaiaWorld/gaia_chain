@@ -56,10 +56,8 @@ export const getCurTime = ():number => {
 const subscribeKeyFromMemory = (pNetAddr:string, key:string) => {
     let bkt = memoryBucket(SubTable._$info.name);
     let column = bkt.get<string, SubTable>(key)[0];
-    if(column && column.value){
-       //TODO:暂时不需要做处理 
-    }
-    else {
+    console.log(`rpc column is : ${column}`)
+    if(column === undefined || column.value === undefined){
         column = new SubTable;
         column.key=key;
         column.value = [];

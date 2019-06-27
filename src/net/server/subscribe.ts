@@ -23,8 +23,9 @@ const notifyNewInv = (key:string, invMsg:Inv) => {
     invNet.r = invMsg;
     let bkt = memoryBucket(SubTable._$info.name);
     let column = bkt.get<string, SubTable>(key)[0];
-    if(column && column.value && column.value.length > 0){
-        column.value.length.forEach((netAddr)=>{
+    if(column !== undefined && column.value !== undefined && column.value.length > 0){
+        column.value.forEach((netAddr)=>{
+            console.log(`netAddr is : ${netAddr}, invNet is : ${JSON.stringify(invNet)}`)
             clientRequest(netAddr,broadcastInv, invNet, ()=>{
                 console.log(`success notify a ${key}`);
             })
