@@ -127,6 +127,7 @@ export const subscribeBlock = (netAddr:string):boolean => {
         //TODO: core判断是否需要该block,如果需要则首先调用getHeaders
         let invArrayNet = new InvArrayNet;
         invArrayNet.net = getOwnNetAddr();
+        invArrayNet.r = new InvArray;
         invArrayNet.r.arr = [invNet.r]
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pNetAddr:String)=>{
             //TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
@@ -141,6 +142,7 @@ export const subscribeBlock = (netAddr:string):boolean => {
     if(invNet.r.MsgType == INV_MSG_TYPE.MSG_TX){
         let invArrayNet = new InvArrayNet;
         invArrayNet.net = getOwnNetAddr();
+        invArrayNet.r = new InvArray;
         invArrayNet.r.arr = [invNet.r]
         clientRequest(invNet.net,getTxsString,invArrayNet, (txArray:TxArray, pNetAddr:String)=>{
             //TODO: 告诉core有新的tx到达了
