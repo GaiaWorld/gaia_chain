@@ -13,6 +13,7 @@
         "tslint-microsoft-contrib"
     ],
     "rules": {
+        "prefer-for-of": false,
         "max-line-length": false,
         "prefer-type-cast": false,
         "missing-jsdoc": false,

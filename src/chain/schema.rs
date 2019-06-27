@@ -20,8 +20,9 @@ struct ForgerCommittee {
     groups: [[Forger]],
 }
 
-#[db=file]
+#[db=file,primary=pk]
 struct CommitteeConfig {
+    pk: String,
     // minium tokens to become a forger
     minToken: usize,
     // the default time for create a new block. For the main chain it is 3000 millisecond.
@@ -165,6 +166,7 @@ struct TxPool {
 struct MiningConfig {
     pk: String,
     beneficiary: String,
+    groupNumber: usize,
 }
 
 #[db=memory,primary=pk]

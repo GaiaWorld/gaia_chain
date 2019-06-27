@@ -3,7 +3,7 @@
  */
 
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
+import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode';
 import { Inv } from '../net/server/rpc.s';
@@ -168,20 +168,55 @@ export const increaseWeight = (): void => {
     const fc = bkt.get<string, [ForgerCommittee]>('FC')[0];
     const groups = fc.groups;
 
-    if (getTipHeight() % 2 === 0) {
+    const bkt2 = persistBucket(CommitteeConfig._$info.name);
+    const cc = bkt2.get<string, [CommitteeConfig]>('CC')[0];
+
+    if (getTipHeight() % cc.maxGroupNumber === 0) {
         for (let i = 0; i < groups.length; i++) {
             for (let j = 0; j < groups[i].length; j++) {
-                const maxWeight = groups[i][j].initWeigth * 10;
+                const maxWeight = groups[i][j].initWeigth * cc.maxAccHeight;
                 if (groups[i][j].lastWeight + groups[i][j].initWeigth > maxWeight) {
                     groups[i][j].lastWeight = maxWeight;
                 } else {
                     groups[i][j].lastWeight += groups[i][j].initWeigth;
                 }
-                console.log('group: ', groups[i]);
             }
+            console.log('group: ', groups[i]);
         }
     }
     bkt.put('FC', fc);
+};
+
+export const isSyncing = (): boolean => {
+    return false;
+};
+
+export const bestWeightAddr = (): string => {
+    const bkt = persistBucket(ForgerCommittee._$info.name);
+    const bkt2 = persistBucket(CommitteeConfig._$info.name);
+    const cc = bkt2.get<string, [CommitteeConfig]>('CC')[0];
+    const groups = bkt.get<string, [ForgerCommittee]>('FC')[0].groups;
+    const round = getTipHeight() % cc.maxGroupNumber;
+    const sorted = groups[round].sort();
+
+    return sorted[0].pubKey;
+};
+
+export const getMiningConfig = (): MiningConfig => {
+    const bkt = persistBucket(MiningConfig._$info.name);
+
+    return bkt.get<string, [MiningConfig]>('MC')[0];
+};
+
+export const getCommitteeConfig = (): CommitteeConfig => {
+    const bkt = persistBucket(CommitteeConfig._$info.name);
+
+    return bkt.get<string, [CommitteeConfig]>('CC')[0];
+};
+
+// TODO
+export const adjustGroup = (): string => {
+    return;
 };
 
 export const runCommittee = (config: CommitteeConfig): void => {
@@ -201,7 +236,36 @@ export const newBlockChain = (): void => {
         bkt.put(hc2.pk, hc2);
     }
 
+    // initialize mining config
+    const bkt2 = persistBucket(MiningConfig._$info.name);
+    const mining = new MiningConfig();
+    mining.pk = 'MC';
+    mining.beneficiary = sha256('0' + '0');
+    // TODO: calc group number
+    mining.groupNumber = 0;
+    bkt2.put('MC', mining);
+
+    // initialize committee config
+    const bkt3 = persistBucket(CommitteeConfig._$info.name);
+    const cc = new CommitteeConfig();
+    cc.pk = 'CC';
+    cc.blockIterval = 2000;
+    cc.maxAccHeight = 150000;
+    cc.maxGroupNumber = 5;
+    cc.minToken = 10000;
+    cc.withdrawReserveBlocks = 256000;
+    bkt3.put('CC', cc);
+
     return;
+};
+
+export const generateBlock = (): Block => {
+    console.log('generate block .....');
+    // TOOD: generate empty block
+    const header = new Header();
+    const body = new Body();
+
+    return new Block(header, body);
 };
 
 // ================================================
@@ -240,14 +304,6 @@ const validateHeader = (header: Header): boolean => {
     }
 
     return true;
-};
-
-const generateBlock = (): Block => {
-    // TOOD: generate empty block
-    const header = new Header();
-    const body = new Body();
-
-    return new Block(header, body);
 };
 
 const validateBlock = (block: Block): boolean => {
