@@ -16,6 +16,10 @@ struct ShakeHandsInfo {
 struct hashArray{
     arr:&[String]
 }
+struct hashArrayNet{
+    net:String,
+    r:hashArray
+}
 
 struct TxArray{
     arr:&[Transaction]
@@ -39,7 +43,21 @@ struct Inv{
     MsgType: String
 }
 
+struct InvNet{
+    net:String,
+    r:Inv
+}
+
 struct InvArray{
     arr:&[Inv]
 }
 
+#[primary=key,db=memory]
+struct SubTable{
+    key:String,
+    value:&[String]
+}
+
+struct PeerTable{
+    ip:String,
+}

@@ -2,33 +2,35 @@
  * 封装了所有客户端可以调用的RPC请求
  */
 import { makeShakeHandsInfo } from "../client/launch";
-import { ShakeHandsInfo, TxArray, BodyArray, HeaderArray, AddrArray, InvArray, hashArray, Inv } from "./rpc.s";
+import { ShakeHandsInfo, TxArray, BodyArray, HeaderArray, AddrArray, InvArray, hashArray, Inv, InvNet, hashArrayNet, ShakeHandsInfoNet } from "./rpc.s";
 import { checkShakeHandsInfo} from "../virtualEnv";
+import { memoryBucket } from "../../util/db";
+import { SubTable } from "./rpc.s";
+import { SerializeType } from "../../pi/util/bon";
+import { RpcClient } from "../../pi_pt/net/rpc_client";
 
 // #[rpc=rpcServer]
 export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
     if(checkShakeHandsInfo(info)){
-        // if(!getConByNetAddr(info.strLocalServerAddr)){
-        //     con2Server(getOwnNetAddr())
-        // }
+        //TODO:此处应该记录下对等节点的基本信息，暂时使用strLocalServerAddr作为主键
     return makeShakeHandsInfo();
     }
 }
 
 // #[rpc=rpcServer]
-export const getTxs = (hashs:hashArray):TxArray => {
+export const getTxs = (hashs:hashArrayNet):TxArray => {
 
     return new TxArray;
 }
 
 // #[rpc=rpcServer]
-export const getBlocks = (hashs:hashArray):BodyArray => {
+export const getBlocks = (hashs:hashArrayNet):BodyArray => {
     //TODO:此处直接调用core的getBlock方法
     return new BodyArray;
 }
 
 // #[rpc=rpcServer]
-export const getHeaders = (hashs:hashArray):HeaderArray=>{
+export const getHeaders = (hashs:hashArrayNet):HeaderArray=>{
     //TODO:此处直接调用core的getHeader方法
     return new HeaderArray;
 }
@@ -51,19 +53,32 @@ export const getCurTime = ():number => {
 }
 
 // #[rpc=rpcServer]
-export const subscribeTx = (netAddr:String):boolean => {
-    let txSet = subMap.get(TX) || new Set<String>();
-    txSet.add(netAddr);
-    subMap.set(TX,txSet);
-    return true;
+export const subscribeTx = (netAddr:string):boolean => {
+    return subscribeKeyFromMemory(netAddr, "tx");
 }
 
-// #[rpc=rpcServer]
-export const subscribeBlock = (netAddr:String):boolean => {
-    let txSet = subMap.get(BLOCK) || new Set<String>();
-    txSet.add(netAddr);
-    subMap.set(BLOCK,txSet);
+const subscribeKeyFromMemory = (pNetAddr:string, key:string) => {
+    let bkt = memoryBucket(SubTable._$info.name);
+    let column = bkt.get<string, SubTable>(key)[0];
+    if(column && column.value){
+       //TODO:暂时不需要做处理 
+    }
+    else {
+        column = new SubTable;
+        column.key=key;
+        column.value = [];
+    }
+
+    if (column.value.indexOf(pNetAddr) < 0) {
+        column.value.push(pNetAddr);
+        bkt.put(key, column);
+    }
+
     return true;
+}
+// #[rpc=rpcServer]
+export const subscribeBlock = (netAddr:string):boolean => {
+    return subscribeKeyFromMemory(netAddr, "block");
 }
 
 /**
@@ -73,7 +88,7 @@ export const subscribeBlock = (netAddr:String):boolean => {
   */
 
  // #[rpc=rpcServer]
- export const broadcastTx = (invMsg:Inv):boolean=>{
+ export const broadcastTx = (invMsg:InvNet):boolean=>{
     console.log("new tx reach!!!!");
     //TODO:此处core需要自己处理，如果需要就需要再调用getTxs真的去获取交易
     return true;
@@ -86,16 +101,26 @@ export const subscribeBlock = (netAddr:String):boolean => {
  */
 
 // #[rpc=rpcServer]
-export const broadcastBlock = (invMsg:Inv)=>{
+export const broadcastBlock = (invMsg:InvNet)=>{
     console.log("new block reach!!!!");
     //TODO:此处core需要自己处理，如果需要就需要再调用getHeaders真的去获取交易头
     return true;
 }
 
-export const getSubMap = ():Map<String,Set<String>> => {
+/**
+ * 看起来像http，功能上是一个短链接
+ */
+export const clientRequest = (pNetAddr:string, cmd:string, body: SerializeType, callback: (SerializeType,pNetAddr?:string) => void)=>{
+    let client = RpcClient.create(`ws://${pNetAddr}`);
+    client.connect(KEEP_ALIVE,"1", TIME_OUT, ((pNetAddr)=>{
+        return ()=>{
 
-    return subMap;
+            client.request(cmd, body, TIME_OUT, (r:any)=>{
+                callback(r, pNetAddr)
+            })
+        }
+    })(pNetAddr),()=>{})
 }
-const subMap = new Map<String,Set<String>>();
-export const TX = "tx";
-export const BLOCK = "block";
+
+const KEEP_ALIVE = 10000;
+const TIME_OUT = 5000;

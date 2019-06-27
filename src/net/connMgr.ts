@@ -11,7 +11,7 @@ import { PNode } from "./pNode";
 // ========================================================== native
 
 let connNonce = 0; 
-const conMap = new Map<string, RpcClient>();
+export const conMap = new Map<string, RpcClient>();
 const pNodeMap = new Map<string, PNode>();
 
 
@@ -53,3 +53,4 @@ export const setPeerNode = (netAddr:string, pNode:PNode):void => {
     pNodeMap.set(netAddr, pNode);
     return ;
 }
+

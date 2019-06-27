@@ -12,8 +12,8 @@ setTimeout(() => {
     launch();
 }, 5000);
 
-setTimeout(()=>{
-    notifyNewTx(new Inv);
-    notifyNewBlock(new Inv)
-},10000)
+// setTimeout(()=>{
+//     notifyNewTx(new Inv);
+//     notifyNewBlock(new Inv)
+// },10000)
 // launch();

@@ -1,6 +1,5 @@
 import { Inv } from "./rpc.s";
-import { getSubMap, TX, BLOCK } from "./rpc.r";
-import { getConByNetAddr } from "../connMgr";
+import { getConByNetAddr, conMap } from "../connMgr";
 import { broadcastTx, broadcastBlock } from "./rpc.p";
 import { TIME_OUT } from "../client/launch";
 
@@ -13,9 +12,15 @@ import { TIME_OUT } from "../client/launch";
  * @param invMsg 
  */
 export const notifyNewTx = (invMsg:Inv)=>{
-    let txSet = getSubMap().get(TX);
+    
+    let txSet = getSubMap(TX);
+    console.log(`txSet.size is : ${txSet.size}`);
     if(txSet && txSet.size>0){
         txSet.forEach((netAddr:string)=>{
+            console.log(`netAddr is : ${netAddr}`)
+            for (let key of conMap.keys()){
+                console.log(`key is : ${key}` )
+            }
             let client = getConByNetAddr(netAddr);
             if(client){
                 client.request(broadcastTx, invMsg, TIME_OUT,(r:boolean)=>{
@@ -32,7 +37,7 @@ export const notifyNewTx = (invMsg:Inv)=>{
  * @param invMsg 
  */
 export const notifyNewBlock = (invMsg:Inv) => {
-    let blockSet = getSubMap().get(BLOCK);
+    let blockSet = getSubMap(BLOCK);
     if(blockSet && blockSet.size>0){
         blockSet.forEach((netAddr:string)=>{
             let client = getConByNetAddr(netAddr);
@@ -45,3 +50,15 @@ export const notifyNewBlock = (invMsg:Inv) => {
         });
     }
 }
+
+export const getSubMap = (key:string):Set<string> => {
+    console.log(`in sub map the size is : ${subMap.get(key).size}`)
+    return subMap.get(key);
+}
+
+
+export const subMap = new Map<string,Set<string>>();
+export const TX = "tx";
+export const BLOCK = "block";
+subMap.set(TX, new Set);
+subMap.set(BLOCK, new Set);
