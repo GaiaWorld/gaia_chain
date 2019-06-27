@@ -168,7 +168,7 @@ export const increaseWeight = (): void => {
     const fc = bkt.get<string, [ForgerCommittee]>('FC')[0];
     const groups = fc.groups;
 
-    if (0 % 2 === 0) {
+    if (getTipHeight() % 2 === 0) {
         for (let i = 0; i < groups.length; i++) {
             for (let j = 0; j < groups[i].length; j++) {
                 const maxWeight = groups[i][j].initWeigth * 10;
@@ -186,6 +186,22 @@ export const increaseWeight = (): void => {
 
 export const runCommittee = (config: CommitteeConfig): void => {
     // syncing status
+};
+
+export const newBlockChain = (): void => {
+    const bkt = persistBucket(HeaderChain._$info.name);
+    const hc2 = new HeaderChain();
+    const hc = bkt.get<string, [HeaderChain]>('HC')[0];
+    if (!hc) {
+        hc2.genesisHash = sha256('genesis');
+        hc2.head = 0;
+        hc2.height = 0;
+        hc2.pervHash = '0';
+        hc2.pk = 'HC';
+        bkt.put(hc2.pk, hc2);
+    }
+
+    return;
 };
 
 // ================================================
