@@ -162,6 +162,28 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
+// increase weight until it gets the maximum allowed
+export const increaseWeight = (): void => {
+    const bkt = persistBucket(ForgerCommittee._$info.name);
+    const fc = bkt.get<string, [ForgerCommittee]>('FC')[0];
+    const groups = fc.groups;
+
+    if (0 % 2 === 0) {
+        for (let i = 0; i < groups.length; i++) {
+            for (let j = 0; j < groups[i].length; j++) {
+                const maxWeight = groups[i][j].initWeigth * 10;
+                if (groups[i][j].lastWeight + groups[i][j].initWeigth > maxWeight) {
+                    groups[i][j].lastWeight = maxWeight;
+                } else {
+                    groups[i][j].lastWeight += groups[i][j].initWeigth;
+                }
+                console.log('group: ', groups[i]);
+            }
+        }
+    }
+    bkt.put('FC', fc);
+};
+
 export const runCommittee = (config: CommitteeConfig): void => {
     // syncing status
 };
@@ -307,7 +329,7 @@ const addCommitteeGroup = (tx: Transaction): void => {
         throw new Error('expect ForgeerGroupTx tx type');
     }
 
-    const bkt = persistBucket(ForgerGroupTx._$info.name);
+    const bkt = persistBucket(ForgerCommittee._$info.name);
     const committee = bkt.get<string, [ForgerCommittee]>('FC')[0];
     const forger = new Forger();
     const inv = new Inv();
