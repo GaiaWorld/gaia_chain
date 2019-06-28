@@ -156,8 +156,14 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
+export const adjustGroupPosistion = (seed: number): void => {
+    // 更具随机种子修改两个槽位，
+
+}
+
 // increase weight until it gets the maximum allowed
 export const increaseWeight = (): void => {
+    // TODO: 只计算本次出块的槽，返回排序后的矿工
     const bkt = persistBucket(ForgerCommittee._$info.name);
     const fc = bkt.get<string, [ForgerCommittee]>('FC')[0];
     const groups = fc.groups;
@@ -253,6 +259,7 @@ export const newBlockChain = (): void => {
     return;
 };
 
+// TODO: 如何给矿工手续费
 export const generateBlock = (): Block => {
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
@@ -265,7 +272,6 @@ export const generateBlock = (): Block => {
     header.height = getTipHeight();
     header.prevHash = sha256('0');
     header.receiptRoot = sha256('0');
-    header.signature = sha256('0');
     header.timestamp = Date.now();
     header.totalWeight = getTotalWeight();
     header.txRootHash = sha256('0');

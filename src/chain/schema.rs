@@ -12,6 +12,8 @@ struct Forger {
 }
 
 // forger committee
+// TODO:增加矿工表，主键对应槽位，值为Forger数组
+// 加入和退出表，主键为正式加入矿工委员会的高度
 #[db=file,primary=pk]
 struct ForgerCommittee {
     pk: String,
@@ -63,6 +65,7 @@ struct PenaltyTx {
 }
 
 // spend tx
+// TODO: 将矿工加入退出交易和惩罚交易单独建表
 #[db=file,primary=pk]
 struct Transaction {
     pk: String,
@@ -166,6 +169,8 @@ struct TxPool {
 struct MiningConfig {
     pk: String,
     beneficiary: String,
+    privateKey: String,
+    blsRand: String,
     groupNumber: usize,
 }
 
