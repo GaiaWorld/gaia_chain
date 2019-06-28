@@ -3,12 +3,13 @@
  */
 
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, Receipt, Transaction, TxPool, TxType } from './schema.s';
+import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode';
 import { Inv } from '../net/server/rpc.s';
-import { pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { getRand, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
+import { generateTxs } from '../util/test_helper';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -69,41 +70,34 @@ export const getNodeType = (): NODE_TYPE => {
     return NODE_TYPE.FULL_NODE;
 };
 
-export const needTX = (invMsg: Inv): boolean => {
-
-    return true;
-};
-
-export const needBlock = (invMsg: Inv): boolean => {
-
-    return true;
-};
-
 export const getTx = (invMsg: Inv): Transaction => {
-    const bkt = memoryBucket(TxPool._$info.name);
+    const bkt = persistBucket(Transaction._$info.name);
 
-    return bkt.get<string, [TxPool]>(invMsg.hash)[0].tx;
+    return bkt.get<string, [Transaction]>('T' + `${invMsg.hash}`)[0];
 };
 
 export const getHeader = (invMsg: Inv): Header => {
     const bkt = persistBucket(Header._$info.name);
 
-    return bkt.get<string, [Header]>(invMsg.hash)[0];
+    return bkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
 };
 
 export const getBlock = (invMsg: Inv): Block => {
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
 
-    const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
-    const body = bodyBkt.get<string, [Body]>(invMsg.hash)[0];
+    const header = headerBkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
+    const body = bodyBkt.get<string, [Body]>('B' + `${invMsg.hash}`)[0];
 
     return new Block(header, body);
 };
 
 export const newTxsReach = (txs: Transaction[]): void => {
+    console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (validateTx(tx)) {
+            const txBkt = persistBucket(Transaction._$info.name);
+            txBkt.put<string, Transaction>('T' + `${calcTxHash(tx)}`, tx);
             switch (tx.txType) {
                 case TxType.ForgerGroupTx:
                     if (tx.forgerGroupTx && tx.forgerGroupTx.AddGroup) {
@@ -129,17 +123,16 @@ export const newTxsReach = (txs: Transaction[]): void => {
     }
 };
 
-export const newBlocksReach = (blocks: Block[]): void => {
+export const newBlocksReach = (bodys: Body[]): void => {
+    console.log('\n\nnewBlocksReach: ---------------------- ', bodys);
     // validate blocks
     // add to chain store
-    const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
-    for (const block of blocks) {
+    for (const body of bodys) {
         // TODO: add to orphans pool if no parent found
         // TODO: advertise new height to peers
-        validateBlock(block);
-        headerBkt.put<string, Header>(calcHeaderHash(block.header), block.header);
-        bodyBkt.put<string, Body>(calcHeaderHash(block.header), block.body);
+        // TODO: validateBlock(block);
+        bodyBkt.put<string, Body>('B' + `${body.headerHash}`, body);
     }
 
     // TODO: notify peers that we changed our height
@@ -148,6 +141,7 @@ export const newBlocksReach = (blocks: Block[]): void => {
 };
 
 export const newHeadersReach = (headers: Header[]): void => {
+    console.log('\n\nnewHeadersReach: ---------------------- ', headers);
     // validate headers
     // retrive corresponding body
     // reassemly to a complete block
@@ -156,9 +150,66 @@ export const newHeadersReach = (headers: Header[]): void => {
     for (const header of headers) {
         validateHeader(header);
         // TODO: retrive body
-        bkt.put<string, Header>(calcHeaderHash(header), header);
+        bkt.put<string, Header>('H' + `${calcHeaderHash(header)}`, header);
     }
 
+    return;
+};
+
+// increase weight until it gets the maximum allowed
+export const increaseWeight = (): void => {
+    const bkt = persistBucket(ForgerCommittee._$info.name);
+    const fc = bkt.get<string, [ForgerCommittee]>('FC')[0];
+    const groups = fc.groups;
+
+    const bkt2 = persistBucket(CommitteeConfig._$info.name);
+    const cc = bkt2.get<string, [CommitteeConfig]>('CC')[0];
+
+    if (getTipHeight() % cc.maxGroupNumber === 0) {
+        for (let i = 0; i < groups.length; i++) {
+            for (let j = 0; j < groups[i].length; j++) {
+                const maxWeight = groups[i][j].initWeigth * cc.maxAccHeight;
+                if (groups[i][j].lastWeight + groups[i][j].initWeigth > maxWeight) {
+                    groups[i][j].lastWeight = maxWeight;
+                } else {
+                    groups[i][j].lastWeight += groups[i][j].initWeigth;
+                }
+            }
+            // console.log('group: ', groups[i]);
+        }
+    }
+    bkt.put('FC', fc);
+};
+
+export const isSyncing = (): boolean => {
+    return false;
+};
+
+export const bestWeightAddr = (): string => {
+    const bkt = persistBucket(ForgerCommittee._$info.name);
+    const bkt2 = persistBucket(CommitteeConfig._$info.name);
+    const cc = bkt2.get<string, [CommitteeConfig]>('CC')[0];
+    const groups = bkt.get<string, [ForgerCommittee]>('FC')[0].groups;
+    const round = getTipHeight() % cc.maxGroupNumber;
+    const sorted = groups[round].sort();
+
+    return sorted[0].pubKey;
+};
+
+export const getMiningConfig = (): MiningConfig => {
+    const bkt = persistBucket(MiningConfig._$info.name);
+
+    return bkt.get<string, [MiningConfig]>('MC')[0];
+};
+
+export const getCommitteeConfig = (): CommitteeConfig => {
+    const bkt = persistBucket(CommitteeConfig._$info.name);
+
+    return bkt.get<string, [CommitteeConfig]>('CC')[0];
+};
+
+// TODO
+export const adjustGroup = (): string => {
     return;
 };
 
@@ -166,26 +217,114 @@ export const runCommittee = (config: CommitteeConfig): void => {
     // syncing status
 };
 
-// ================================================
-// helper function
-const calcTxHash = (tx: Transaction): string => {
+export const newBlockChain = (): void => {
+    const bkt = persistBucket(HeaderChain._$info.name);
+    const hc2 = new HeaderChain();
+    const hc = bkt.get<string, [HeaderChain]>('HC')[0];
+    if (!hc) {
+        hc2.genesisHash = sha256('genesis');
+        hc2.head = 0;
+        hc2.height = 0;
+        hc2.pervHash = '0';
+        hc2.pk = 'HC';
+        bkt.put(hc2.pk, hc2);
+    }
+
+    // initialize mining config
+    const bkt2 = persistBucket(MiningConfig._$info.name);
+    const mining = new MiningConfig();
+    mining.pk = 'MC';
+    mining.beneficiary = sha256('0' + '0');
+    // TODO: calc group number
+    mining.groupNumber = 0;
+    bkt2.put('MC', mining);
+
+    // initialize committee config
+    const bkt3 = persistBucket(CommitteeConfig._$info.name);
+    const cc = new CommitteeConfig();
+    cc.pk = 'CC';
+    cc.blockIterval = 2000;
+    cc.maxAccHeight = 150000;
+    cc.maxGroupNumber = 5;
+    cc.minToken = 10000;
+    cc.withdrawReserveBlocks = 256000;
+    bkt3.put('CC', cc);
+
+    return;
+};
+
+export const generateBlock = (): Block => {
+    const headerBkt = persistBucket(Header._$info.name);
+    const bodyBkt = persistBucket(Body._$info.name);
+    const miningCfg = getMiningConfig();
+
+    // TOOD: generate mock block
+    const header = new Header();
+    header.forger = pubKeyToAddress(miningCfg.beneficiary);
+    header.forgerPubkey = miningCfg.beneficiary;
+    header.height = getTipHeight();
+    header.prevHash = sha256('0');
+    header.receiptRoot = sha256('0');
+    header.signature = sha256('0');
+    header.timestamp = Date.now();
+    header.totalWeight = getTotalWeight();
+    header.txRootHash = sha256('0');
+    header.version = getVersion();
+    header.weight = 100;
+    header.blockRandom = getRand(32).toString();
+    header.groupNumber = 0;
+
+    header.pk = 'H' + `${calcHeaderHash(header)}`;
+
+    headerBkt.put(header.pk, header);
+
+    const body = new Body();
+    body.headerHash = calcHeaderHash(header);
+    body.pk = 'B' + `${body.headerHash}`;
+    // TODO: 
+    body.txs = generateTxs(5);
+
+    bodyBkt.put(body.pk, body);
+
+    return new Block(header, body);
+};
+
+export const calcTxHash = (tx: Transaction): string => {
     return sha256(serializeTx(tx));
 };
 
-const serializeTx = (tx: Transaction): string => {
-    return 'tx';
+export const calcHeaderHash = (header: Header): string => {
+    return sha256(serializeHeader(header));
 };
 
-const serializeBlock = (block: Block): string => {
-    return 'block';
+// ================================================
+// helper function
+const getTotalWeight = (): number => {
+    return 10000000;
+};
+
+const serializeTx = (tx: Transaction): string => {
+    if (tx.txType === TxType.SpendTx) {
+        return tx.from + tx.gas.toString() + tx.lastOutputValue.toString()
+                + tx.nonce.toString() + tx.payload + tx.price.toString()
+                + tx.to + tx.value.toString();
+    } else if (tx.txType === TxType.ForgerGroupTx) {
+        return tx.from + tx.gas.toString() + tx.lastOutputValue.toString()
+                + tx.nonce.toString() + tx.payload + tx.price.toString()
+                + tx.to + tx.value.toString() + tx.forgerGroupTx.AddGroup
+                + tx.forgerGroupTx.address + tx.forgerGroupTx.pubKey
+                + tx.forgerGroupTx.stake.toString();
+    } else if (tx.txType === TxType.PenaltyTx) {
+        return 'penaltyTx';
+    }
 };
 
 const serializeHeader = (header: Header): string => {
-    return 'header';
-};
-
-const calcHeaderHash = (header: Header): string => {
-    return sha256(serializeHeader(header));
+    return header.blockRandom + header.forger + header.forgerPubkey
+             + header.groupNumber.toString() + header.height.toString()
+             + header.prevHash + header.receiptRoot + header.timestamp.toString()
+             + header.totalWeight.toString() + header.txRootHash
+             + header.version + header.weight.toString();
 };
 
 const validateHeader = (header: Header): boolean => {
@@ -202,14 +341,6 @@ const validateHeader = (header: Header): boolean => {
     }
 
     return true;
-};
-
-const generateBlock = (): Block => {
-    // TOOD: generate empty block
-    const header = new Header();
-    const body = new Body();
-
-    return new Block(header, body);
 };
 
 const validateBlock = (block: Block): boolean => {
@@ -286,7 +417,8 @@ const validateTxRootHash = (block: Block): boolean => {
 };
 
 const txSignatureValid = (tx: Transaction): boolean => {
-    return verify(tx.signature, tx.from, calcTxHash(tx));
+    // return verify(tx.signature, tx.from, calcTxHash(tx));
+    return true;
 };
 
 const deriveGroupNumber = (address: string, rnd: string, height: number): number => {
@@ -297,9 +429,8 @@ const deriveGroupNumber = (address: string, rnd: string, height: number): number
 
 const deriveRate = (address: string, rnd: string, height: number): number => {
     const data = address + rnd + height.toString(16);
-    const rate = parseInt(sha256(data).slice(data.length - 4), 16) % 4;
-
-    return rate;
+    
+    return parseInt(sha256(data).slice(data.length - 4), 16) % 4;
 };
 
 const addCommitteeGroup = (tx: Transaction): void => {
@@ -307,7 +438,7 @@ const addCommitteeGroup = (tx: Transaction): void => {
         throw new Error('expect ForgeerGroupTx tx type');
     }
 
-    const bkt = persistBucket(ForgerGroupTx._$info.name);
+    const bkt = persistBucket(ForgerCommittee._$info.name);
     const committee = bkt.get<string, [ForgerCommittee]>('FC')[0];
     const forger = new Forger();
     const inv = new Inv();

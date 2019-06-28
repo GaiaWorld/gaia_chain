@@ -1,36 +1,47 @@
 /**
  * main function
  */
-import { persistBucket } from '../util/db';
+import { calcTxHash, getTipHeight } from '../chain/blockchain';
+import { INV_MSG_TYPE } from '../net/msg';
+import { Inv } from '../net/server/rpc.s';
+import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { setTimer } from '../util/task';
-import { Forger } from './schema.s';
-
-const test = (): void => {
-    const f = new Forger();
-    f.initWeigth = 0;
-    f.lastHeight = 0;
-    f.lastWeight = 0;
-    f.stake = 0;
-    f.groupNumber = 0;
-
-    const bkt = persistBucket(Forger._$info.name);
-    bkt.put('hello1', f);
-    bkt.put('hello2', f);
-    bkt.put('hello3', f);
-
-    console.log(bkt.get('hello1'));
-    console.log(bkt.get('hello2'));
-    console.log(bkt.get('hello3'));
-
-};
+import { buildForgerCommittee, generateTxs } from '../util/test_helper';
+import { bestWeightAddr, generateBlock, getCommitteeConfig, getMiningConfig, increaseWeight, isSyncing, newBlockChain } from './blockchain';
 
 const start = (): void => {
-    test();
+    newBlockChain();
+    buildForgerCommittee();
+    if (!isSyncing()) {
+        setTimer(() => {
+            increaseWeight();
+            console.log('\n==========================================================================================\n');
+            const miningCfg = getMiningConfig();
+            const cc = getCommitteeConfig();
+            const bestAddr = bestWeightAddr();
+            console.log('maxGroupNumber: ---------------- ', cc.maxGroupNumber);
+            if (getTipHeight() % cc.maxGroupNumber === miningCfg.groupNumber) {
+                if (bestAddr === miningCfg.beneficiary) {
+                    const block = generateBlock();
+                    console.log('\n\ngenerate new block hash  : ------------ ', block.body.headerHash);
+                    const invmsg = new Inv();
+                    invmsg.hash = block.body.headerHash;
+                    invmsg.height = block.header.height;
+                    invmsg.MsgType = INV_MSG_TYPE.MSG_BLOCK;
 
-    setTimer(() => {
-        console.log('xxxxxxxxx');
-    }, null, 5000);
+                    // const newTxs = generateTxs(1);
+                    // const invmsg2 = new Inv();
+                    // invmsg2.hash = calcTxHash(newTxs[0]);
+                    // invmsg2.height = 0;
+                    // invmsg2.MsgType = INV_MSG_TYPE.MSG_TX;
 
+                    notifyNewBlock(invmsg);
+                    // notifyNewTx(invmsg2);
+                }
+            }
+        }, null, 5000);
+    }
+    
     console.log('starting gaia ......');
 };
 
