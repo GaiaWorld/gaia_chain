@@ -93,6 +93,7 @@ export const getBlock = (invMsg: Inv): Block => {
 };
 
 export const newTxsReach = (txs: Transaction[]): void => {
+    console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (validateTx(tx)) {
             const txBkt = persistBucket(Transaction._$info.name);
@@ -123,6 +124,7 @@ export const newTxsReach = (txs: Transaction[]): void => {
 };
 
 export const newBlocksReach = (bodys: Body[]): void => {
+    console.log('\n\nnewBlocksReach: ---------------------- ', bodys);
     // validate blocks
     // add to chain store
     const bodyBkt = persistBucket(Body._$info.name);
@@ -139,6 +141,7 @@ export const newBlocksReach = (bodys: Body[]): void => {
 };
 
 export const newHeadersReach = (headers: Header[]): void => {
+    console.log('\n\nnewHeadersReach: ---------------------- ', headers);
     // validate headers
     // retrive corresponding body
     // reassemly to a complete block
@@ -172,7 +175,7 @@ export const increaseWeight = (): void => {
                     groups[i][j].lastWeight += groups[i][j].initWeigth;
                 }
             }
-            console.log('group: ', groups[i]);
+            // console.log('group: ', groups[i]);
         }
     }
     bkt.put('FC', fc);
@@ -251,7 +254,6 @@ export const newBlockChain = (): void => {
 };
 
 export const generateBlock = (): Block => {
-    console.log('generate block .....');
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
     const miningCfg = getMiningConfig();
@@ -415,7 +417,8 @@ const validateTxRootHash = (block: Block): boolean => {
 };
 
 const txSignatureValid = (tx: Transaction): boolean => {
-    return verify(tx.signature, tx.from, calcTxHash(tx));
+    // return verify(tx.signature, tx.from, calcTxHash(tx));
+    return true;
 };
 
 const deriveGroupNumber = (address: string, rnd: string, height: number): number => {
@@ -426,9 +429,8 @@ const deriveGroupNumber = (address: string, rnd: string, height: number): number
 
 const deriveRate = (address: string, rnd: string, height: number): number => {
     const data = address + rnd + height.toString(16);
-    const rate = parseInt(sha256(data).slice(data.length - 4), 16) % 4;
-
-    return rate;
+    
+    return parseInt(sha256(data).slice(data.length - 4), 16) % 4;
 };
 
 const addCommitteeGroup = (tx: Transaction): void => {
