@@ -1,10 +1,8 @@
 // forger
-#[db=file,primary=pk]
 struct Forger {
-    pk: String,
     address: String,
     pubKey: String,
-    initWeigth: usize,
+    initWeight: usize,
     lastWeight: usize,
     lastHeight: usize,
     groupNumber: u16,
@@ -12,14 +10,24 @@ struct Forger {
 }
 
 // forger committee
-// TODO:增加矿工表，主键对应槽位，值为Forger数组
-// 加入和退出表，主键为正式加入矿工委员会的高度
-#[db=file,primary=pk]
-struct ForgerCommittee {
-    pk: String,
-    waitsForRemove: HashMap<String, Forger>,
-    waitsForAdd: HashMap<String, Forger>,
-    groups: [[Forger]],
+#[db=file,primary=slot]
+struct ForgerCommittee  {
+    slot: usize,
+    forger: [Forger],
+}
+
+// forger wait to add to committee
+#[db=file,primary=height]
+struct ForgerWaitAdd {
+    height: usize,
+    forgers: [Forger],
+}
+
+// forger wait to exit committee
+#[db=file,primary=height]
+struct ForgerWaitExit {
+    height: usize,
+    forgers: [Forger],
 }
 
 #[db=file,primary=pk]
@@ -51,24 +59,28 @@ enum TxType {
     PenaltyTx = 3,
 }
 
-struct ForgerGroupTx {
+#[db=file,primary=txHash]
+struct ForgerCommitteeTx {
+    txHash: String,
     // true: add
     // false exit
     AddGroup: bool,
     address: String,
     pubKey: String,
     stake: usize,
+    signature: String,
 }
 
+#[db=file,primary=txHash]
 struct PenaltyTx {
-    // TODO
+    txHash: String,
+    signature: String,
 }
 
 // spend tx
-// TODO: 将矿工加入退出交易和惩罚交易单独建表
-#[db=file,primary=pk]
+#[db=file,primary=txHash]
 struct Transaction {
-    pk: String,
+    txHash: String,
     nonce: usize,
     gas: usize,
     price: usize,
@@ -77,8 +89,6 @@ struct Transaction {
     value: usize,
     lastOutputValue: usize,
     txType: TxType,
-    forgerGroupTx: Option<ForgerGroupTx>,
-    penaltyTx: Option<PenaltyTx>,
     payload: String,
     signature: String,
 }
@@ -110,9 +120,10 @@ struct Receipt {
 }
 
 // block header
-#[db=file,primary=pk]
+#[db=file,primary=bhHash]
 struct Header {
-    pk: String,
+    // block header hash
+    bhHash: String,
     version: String,
     height: usize,
     prevHash: String,
@@ -129,10 +140,10 @@ struct Header {
 }
 
 // block body
-#[db=file,primary=pk]
+#[db=file,primary=bhHash]
 struct Body {
-    pk: String,
-    headerHash: String,
+    // block header hash
+    bhHash: String,
     txs: [Transaction],
 }
 
@@ -147,9 +158,8 @@ struct HeaderChain {
 }
 
 // account
-#[db=file,primary=pk]
+#[db=file,primary=address]
 struct Account {
-    pk: String,
     address: String,
     nonce: usize,
     inputAmount: usize,
@@ -157,12 +167,22 @@ struct Account {
     codeHash: String,
 }
 
-#[db=memory,primary=pk]
-struct TxPool {
-    pk: String,
-    address: String,
+#[db=memory,primary=txHash]
+struct SpendTxPool {
     txHash: String,
     tx: Transaction,
+}
+
+#[db=file,primary=txHash]
+struct ForgerCommitteeTxPool {
+    txHash: String,
+    tx: ForgerCommitteeTx,
+}
+
+#[db=file,primary=txHash]
+struct PenaltyTxPool {
+    txHash: String,
+    tx: PenaltyTx,
 }
 
 #[db=file,primary=pk]
