@@ -15,14 +15,16 @@ struct Peer{
     strNetAddr:String,// 对等节点的IP和端口
     nNodeType:NODE_TYPE,//节点类型，默认都是全节点
     strVersion:String,// 对等节点的当前版本
-    nStartingHeight:u64,// 链接建立时对等节点的高度
-    nStartingTotalWeigth:u64,// 链接建立时对等节点的总权重
-    nCurrentHeight:u64,//对等节点的当前高度
-    nCurrentTotalWeight:u64,//对等节点的当前总权重
-    nLocalStartingHeight:u64,//链接建立时候自己的高度
-    nlocalStartingTotalWeigth:u64,//链接建立时候自己的总权重
+    nStartingHeight:usize,// 链接建立时对等节点的高度
+    nStartingTotalWeigth:usize,// 链接建立时对等节点的总权重
+    nCurrentHeight:usize,//对等节点的当前高度
+    nCurrentTotalWeight:usize,//对等节点的当前总权重
+    nLocalStartingHeight:usize,//链接建立时候自己的高度
+    nlocalStartingTotalWeigth:usize,//链接建立时候自己的总权重
     strPublicKey:String,// 公钥，可以生成地址
     nConnected:CONNECTED,
+    subTx:boolean,
+    subBlock:boolean,
     // nTimeConnected:number,// 对等节点连接上的时间点，并不是连接所需的时间
     // bWhiteListed:boolean,// 该节点是否在我的白名单中
     // bPauseRecv:boolean,// 暂停接收该节点的数据

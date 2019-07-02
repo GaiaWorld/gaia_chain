@@ -1,8 +1,9 @@
-import { getNodeType, getServiceFlags, getTipHeight, getVersion } from '../../chain/blockchain';
+import { getGenesisHash, getNodeType, getServiceFlags, getTipHeight, getTipTotalWeight, getVersion } from '../../chain/blockchain';
 import * as bigInt from '../../pi/bigint/biginteger';
 import { getCurrentPubkey } from '../../pubkeyMgr';
 import { memoryBucket } from '../../util/db';
 import { getNextConnNonce } from '../connMgr';
+import { DEFAULT_STR_ERR } from '../const';
 import { CONNECTED, NODE_TYPE, Peer } from '../pNode.s';
 import { DEFAULT_PEER, OWN_NET_ADDR } from '../server/cfg/net';
 import { shakeHands, subscribeBlock, subscribeTx } from '../server/rpc.p';
@@ -27,37 +28,81 @@ export const launch = () => {
             // TODO:判断PNode中是否已经有该节点了，如果有该节点了则直接退出
             const peerBkt = memoryBucket(Peer._$info.name);
             if (peerBkt.get<string,[Peer]>(netAddr)[0] === undefined) {
-                const peer = initPeer(netAddr,CONNECTED.CONNECTING);
+                const shakeHandsInfo = makeShakeHandsInfo();
+
+                const peer = initPeer(netAddr,CONNECTED.CONNECTING,shakeHandsInfo.nStartingHeight, shakeHandsInfo.nStartingTotalWeigth);
+                peerBkt.put(netAddr,peer);
+                clientRequest(netAddr, shakeHands, makeShakeHandsInfo(),(r:ShakeHandsInfo,pNetAddr:string) => {
+                    const existPeer = peerBkt.get<string,[Peer]>(pNetAddr)[0];
+                    if (existPeer === undefined) {
+                        console.log(`1 fail to find the peer from the Peer Memory DB, launch.ts`);
+
+                        return;
+                    }
+                    if (r.strNetAddr === DEFAULT_STR_ERR) {
+                        existPeer.nConnected = CONNECTED.DISCONNECTED;                        
+                    } else {
+                        existPeer.nNodeType = r.nNodeType;
+                        existPeer.strVersion = r.strVersion;
+                        existPeer.nStartingHeight = r.nStartingHeight;
+                        existPeer.nStartingTotalWeigth = r.nStartingTotalWeigth;
+                        existPeer.nCurrentHeight = r.nStartingHeight;
+                        existPeer.nCurrentTotalWeight = r.nStartingTotalWeigth;
+                        existPeer.strPublicKey = r.strPublicKey;
+                        existPeer.nConnected = CONNECTED.SUCCESS;
+                    }
+                    peerBkt.put(pNetAddr, existPeer);
+                    if (r.strNetAddr !== DEFAULT_STR_ERR) {
+                        clientRequest(netAddr, subscribeTx, getOwnNetAddr(), (txRst:boolean,pTxNetAddr:string) => {
+                            if (!txRst) {
+                                console.log(`fail to sub tx from ${pTxNetAddr}, launch.ts`);
+
+                                return;
+                            }   
+                            const existTxPeer = peerBkt.get<string,[Peer]>(pTxNetAddr)[0];
+                            if (existTxPeer === undefined) {
+                                console.log(`2 fail to find the peer from the Peer Memory DB, launch.ts`);
+        
+                                return;
+                            }
+                            existTxPeer.subTx = true;
+                            peerBkt.put(pTxNetAddr, existTxPeer);   
+                            console.log(`success to sub tx from ${pTxNetAddr}, launch.ts`);                                                      
+                        });  
+                        clientRequest(netAddr, subscribeBlock, getOwnNetAddr(), (blockRst:boolean,pBlockNetAddr:string) => {
+                            if (!blockRst) {                                
+                                console.log(`fail to sub block from ${pBlockNetAddr}, launch.ts`);
+
+                                return;
+                            }  
+                            const existBlockPeer = peerBkt.get<string,[Peer]>(pBlockNetAddr)[0];
+                            if (existBlockPeer === undefined) {
+                                console.log(`3 fail to find the peer from the Peer Memory DB, launch.ts`);
+        
+                                return;
+                            }
+                            existBlockPeer.subBlock = true;
+                            peerBkt.put(pBlockNetAddr, existBlockPeer);
+                            console.log(`success to sub tx from ${pBlockNetAddr}, launch.ts`);
+                        });                      
+                    }
+                    console.log(`success shakehands with ${pNetAddr}`);
+                });
 
             }
             
-            // clientRequest(netAddr, shakeHands, makeShakeHandsInfo(),(r:ShakeHandsInfo,pNetAddr:string) => {
-            //     console.log(`success shakehands with ${pNetAddr}`);
-            // // FIXME:just solve the rpc issue
-            //     clientRequest(netAddr, subscribeTx, getOwnNetAddr(), (rst:boolean) => {
-            //         if (rst) {
-            //             console.log(`subscribe tx success`);
-            //         }
-            //         clientRequest(netAddr, subscribeBlock, getOwnNetAddr(), (rst2:boolean) => {
-            //             if (rst2) {
-            //                 console.log(`subscribe block success`);
-            //             }
-            //         });
-            //     });
-
-            // });
         }
     });
 };
 
 const initPeer = (netAddr:string, nConnected:CONNECTED = CONNECTED.CONNECTING, 
-    nLocalStartingHeight:bigInt.BigInteger = bigInt.BigInteger(0),
-    nlocalStartingTotalWeigth:bigInt.BigInteger = bigInt.BigInteger(0),
+    nLocalStartingHeight:number = 0,
+    nlocalStartingTotalWeigth:number = 0,
     nNodeType:NODE_TYPE = NODE_TYPE.UNKNOWN,
-    strVersion:string = '', nStartingHeight:bigInt.BigInteger = bigInt.BigInteger(0),
-    nStartingTotalWeigth:bigInt.BigInteger = bigInt.BigInteger(0),nCurrentHeight:bigInt.BigInteger = bigInt.BigInteger(0),
-    nCurrentTotalWeight:bigInt.BigInteger = bigInt.BigInteger(0),
-    strPublicKey:string = ''):Peer => {
+    strVersion:string = '', nStartingHeight:number = 0,
+    nStartingTotalWeigth:number = 0,nCurrentHeight:number = 0,
+    nCurrentTotalWeight:number = 0,
+    strPublicKey:string = '', subTx:boolean = false, subBlock:boolean = false):Peer => {
     const peer = new Peer();
     // peerInfo
     peer.strNetAddr = netAddr;
@@ -73,6 +118,9 @@ const initPeer = (netAddr:string, nConnected:CONNECTED = CONNECTED.CONNECTING,
     peer.nCurrentHeight = nCurrentHeight;
     peer.nCurrentTotalWeight = nCurrentTotalWeight;
     peer.strPublicKey = strPublicKey;
+
+    peer.subTx = subTx;
+    peer.subBlock = subBlock; 
     
     return peer;
 };
@@ -80,11 +128,14 @@ const initPeer = (netAddr:string, nConnected:CONNECTED = CONNECTED.CONNECTING,
 /**
  * get all the peers from the db or the default config file
  */
-// tslint:disable-next-line:typedef
-export const getPeers = () => {
-    let peers = getPeersFromDb();
-    // tslint:disable-next-line:no-unused-expression
-    (peers.length === 0) && (peers = getPeersFromCfgFile());
+// TODO:真正的去获取对等节点
+export const getPeers = ():string[] => {
+    const peers = getPeersFromDb();
+    getPeersFromCfgFile().forEach((peer:string) => {
+        if (peers.indexOf(peer) < 0) {
+            peers.push(peer);
+        }
+    });
 
     return peers;
 };
@@ -104,32 +155,18 @@ export const getOwnNetAddr = (): string => {
     return OWN_NET_ADDR;
 };
 
-export const con2Server = (netAddr: string) => {
-    return '';
-};
-
 /**
  * 生成握手信息
  */
 export const makeShakeHandsInfo = ():ShakeHandsInfo => {
     const shakeHandsInfo = new ShakeHandsInfo();
-    shakeHandsInfo.strVersion = getVersion();
-    shakeHandsInfo.nStartingHeight = getTipHeight();
-    shakeHandsInfo.nServiceFlags = getServiceFlags();
-    shakeHandsInfo.nNodeType = getNodeType();
-    shakeHandsInfo.strLocalClientAddr = getLocalAddr();
-    shakeHandsInfo.strLocalServerAddr = getOwnNetAddr();
-    shakeHandsInfo.nPublicKey = getCurrentPubkey();
-    shakeHandsInfo.nLocalHostNonce = getNextConnNonce();
-    shakeHandsInfo.bPing = true;
-    shakeHandsInfo.bPong = true;
-
     shakeHandsInfo.strNetAddr = getOwnNetAddr();
     shakeHandsInfo.nNodeType = getNodeType();
     shakeHandsInfo.strVersion = getVersion();
-    shakeHandsInfo.nStartingHeight: number;
-    shakeHandsInfo.nStartingTotalWeigth: bigInt.BigInteger;
+    shakeHandsInfo.nStartingHeight = getTipHeight();
+    shakeHandsInfo.nStartingTotalWeigth = getTipTotalWeight();
     shakeHandsInfo.strPublicKey = getCurrentPubkey();
-    
+    shakeHandsInfo.strGensisHash = getGenesisHash();
+
     return shakeHandsInfo;
 };

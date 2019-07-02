@@ -1,7 +1,7 @@
 // forger
 struct Forger {
     address: String,
-    pubKey: String,
+    pubKey: [u8],
     initWeight: usize,
     lastWeight: usize,
     lastHeight: usize,
@@ -13,7 +13,7 @@ struct Forger {
 #[db=file,primary=slot]
 struct ForgerCommittee  {
     slot: usize,
-    forger: [Forger],
+    forgers: [Forger],
 }
 
 // forger wait to add to committee
@@ -66,15 +66,13 @@ struct ForgerCommitteeTx {
     // false exit
     AddGroup: bool,
     address: String,
-    pubKey: String,
     stake: usize,
-    signature: String,
 }
 
 #[db=file,primary=txHash]
 struct PenaltyTx {
     txHash: String,
-    signature: String,
+    loseStake: usize,
 }
 
 // spend tx
@@ -89,8 +87,11 @@ struct Transaction {
     value: usize,
     lastOutputValue: usize,
     txType: TxType,
-    payload: String,
-    signature: String,
+    forgerTx: Option<ForgerCommitteeTx>,
+    penaltyTx: Option<PenaltyTx>,
+    payload: Option<[u8]>,
+    pubKey: [u8],
+    signature: [u8],
 }
 
 // Log
@@ -134,9 +135,15 @@ struct Header {
     forger: String,
     groupNumber: u16,
     timestamp: usize,
-    forgerPubkey: String,
-    blockRandom: String,
-    signature: String,
+    forgerPubkey: [u8],
+    blockRandom: [u8],
+    signature: [u8],
+}
+
+#[db=file,primary=height]
+struct Height2Hash {
+    height: usize,
+    bhHash: String,
 }
 
 // block body
@@ -147,14 +154,15 @@ struct Body {
     txs: [Transaction],
 }
 
-// header chain
+// blockchain head info
 #[db=file,primary=pk]
-struct HeaderChain {
+struct ChainHead {
     pk: String,
-    head: usize,
+    headHash: String,
     height: usize,
     genesisHash: String,
-    pervHash: String,
+    totalWeight: usize,
+    prevHash: String,
 }
 
 // account
@@ -189,8 +197,9 @@ struct PenaltyTxPool {
 struct MiningConfig {
     pk: String,
     beneficiary: String,
-    privateKey: String,
-    blsRand: String,
+    privateKey: [u8],
+    pubKey: [u8],
+    blsRand: [u8],
     groupNumber: usize,
 }
 

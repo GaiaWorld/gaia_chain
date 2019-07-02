@@ -5,7 +5,8 @@ struct ShakeHandsInfo {
     nNodeType:u8,
     strVersion:String,
     nStartingHeight:u32,
-    nStartingTotalWeigth:u64,
+    nStartingTotalWeigth:usize,
+    strGensisHash:String,
     strPublicKey:String,
 }
 

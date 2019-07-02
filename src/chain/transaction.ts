@@ -1,81 +1,115 @@
+import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, num2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
+import { ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
 
-import { H160, H256 } from '../pi_pt/rust/hash_value';
+// don't serialize tx.hash, tx.signature
+export const serializeTx = (tx: Transaction): Uint8Array => {
+    const buf = [];
+    append2Buf(buf, new TextEncoder().encode(tx.from));
+    append2Buf(buf, num2Buf(tx.gas));
+    append2Buf(buf, num2Buf(tx.lastOutputValue));
+    append2Buf(buf, num2Buf(tx.nonce));
+    append2Buf(buf, tx.payload);
+    append2Buf(buf, num2Buf(tx.price));
+    append2Buf(buf, new TextEncoder().encode(tx.to));
+    append2Buf(buf, num2Buf(tx.value));
+    append2Buf(buf, tx.pubKey);
+    append2Buf(buf, num2Buf(tx.txType));
 
-/**
- * transaction types
- */
-export enum TxType {
-    // normal spend transaction
-    SpendTx,
-    // user asks to enter forge group
-    AddForgerGroupTx,
-    // user exits forger group
-    ExitForgerGroupTx,
-    // penalty
-    PenaltyTx
-}
+    switch (tx.txType) {
+        case TxType.SpendTx:
+            return new Uint8Array(buf);
+        case TxType.ForgerGroupTx:
+            append2Buf(buf, serializeForgerCommitteeTx(tx.forgerTx));
 
-/**
- * 
- */
-export class Transaction {
-    public nonce: number;
-    public gas: number;
-    public price: number;
-    public to: H160;
-    public value: number;
+            return new Uint8Array(buf);
+        case TxType.PenaltyTx:
+            append2Buf(buf, serializePenaltyTx(tx.penaltyTx));
 
-    public lastOutputValue: number;
+            return new Uint8Array(buf);
 
-    // transaction type
-    public txType: TxType;
-    // two use cases for this field:
-    // 1. as normal account, it will be used as a transactoin note
-    // 2. as contract account, it contains call code for this transaction
-    public payload: Uint8Array;
+        default:
+    }
+};
 
-    // transaction signature
-    public v: number;
-    public r: number;
-    public s: number;
-}
+export const serializeForgerCommitteeTx = (tx: ForgerCommitteeTx): Uint8Array => {
+    const buf = [];
+    append2Buf(buf, new TextEncoder().encode(tx.address));
+    append2Buf(buf, num2Buf(tx.stake));
 
-export class Receipt {
-    // transaction success or fail
-    public status: boolean;
-    // tx gas used
-    public gasUsed: number;
-    // transaction hash
-    public txHash: H256;
-    // block hash
-    public blockHash: H256;
-    // block number
-    public blockNumber: number;
-    // transaction index in Transaction[] array
-    public txIndex: number;
-    // tx result log
-    public log: Log[];
-}
+    return new Uint8Array(buf);
+};
 
-export class TxPool {
-    public poolConfig: TxPoolConfig;
-    // // All currently processable transactions
-    // pending: Map<H160, Transaction[]>;
-    // // Queued but non-processable transactions
-    // queue: Map<H160, Transaction[]>;
-    // All transactions sorted by price
-    public priced: Transaction[];
-}
+export const serializePenaltyTx = (tx: PenaltyTx): Uint8Array => {
+    const buf = [];
+    append2Buf(buf, num2Buf(tx.loseStake));
 
-interface TxPoolConfig {
-    // minimum gas price this tx pool could accept
-    readonly priceLimit: number;
-    // // Maximum number of executable transaction slots for all accounts
-    // readonly maxExecutableTxs: number;
-    // // Maximum number of non-executable transaction slots permitted per account
-    // readonly maxNonExecutableTxs: number;
-    // life time of an non executable txs
-    readonly expire: number;
-    // unconfirmed tx size
-    readonly maxSize: number;
-}
+    return new Uint8Array(buf);
+};
+
+export const calcTxHash = (serializedTx: Uint8Array): string => {
+    return buf2Hex(sha256(serializedTx));
+};
+
+export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
+    tx.txHash = calcTxHash(serializeTx(tx));
+    tx.signature = sign(privKey, hex2Buf(tx.txHash));
+};
+
+export const append2Buf = (dest: Number[], src: Uint8Array): void => {
+    for (const elem of src) {
+        dest.push(elem);
+    }
+};
+
+export const merkleRootHash = (txHashes: Uint8Array[]): string => {
+    let hashes = [];
+    for (const tx of txHashes) {
+        hashes.push(tx);
+    }
+
+    if (hashes.length % 2 === 1) {
+        hashes.push(hashes[hashes.length - 1]);
+    }
+
+    // tslint:disable-next-line:no-constant-condition
+    while (true) {
+        const newHashes = [];
+        for (let i = 0; i < hashes.length; i += 2) {
+            newHashes.push(doubleSha256(hashes[i], hashes[i + 1]));
+        }
+        hashes = newHashes;
+        if (hashes.length === 1) {
+            break;
+        }
+    }
+
+    return hashes[0];
+};
+
+const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {
+    const buf = [];
+    append2Buf(buf, h1);
+    append2Buf(buf, h2);
+
+    return sha256(new Uint8Array(buf));
+};
+
+const testSerializeTx = (): void => {
+    const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
+
+    const tx = new Transaction();
+    tx.from = pubKeyToAddress(pubKey);
+    tx.gas = 1000;
+    tx.lastOutputValue = 1000;
+    tx.nonce = 1;
+    tx.payload = new TextEncoder().encode('abc');
+    tx.price = 10;
+    tx.pubKey = pubKey;
+    tx.to = pubKeyToAddress(pubKey);
+    tx.txType = TxType.SpendTx;
+    tx.value = 100;
+
+    signTx(privKey, tx);
+    console.log('txHash: ', tx.txHash);
+    console.log('tx sig: ', buf2Hex(tx.signature));
+};
