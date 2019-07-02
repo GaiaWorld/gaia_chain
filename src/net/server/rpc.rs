@@ -1,17 +1,16 @@
 #[path=../../chain/]
 use schema.s::{Transaction, Header, Body};
 struct ShakeHandsInfo {
+    strNetAddr:String,
+    nNodeType:u8,
     strVersion:String,
     nStartingHeight:u32,
-    nServiceFlags:u8,
-    nNodeType:u8,
-    strLocalClientAddr:String,
-    strLocalServerAddr:String,
-    nPublicKey:String,
-    nLocalHostNonce:u32,
-    bPing:bool,
-    bPong:bool
+    nStartingTotalWeigth:u64,
+    strPublicKey:String,
 }
+
+
+
 
 struct TxArray{
     arr:&[Transaction]

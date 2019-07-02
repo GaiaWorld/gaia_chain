@@ -2,14 +2,13 @@
  * block chain
  */
 
-import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxPool, TxType } from './schema.s';
-
-import { NODE_TYPE } from '../net/pNode';
+import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
+import { H160, H256 } from '../pi_pt/rust/hash_value';
 import { getRand, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { generateTxs } from '../util/test_helper';
+import { Body, CommitteeConfig, Forger, ForgerCommittee, ForgerGroupTx, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxPool, TxType } from './schema.s';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -159,7 +158,7 @@ export const newHeadersReach = (headers: Header[]): void => {
 export const adjustGroupPosistion = (seed: number): void => {
     // 更具随机种子修改两个槽位，
 
-}
+};
 
 // increase weight until it gets the maximum allowed
 export const increaseWeight = (): void => {

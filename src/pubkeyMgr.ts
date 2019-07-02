@@ -7,5 +7,5 @@
  */
 export const getCurrentPubkey = ():string => {
 
-    return "";
-}
+    return '';
+};
