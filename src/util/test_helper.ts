@@ -4,7 +4,8 @@
 
 import { calcTxHash } from '../chain/blockchain';
 import { CommitteeConfig, Forger, ForgerCommittee, Transaction } from '../chain/schema.s';
-import { getRand, pubKeyToAddress, sha256 } from './crypto';
+import { signTx } from '../chain/transaction';
+import { genKeyPairFromSeed, getRand, pubKeyToAddress, sha256 } from './crypto';
 import { persistBucket } from './db';
 
 export const buildForgerCommittee = (): void => {
@@ -47,21 +48,23 @@ export const generateTxs = (len: number): Transaction[] => {
     const txBkt = persistBucket(Transaction._$info.name);
     const res = [];
     for (let i = 0; i < len; i++) {
+        const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
+
         const t = new Transaction();
         t.gas = getRand(1)[0];
         t.txType = 0;
-        t.from = sha256(i.toString());
-        t.to = sha256(i.toString() + i.toString());
+        t.from = pubKeyToAddress(pubKey);
+        t.to = pubKeyToAddress(pubKey);
         t.price = getRand(1)[0];
-        t.signature = sha256(i.toString() + i.toString() + i.toString());
         t.value = getRand(1)[0];
         t.nonce = getRand(1)[0];
-        t.payload = 'payload';
+        t.payload = getRand(32);
         t.lastOutputValue = getRand(1)[0];
 
-        t.pk = 'T' + `${calcTxHash(t)}`;
-        txBkt.put(t.pk, t);
+        signTx(privKey, t);
+        t.signature = t.signature;
 
+        txBkt.put(t.txHash, t);
         res.push(t);
     }
 
