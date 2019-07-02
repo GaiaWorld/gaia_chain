@@ -1,7 +1,7 @@
 // forger
 struct Forger {
     address: String,
-    pubKey: String,
+    pubKey: [u8],
     initWeight: usize,
     lastWeight: usize,
     lastHeight: usize,
@@ -66,15 +66,13 @@ struct ForgerCommitteeTx {
     // false exit
     AddGroup: bool,
     address: String,
-    pubKey: String,
     stake: usize,
-    signature: String,
 }
 
 #[db=file,primary=txHash]
 struct PenaltyTx {
     txHash: String,
-    signature: String,
+    loseStake: usize,
 }
 
 // spend tx
@@ -89,8 +87,11 @@ struct Transaction {
     value: usize,
     lastOutputValue: usize,
     txType: TxType,
-    payload: String,
-    signature: String,
+    forgerTx: Option<ForgerCommitteeTx>,
+    penaltyTx: Option<PenaltyTx>,
+    payload: [u8],
+    pubKey: [u8],
+    signature: [u8],
 }
 
 // Log
@@ -134,9 +135,9 @@ struct Header {
     forger: String,
     groupNumber: u16,
     timestamp: usize,
-    forgerPubkey: String,
+    forgerPubkey: [u8],
     blockRandom: String,
-    signature: String,
+    signature: [u8],
 }
 
 // block body
@@ -189,7 +190,8 @@ struct PenaltyTxPool {
 struct MiningConfig {
     pk: String,
     beneficiary: String,
-    privateKey: String,
+    privateKey: [u8],
+    pubKey: [u8],
     blsRand: String,
     groupNumber: usize,
 }
