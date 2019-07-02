@@ -13,7 +13,7 @@ struct Forger {
 #[db=file,primary=slot]
 struct ForgerCommittee  {
     slot: usize,
-    forger: [Forger],
+    forgers: [Forger],
 }
 
 // forger wait to add to committee
@@ -164,6 +164,17 @@ struct HeaderChain {
     pervHash: String,
 }
 
+// blockchain head info
+#[db=file,primary=pk]
+struct ChainHead {
+    pk: String,
+    headHash: String,
+    height: usize,
+    genesisHash: String,
+    totalWeight: usize,
+    prevHash: String,
+}
+
 // account
 #[db=file,primary=address]
 struct Account {
@@ -198,7 +209,7 @@ struct MiningConfig {
     beneficiary: String,
     privateKey: [u8],
     pubKey: [u8],
-    blsRand: String,
+    blsRand: [u8],
     groupNumber: usize,
 }
 
