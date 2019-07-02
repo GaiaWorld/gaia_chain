@@ -2,33 +2,34 @@
  * crypto utils
  */
 
-import { H160, H256, H512 } from '../pi_pt/rust/hash_value';
+import { H256 } from '../pi_pt/rust/hash_value';
 import { digest, DigestAlgorithm } from '../pi_pt/rust/pi_crypto/digest';
-import { sign as sign2, verify as verify2 } from '../pi_pt/rust/pi_crypto/ed25519';
+import { keypair, sign as sign2, verify as verify2 } from '../pi_pt/rust/pi_crypto/ed25519';
 import { genSecureRandBytes } from '../pi_pt/rust/pi_crypto/random';
 
-export const pubKeyToAddress = (pubKey: string): string => {
-    // mock address
+export const pubKeyToAddress = (pubKey: Uint8Array): string => {
     const pubKeyHash = sha256(pubKey);
+    const hex = buf2Hex(pubKeyHash);
 
-    return pubKeyHash.slice(pubKeyHash.length - 40);
+    return buf2Hex(pubKeyHash).slice(hex.length - 40);
 };
 
-export const privKeyToAddress = (privKey: H512): H160 => {
-    // mock address
-    return H160.fromBuf(new Uint8Array(20));
+export const sha256 = (data: Uint8Array): Uint8Array => {
+    return digest(DigestAlgorithm.SHA256, data).asSliceU8();
 };
 
-export const sha256 = (data: string): string => {
-    return H256.fromBuf(digest(DigestAlgorithm.SHA256, new TextEncoder().encode(data)).asSliceU8()).tohex();
+export const sign = (privKey: Uint8Array, msgHash: Uint8Array): Uint8Array => {
+    return sign2(msgHash, privKey).take();
 };
 
-export const sign = (privKey: string, msg: string): string => {
-    return sign2(new TextEncoder().encode(msg), new TextEncoder().encode(privKey)).tohex();
+export const verify = (sig: Uint8Array, pubKey: Uint8Array, msgHash: Uint8Array): boolean => {
+    return verify2(msgHash, pubKey, sig);
 };
 
-export const verify = (sig: string, pubKey: string, msg: string): boolean => {
-    return verify2(new TextEncoder().encode(msg), new TextEncoder().encode(pubKey), new TextEncoder().encode(sig));
+export const genKeyPairFromSeed = (seed: Uint8Array): [Uint8Array, Uint8Array] => {
+    const [privKey, pubKey] = keypair(seed);
+
+    return [privKey.take(), pubKey.take()];
 };
 
 export const blsRand = (): H256 => {
@@ -52,4 +53,12 @@ export const buf2Hex = (buf: Uint8Array, lowercase: boolean = true): string => {
     }
 
     return s;
+};
+
+const testSignVerify = (): void => {
+    const msg = 'hello';
+    const msgHash = sha256(new TextEncoder().encode(msg));
+    const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
+    const sig = sign(privKey, msgHash);
+    console.log('verify result: ', verify(sig, pubKey, msgHash));
 };
