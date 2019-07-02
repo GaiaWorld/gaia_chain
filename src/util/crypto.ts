@@ -55,6 +55,20 @@ export const buf2Hex = (buf: Uint8Array, lowercase: boolean = true): string => {
     return s;
 };
 
+export const hex2Buf = (hex: string): Uint8Array => {
+    if (hex.length % 2 !== 0) {
+        throw new Error('Not a hex string');
+    }
+
+    const buf = [];
+    for (let i = 0; i < hex.length; i += 2) {
+        const segment = hex.slice(i, i + 2);
+        buf.push(parseInt(segment[0], 16) * 16 + parseInt(segment[1], 16));
+    }
+    
+    return new Uint8Array(buf);
+};
+
 const testSignVerify = (): void => {
     const msg = 'hello';
     const msgHash = sha256(new TextEncoder().encode(msg));
