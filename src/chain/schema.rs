@@ -89,7 +89,7 @@ struct Transaction {
     txType: TxType,
     forgerTx: Option<ForgerCommitteeTx>,
     penaltyTx: Option<PenaltyTx>,
-    payload: [u8],
+    payload: Option<[u8]>,
     pubKey: [u8],
     signature: [u8],
 }
@@ -138,6 +138,12 @@ struct Header {
     forgerPubkey: [u8],
     blockRandom: String,
     signature: [u8],
+}
+
+#[db=file,primary=height]
+struct Height2Hash {
+    height: usize,
+    bhHash: String,
 }
 
 // block body
