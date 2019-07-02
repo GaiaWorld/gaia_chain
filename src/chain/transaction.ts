@@ -4,26 +4,26 @@ import { ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
 // don't serialize tx.hash, tx.signature
 export const serializeTx = (tx: Transaction): Uint8Array => {
     const buf = [];
-    pushBuf(buf, new TextEncoder().encode(tx.from));
-    pushBuf(buf, num2Buf(tx.gas));
-    pushBuf(buf, num2Buf(tx.lastOutputValue));
-    pushBuf(buf, num2Buf(tx.nonce));
-    pushBuf(buf, tx.payload);
-    pushBuf(buf, num2Buf(tx.price));
-    pushBuf(buf, new TextEncoder().encode(tx.to));
-    pushBuf(buf, num2Buf(tx.value));
-    pushBuf(buf, tx.pubKey);
-    pushBuf(buf, num2Buf(tx.txType));
+    append2Buf(buf, new TextEncoder().encode(tx.from));
+    append2Buf(buf, num2Buf(tx.gas));
+    append2Buf(buf, num2Buf(tx.lastOutputValue));
+    append2Buf(buf, num2Buf(tx.nonce));
+    append2Buf(buf, tx.payload);
+    append2Buf(buf, num2Buf(tx.price));
+    append2Buf(buf, new TextEncoder().encode(tx.to));
+    append2Buf(buf, num2Buf(tx.value));
+    append2Buf(buf, tx.pubKey);
+    append2Buf(buf, num2Buf(tx.txType));
 
     switch (tx.txType) {
         case TxType.SpendTx:
             return new Uint8Array(buf);
         case TxType.ForgerGroupTx:
-            pushBuf(buf, serializeForgerCommitteeTx(tx.forgerTx));
+            append2Buf(buf, serializeForgerCommitteeTx(tx.forgerTx));
 
             return new Uint8Array(buf);
         case TxType.PenaltyTx:
-            pushBuf(buf, serializePenaltyTx(tx.penaltyTx));
+            append2Buf(buf, serializePenaltyTx(tx.penaltyTx));
 
             return new Uint8Array(buf);
 
@@ -33,15 +33,15 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
 
 export const serializeForgerCommitteeTx = (tx: ForgerCommitteeTx): Uint8Array => {
     const buf = [];
-    pushBuf(buf, new TextEncoder().encode(tx.address));
-    pushBuf(buf, num2Buf(tx.stake));
+    append2Buf(buf, new TextEncoder().encode(tx.address));
+    append2Buf(buf, num2Buf(tx.stake));
 
     return new Uint8Array(buf);
 };
 
 export const serializePenaltyTx = (tx: PenaltyTx): Uint8Array => {
     const buf = [];
-    pushBuf(buf, num2Buf(tx.loseStake));
+    append2Buf(buf, num2Buf(tx.loseStake));
 
     return new Uint8Array(buf);
 };
@@ -55,7 +55,7 @@ export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.signature = sign(privKey, hex2Buf(tx.txHash));
 };
 
-const pushBuf = (dest: Number[], src: Uint8Array): void => {
+export const append2Buf = (dest: Number[], src: Uint8Array): void => {
     for (const elem of src) {
         dest.push(elem);
     }
@@ -88,8 +88,8 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
 
 const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {
     const buf = [];
-    pushBuf(buf, h1);
-    pushBuf(buf, h2);
+    append2Buf(buf, h1);
+    append2Buf(buf, h2);
 
     return sha256(new Uint8Array(buf));
 };

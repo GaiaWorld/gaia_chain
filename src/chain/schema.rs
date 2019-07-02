@@ -136,7 +136,7 @@ struct Header {
     groupNumber: u16,
     timestamp: usize,
     forgerPubkey: [u8],
-    blockRandom: String,
+    blockRandom: [u8],
     signature: [u8],
 }
 
