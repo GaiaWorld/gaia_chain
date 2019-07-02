@@ -65,8 +65,18 @@ export const hex2Buf = (hex: string): Uint8Array => {
         const segment = hex.slice(i, i + 2);
         buf.push(parseInt(segment[0], 16) * 16 + parseInt(segment[1], 16));
     }
-    
+
     return new Uint8Array(buf);
+};
+
+// assuming 32 bit integer
+// encode number to uint8arry buffer
+export const num2Buf = (num: number): Uint8Array => {
+    const buf = new Uint8Array(4);
+    const view = new DataView(buf.buffer, 0, 4);
+    view.setUint32(0, num);
+
+    return buf;
 };
 
 const testSignVerify = (): void => {
