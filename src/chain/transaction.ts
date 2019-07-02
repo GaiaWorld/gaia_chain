@@ -61,6 +61,39 @@ const pushBuf = (dest: Number[], src: Uint8Array): void => {
     }
 };
 
+export const merkleRootHash = (txHashes: Uint8Array[]): string => {
+    let hashes = [];
+    for (const tx of txHashes) {
+        hashes.push(tx);
+    }
+
+    if (hashes.length % 2 === 1) {
+        hashes.push(hashes[hashes.length - 1]);
+    }
+
+    // tslint:disable-next-line:no-constant-condition
+    while (true) {
+        const newHashes = [];
+        for (let i = 0; i < hashes.length; i += 2) {
+            newHashes.push(doubleSha256(hashes[i], hashes[i + 1]));
+        }
+        hashes = newHashes;
+        if (hashes.length === 1) {
+            break;
+        }
+    }
+
+    return hashes[0];
+};
+
+const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {
+    const buf = [];
+    pushBuf(buf, h1);
+    pushBuf(buf, h2);
+
+    return sha256(new Uint8Array(buf));
+};
+
 const testSerializeTx = (): void => {
     const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
 
