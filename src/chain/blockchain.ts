@@ -2,15 +2,15 @@
  * block chain
  */
 
-import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxType } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, MiningConfig, Transaction, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
-import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, genKeyPairFromSeed, getRand, num2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { genKeyPairFromSeed, getRand, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
-import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
+import { calcHeaderHash } from './header';
+import { calcTxHash } from './transaction';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -25,7 +25,7 @@ export class Block {
 }
 
 export const getGenesisHash = (): string => {
-    return 'genesisHash';    
+    return GENESIS.hash;
 };
 
 export const getVersion = (): string => {
@@ -57,21 +57,21 @@ export const getNodeType = (): NODE_TYPE => {
 export const getTx = (invMsg: Inv): Transaction => {
     const bkt = persistBucket(Transaction._$info.name);
 
-    return bkt.get<string, [Transaction]>('T' + `${invMsg.hash}`)[0];
+    return bkt.get<string, [Transaction]>(invMsg.hash)[0];
 };
 
 export const getHeader = (invMsg: Inv): Header => {
     const bkt = persistBucket(Header._$info.name);
 
-    return bkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
+    return bkt.get<string, [Header]>(invMsg.hash)[0];
 };
 
 export const getBlock = (invMsg: Inv): Block => {
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
 
-    const header = headerBkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
-    const body = bodyBkt.get<string, [Body]>('B' + `${invMsg.hash}`)[0];
+    const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
+    const body = bodyBkt.get<string, [Body]>(invMsg.hash)[0];
 
     return new Block(header, body);
 };
@@ -252,72 +252,8 @@ export const newBlockChain = (): void => {
     return;
 };
 
-// TODO: 如何给矿工手续费
-export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, txs: Transaction[]): Block => {
-    const headerBkt = persistBucket(Header._$info.name);
-    const bodyBkt = persistBucket(Body._$info.name);
-
-    const header = new Header();
-    header.forger = miningCfg.beneficiary;
-    header.forgerPubkey = miningCfg.pubKey;
-    header.height = chainHead.height;
-    header.prevHash = chainHead.prevHash;
-    // not used right now
-    header.receiptRoot = '0';
-    header.timestamp = Date.now();
-    header.totalWeight = chainHead.totalWeight + forger.lastWeight;
-    header.txRootHash = calcTxRootHash(txs);
-    header.version = getVersion();
-    header.weight = forger.lastWeight;
-    header.blockRandom = miningCfg.blsRand;
-    header.groupNumber = forger.groupNumber;
-    header.bhHash = calcHeaderHash(header);
-
-    // store header
-    headerBkt.put(header.bhHash, header);
-
-    const body = new Body();
-    body.bhHash = calcHeaderHash(header);
-    body.txs = txs;
-
-    // store body
-    bodyBkt.put(body.bhHash, body);
-
-    return new Block(header, body);
-};
-
-export const calcHeaderHash = (header: Header): string => {
-    return buf2Hex(sha256(serializeHeader(header)));
-};
-
 // ================================================
 // helper function
-const calcTxRootHash = (txs: Transaction[]): string => {
-    const txHashes = [];
-    for (const tx of txs) {
-        txHashes.push(calcTxHash(serializeTx(tx)));
-    }
-
-    return merkleRootHash(txHashes);
-};
-
-const serializeHeader = (header: Header): Uint8Array => {
-    const bon = new BonBuffer();
-    bon.writeBin(header.blockRandom)
-        .writeUtf8(header.forger)
-        .writeBin(header.forgerPubkey)
-        .writeInt(header.groupNumber)
-        .writeInt(header.height)
-        .writeUtf8(header.prevHash)
-        .writeUtf8(header.receiptRoot)
-        .writeBigInt(header.timestamp)
-        .writeBigInt(header.totalWeight)
-        .writeUtf8(header.txRootHash)
-        .writeUtf8(header.version)
-        .writeBigInt(header.weight);
-
-    return bon.getBuffer();
-};
 
 const validateHeader = (header: Header): boolean => {
     if (header.version !== getVersion()) {
