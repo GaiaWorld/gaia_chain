@@ -2,15 +2,15 @@
  * block chain
  */
 
-import { H160, H256 } from '../pi_pt/rust/hash_value';
 import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxType } from './schema.s';
 
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
+import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, genKeyPairFromSeed, getRand, num2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
-import { append2Buf, calcTxHash, merkleRootHash, serializeTx } from './transaction';
+import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -302,21 +302,21 @@ const calcTxRootHash = (txs: Transaction[]): string => {
 };
 
 const serializeHeader = (header: Header): Uint8Array => {
-    const buf = [];
-    append2Buf(buf, header.blockRandom);
-    append2Buf(buf, new TextEncoder().encode(header.forger));
-    append2Buf(buf, header.forgerPubkey);
-    append2Buf(buf, num2Buf(header.groupNumber));
-    append2Buf(buf, num2Buf(header.height));
-    append2Buf(buf, new TextEncoder().encode(header.prevHash));
-    append2Buf(buf, new TextEncoder().encode(header.receiptRoot));
-    append2Buf(buf, num2Buf(header.timestamp));
-    append2Buf(buf, num2Buf(header.totalWeight));
-    append2Buf(buf, new TextEncoder().encode(header.txRootHash));
-    append2Buf(buf, new TextEncoder().encode(header.version));
-    append2Buf(buf, num2Buf(header.weight));
+    const bon = new BonBuffer();
+    bon.writeBin(header.blockRandom)
+        .writeUtf8(header.forger)
+        .writeBin(header.forgerPubkey)
+        .writeInt(header.groupNumber)
+        .writeInt(header.height)
+        .writeUtf8(header.prevHash)
+        .writeUtf8(header.receiptRoot)
+        .writeBigInt(header.timestamp)
+        .writeBigInt(header.totalWeight)
+        .writeUtf8(header.txRootHash)
+        .writeUtf8(header.version)
+        .writeBigInt(header.weight);
 
-    return new Uint8Array(buf);
+    return bon.getBuffer();
 };
 
 const validateHeader = (header: Header): boolean => {

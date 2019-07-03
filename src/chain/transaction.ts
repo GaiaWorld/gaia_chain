@@ -1,49 +1,50 @@
-import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, num2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
+import { BonBuffer } from '../pi/util/bon';
+import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
 import { ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
 
 // don't serialize tx.hash, tx.signature
 export const serializeTx = (tx: Transaction): Uint8Array => {
-    const buf = [];
-    append2Buf(buf, new TextEncoder().encode(tx.from));
-    append2Buf(buf, num2Buf(tx.gas));
-    append2Buf(buf, num2Buf(tx.lastOutputValue));
-    append2Buf(buf, num2Buf(tx.nonce));
-    append2Buf(buf, tx.payload);
-    append2Buf(buf, num2Buf(tx.price));
-    append2Buf(buf, new TextEncoder().encode(tx.to));
-    append2Buf(buf, num2Buf(tx.value));
-    append2Buf(buf, tx.pubKey);
-    append2Buf(buf, num2Buf(tx.txType));
+    const bon = new BonBuffer();
+    bon.writeUtf8(tx.from)
+        .writeBigInt(tx.gas)
+        .writeBigInt(tx.lastOutputValue)
+        .writeBigInt(tx.nonce)
+        .writeBin(tx.payload)
+        .writeBigInt(tx.price)
+        .writeUtf8(tx.to)
+        .writeBigInt(tx.value)
+        .writeBin(tx.pubKey)
+        .writeInt(tx.txType);
 
     switch (tx.txType) {
         case TxType.SpendTx:
-            return new Uint8Array(buf);
+            return bon.getBuffer();
         case TxType.ForgerGroupTx:
-            append2Buf(buf, serializeForgerCommitteeTx(tx.forgerTx));
+            bon.writeBin(serializeForgerCommitteeTx(tx.forgerTx));
 
-            return new Uint8Array(buf);
+            return bon.getBuffer();
         case TxType.PenaltyTx:
-            append2Buf(buf, serializePenaltyTx(tx.penaltyTx));
+            bon.writeBin(serializePenaltyTx(tx.penaltyTx));
 
-            return new Uint8Array(buf);
+            return bon.getBuffer();
 
         default:
     }
 };
 
 export const serializeForgerCommitteeTx = (tx: ForgerCommitteeTx): Uint8Array => {
-    const buf = [];
-    append2Buf(buf, new TextEncoder().encode(tx.address));
-    append2Buf(buf, num2Buf(tx.stake));
+    const bon = new BonBuffer();
+    bon.writeUtf8(tx.address)
+        .writeBigInt(tx.stake);
 
-    return new Uint8Array(buf);
+    return bon.getBuffer();
 };
 
 export const serializePenaltyTx = (tx: PenaltyTx): Uint8Array => {
-    const buf = [];
-    append2Buf(buf, num2Buf(tx.loseStake));
+    const bon = new BonBuffer();
+    bon.writeBigInt(tx.loseStake);
 
-    return new Uint8Array(buf);
+    return bon.getBuffer();
 };
 
 export const calcTxHash = (serializedTx: Uint8Array): string => {
@@ -87,11 +88,10 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
 };
 
 const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {
-    const buf = [];
-    append2Buf(buf, h1);
-    append2Buf(buf, h2);
+    const bon = new BonBuffer();
+    bon.writeBin(h1).writeBin(h2);
 
-    return sha256(new Uint8Array(buf));
+    return sha256(bon.getBuffer());
 };
 
 const testSerializeTx = (): void => {
