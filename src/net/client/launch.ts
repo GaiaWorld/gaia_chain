@@ -9,7 +9,6 @@ import { DEFAULT_PEER, OWN_NET_ADDR } from '../server/cfg/net';
 import { shakeHands, subscribeBlock, subscribeTx } from '../server/rpc.p';
 import { clientRequest } from '../server/rpc.r';
 import { ShakeHandsInfo } from '../server/rpc.s';
-import { getLocalAddr } from '../virtualEnv';
 
 /**
  * the main loop of client

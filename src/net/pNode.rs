@@ -23,8 +23,8 @@ struct Peer{
     nlocalStartingTotalWeigth:usize,//链接建立时候自己的总权重
     strPublicKey:String,// 公钥，可以生成地址
     nConnected:CONNECTED,
-    subTx:boolean,
-    subBlock:boolean,
+    subTx:bool,
+    subBlock:bool,
     // nTimeConnected:number,// 对等节点连接上的时间点，并不是连接所需的时间
     // bWhiteListed:boolean,// 该节点是否在我的白名单中
     // bPauseRecv:boolean,// 暂停接收该节点的数据

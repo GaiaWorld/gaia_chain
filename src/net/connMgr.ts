@@ -3,7 +3,7 @@
  */
 
 import { RpcClient } from '../pi_pt/net/rpc_client';
-import { PNode } from './pNode';
+import { Peer } from './pNode.s';
 
 /**
  * TODO:因为链接可能会很多，需要对链接进行管理，包括链接的上限，何时断开等
@@ -12,7 +12,7 @@ import { PNode } from './pNode';
 
 let connNonce = 0; 
 export const conMap = new Map<string, RpcClient>();
-const pNodeMap = new Map<string, PNode>();
+const pNodeMap = new Map<string, Peer>();
 
 // ========================================================  export
 
@@ -43,14 +43,14 @@ export const setConByNetAddr = (netAddr:string,client:RpcClient):void => {
 /**
  * 
  */
-export const getPeerNode = (netAddr:string):PNode|void => {
+export const getPeerNode = (netAddr:string):Peer|void => {
     return pNodeMap.get(netAddr);
 };
 
 /**
  * 
  */
-export const setPeerNode = (netAddr:string, pNode:PNode):void => {
+export const setPeerNode = (netAddr:string, pNode:Peer):void => {
     pNodeMap.set(netAddr, pNode);
 
     return ;

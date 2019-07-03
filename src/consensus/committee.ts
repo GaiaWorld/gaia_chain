@@ -319,5 +319,5 @@ const deriveInitWeight = (address: string, blockRandom: Uint8Array, height: numb
 
     const data = buf2Hex(sha256(bon.getBuffer()));
 
-    return (Math.log(stake * 0.01) / Math.log(10)) * parseInt(data.slice(data.length - 4), 16) % 4;
+    return (Math.log(stake) / Math.log(10) - 2.0) * parseInt(data.slice(data.length - 4), 16) % 4;
 };
