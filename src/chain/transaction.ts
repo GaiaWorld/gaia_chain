@@ -1,6 +1,6 @@
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
-import { ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
+import { Account, ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
 
 // don't serialize tx.hash, tx.signature
 export const serializeTx = (tx: Transaction): Uint8Array => {
@@ -54,6 +54,52 @@ export const calcTxHash = (serializedTx: Uint8Array): string => {
 export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.txHash = calcTxHash(serializeTx(tx));
     tx.signature = sign(privKey, hex2Buf(tx.txHash));
+};
+
+export const buildSignedSpendTx = (privKey: Uint8Array, fromAddr: Account, toAddr: Account, value: number): Transaction => {
+    const tx = new Transaction();
+    tx.from = fromAddr.address;
+    tx.gas = 21000;
+    // TODO ???
+    tx.lastOutputValue = fromAddr.outputAmount;
+    tx.nonce = fromAddr.nonce + 1;
+    tx.payload = new Uint8Array(0);
+    tx.price = 10;
+    tx.pubKey = fromAddr.pubKey;
+    tx.to = toAddr.address;
+    tx.txType = TxType.SpendTx;
+    tx.value = value;
+
+    signTx(privKey, tx);
+
+    return tx;
+};
+
+export const buildSignedCommitteeTx = (privKey: Uint8Array, fromAddr: Account, stake: number, addGroup: boolean): Transaction => {
+    const tx = new Transaction();
+    tx.from = fromAddr.address;
+    tx.gas = 21000;
+    // TODO ???
+    tx.lastOutputValue = fromAddr.outputAmount;
+    tx.nonce = fromAddr.nonce + 1;
+    tx.payload = new Uint8Array(0);
+    tx.price = 10;
+    tx.pubKey = fromAddr.pubKey;
+    // to aadress is empty
+    tx.to = '';
+    tx.txType = TxType.SpendTx;
+    tx.value = 0;
+
+    const fct = new ForgerCommitteeTx();
+    fct.AddGroup = addGroup;
+    fct.address = fromAddr.address;
+    fct.stake = stake;
+
+    tx.forgerTx = fct;
+
+    signTx(privKey, tx);
+
+    return tx;
 };
 
 export const merkleRootHash = (txHashes: Uint8Array[]): string => {

@@ -169,6 +169,7 @@ struct ChainHead {
 #[db=file,primary=address]
 struct Account {
     address: String,
+    pubKey: [u8],
     nonce: usize,
     inputAmount: usize,
     outputAmount: usize,
