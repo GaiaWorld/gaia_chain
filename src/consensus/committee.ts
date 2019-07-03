@@ -2,12 +2,15 @@
  * forge committee
  */
 
-import { Block, MAX_BLOCK_SIZE } from '../chain/blockchain';
+import { generateBlock } from '../chain/block';
+import { Block, getTipHeight, MAX_BLOCK_SIZE } from '../chain/blockchain';
+import { CommitteeConfig, ForgerCommittee, MiningConfig } from '../chain/schema.s';
 import { MemPool } from '../mempool/tx';
 import { CommitteeConfig } from '../params/committee';
 import { BonBuffer } from '../pi/util/bon';
 import { H160, H256 } from '../pi_pt/rust/hash_value';
 import { blsRand, buf2Hex, pubKeyToAddress, sha256 } from '../util/crypto';
+import { persistBucket } from '../util/db';
 import { GaiaEvent, GaiaEventBus } from '../util/eventBus';
 
 /**
@@ -36,7 +39,7 @@ enum RunningMode {
 /**
  * forger committee
  */
-export class ForgerCommittee {
+export class ForgerCommittee1 {
     // users that request to levave the committee but to take effective yet
     private waitsForRemove:  Map<H160, Forger>;
     // total 256 groups, every group has unlimited members
@@ -299,6 +302,19 @@ export class ForgerCommittee {
         this.groups[newGroupNumber].push(removed);
     }
 }
+
+export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
+    if (getTipHeight() % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
+        const forgersBkt = persistBucket(ForgerCommittee._$info.name);
+        const forgers = forgersBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0].forgers.sort();
+    }
+
+    return;
+};
+
+const calcWeightAtHeight = (forger: Forger, height: number): number => {
+    return;
+};
 
 const deriveNextGroupNumber = (address: string, blockRandom: Uint8Array, height: number): number => {
     const bon = new BonBuffer();
