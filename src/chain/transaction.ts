@@ -108,13 +108,14 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
         hashes.push(tx);
     }
 
-    if (hashes.length % 2 === 1) {
-        hashes.push(hashes[hashes.length - 1]);
-    }
-
     // tslint:disable-next-line:no-constant-condition
     while (true) {
         const newHashes = [];
+
+        if (hashes.length % 2 === 1) {
+            hashes.push(hashes[hashes.length - 1]);
+        }
+
         for (let i = 0; i < hashes.length; i += 2) {
             newHashes.push(doubleSha256(hashes[i], hashes[i + 1]));
         }
