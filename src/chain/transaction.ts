@@ -56,12 +56,6 @@ export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.signature = sign(privKey, hex2Buf(tx.txHash));
 };
 
-export const append2Buf = (dest: Number[], src: Uint8Array): void => {
-    for (const elem of src) {
-        dest.push(elem);
-    }
-};
-
 export const merkleRootHash = (txHashes: Uint8Array[]): string => {
     let hashes = [];
     for (const tx of txHashes) {
@@ -112,4 +106,14 @@ const testSerializeTx = (): void => {
     signTx(privKey, tx);
     console.log('txHash: ', tx.txHash);
     console.log('tx sig: ', buf2Hex(tx.signature));
+};
+
+const testMerkleRootHash = (): void => {
+    const h1 = sha256(new TextEncoder().encode('abc'));
+    const h2 = sha256(new TextEncoder().encode('def'));
+    const h3 = sha256(new TextEncoder().encode('ghi'));
+
+    const root = merkleRootHash([h1, h2]);
+
+    console.log('root hash: ', root);
 };
