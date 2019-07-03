@@ -2,11 +2,12 @@
  * forge committee
  */
 
-import { Block, Body, Chain, Header, MAX_BLOCK_SIZE } from '../chain/blockchain';
+import { Block, MAX_BLOCK_SIZE } from '../chain/blockchain';
 import { MemPool } from '../mempool/tx';
 import { CommitteeConfig } from '../params/committee';
+import { BonBuffer } from '../pi/util/bon';
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { blsRand, privKeyToAddress, pubKeyToAddress, sha256 } from '../util/crypto';
+import { blsRand, buf2Hex, pubKeyToAddress, sha256 } from '../util/crypto';
 import { GaiaEvent, GaiaEventBus } from '../util/eventBus';
 
 /**
@@ -298,3 +299,25 @@ export class ForgerCommittee {
         this.groups[newGroupNumber].push(removed);
     }
 }
+
+const deriveNextGroupNumber = (address: string, blockRandom: Uint8Array, height: number): number => {
+    const bon = new BonBuffer();
+    bon.writeUtf8(address)
+        .writeBin(blockRandom)
+        .writeInt(height);
+
+    const hash = buf2Hex(sha256(bon.getBuffer()));
+
+    return parseInt(hash.slice(hash.length - 2), 16);
+};
+
+const deriveInitWeight = (address: string, blockRandom: Uint8Array, height: number, stake: number): number => {
+    const bon = new BonBuffer();
+    bon.writeUtf8(address)
+        .writeBin(blockRandom)
+        .writeInt(height);
+
+    const data = buf2Hex(sha256(bon.getBuffer()));
+
+    return (Math.log(stake * 0.01) / Math.log(10)) * parseInt(data.slice(data.length - 4), 16) % 4;
+};

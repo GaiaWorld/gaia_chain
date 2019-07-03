@@ -349,18 +349,6 @@ const txSignatureValid = (tx: Transaction): boolean => {
     return true;
 };
 
-const deriveGroupNumber = (address: string, rnd: string, height: number): number => {
-    const hash = sha256(address + rnd + height.toString(16));
-
-    return parseInt(hash.slice(hash.length - 2), 16);
-};
-
-const deriveRate = (address: string, rnd: string, height: number): number => {
-    const data = address + rnd + height.toString(16);
-    
-    return parseInt(sha256(data).slice(data.length - 4), 16) % 4;
-};
-
 const addCommitteeGroup = (tx: Transaction): void => {
     if (tx.txType !== TxType.ForgerGroupTx && !tx.forgerGroupTx) {
         throw new Error('expect ForgeerGroupTx tx type');
