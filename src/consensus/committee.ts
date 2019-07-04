@@ -2,16 +2,58 @@
  * forge committee
  */
 
+import { generateBlock } from '../chain/block';
 import { getTipHeight } from '../chain/blockchain';
-import { CommitteeConfig, Forger, ForgerCommittee, MiningConfig } from '../chain/schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { Inv } from '../net/server/rpc.s';
+import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 
 export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
+    const chBkt = persistBucket(ChainHead._$info.name);
+    const chainHead = chBkt.get<string, [ChainHead]>('CH')[0];
+
+    const headerBkt = persistBucket(Header._$info.name);
+    const bodyBkt = persistBucket(Body._$info.name);
+    const height2HashBkt = persistBucket(Height2Hash._$info.name);
+    // TODO: get mempool txs to mine
+    const txs = [];
     if (getTipHeight() % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
         const forgersBkt = persistBucket(ForgerCommittee._$info.name);
-        const forgers = forgersBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0].forgers.sort();
+        const maxWeightForger = forgersBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0].forgers.sort()[0];
+
+        if (maxWeightForger.address === miningCfg.beneficiary) {
+            const block = generateBlock(maxWeightForger, chainHead, miningCfg, txs);
+            // store generated header and body
+            headerBkt.put(block.header.bhHash, block.header);
+            bodyBkt.put(block.body.bhHash, block.body);
+            // height => block hash index
+            height2HashBkt.put(block.header.height, block.header.bhHash);
+            
+            // prev hash
+            chainHead.prevHash = chainHead.headHash;
+            // change chain head
+            chainHead.headHash = block.header.bhHash;
+            chainHead.height = block.header.height;
+            const inv = new Inv();
+            inv.hash = block.body.bhHash;
+            inv.height = block.header.height;
+
+            notifyNewBlock(inv);
+            // TODO
+        }
+    }
+
+    return;
+};
+
+const selectMostWeightForger = (groupNumber: number, committeeCfg: CommitteeConfig): Forger => {
+    const forgersBkt = persistBucket(ForgerCommittee._$info.name);
+    const forgers = forgersBkt.get<number, [ForgerCommittee]>(groupNumber)[0].forgers;
+    for (const forger of forgers) {
+        
     }
 
     return;
