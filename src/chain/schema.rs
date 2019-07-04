@@ -1,7 +1,8 @@
 // forger
+#[db=file,primary=address]
 struct Forger {
     address: String,
-    pubKey: [u8],
+    pubKey: String,
     initWeight: usize,
     lastWeight: usize,
     lastHeight: usize,
@@ -89,9 +90,9 @@ struct Transaction {
     txType: TxType,
     forgerTx: Option<ForgerCommitteeTx>,
     penaltyTx: Option<PenaltyTx>,
-    payload: Option<[u8]>,
-    pubKey: [u8],
-    signature: [u8],
+    payload: Option<String>,
+    pubKey: String,
+    signature: String,
 }
 
 // Log
@@ -103,8 +104,8 @@ struct Log {
     blockNumber: String,
     txHash: String,
     txIndex: usize,
-    data: [u8],
-    topics: [[u8]],
+    data: String,
+    topics: [String],
 }
 
 // Receipt
@@ -135,9 +136,9 @@ struct Header {
     forger: String,
     groupNumber: u16,
     timestamp: usize,
-    forgerPubkey: [u8],
-    blockRandom: [u8],
-    signature: [u8],
+    forgerPubkey: String,
+    blockRandom: String,
+    signature: String,
 }
 
 #[db=file,primary=height]
@@ -169,7 +170,7 @@ struct ChainHead {
 #[db=file,primary=address]
 struct Account {
     address: String,
-    pubKey: [u8],
+    pubKey: String,
     nonce: usize,
     inputAmount: usize,
     outputAmount: usize,
@@ -198,9 +199,9 @@ struct PenaltyTxPool {
 struct MiningConfig {
     pk: String,
     beneficiary: String,
-    privateKey: [u8],
-    pubKey: [u8],
-    blsRand: [u8],
+    privateKey: String,
+    pubKey: String,
+    blsRand: String,
     groupNumber: usize,
 }
 

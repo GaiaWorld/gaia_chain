@@ -1,5 +1,6 @@
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
+import { persistBucket } from '../util/db';
 import { Account, ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
 
 // don't serialize tx.hash, tx.signature
@@ -9,11 +10,11 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
         .writeBigInt(tx.gas)
         .writeBigInt(tx.lastOutputValue)
         .writeBigInt(tx.nonce)
-        .writeBin(tx.payload)
+        .writeUtf8(tx.payload)
         .writeBigInt(tx.price)
         .writeUtf8(tx.to)
         .writeBigInt(tx.value)
-        .writeBin(tx.pubKey)
+        .writeUtf8(tx.pubKey)
         .writeInt(tx.txType);
 
     switch (tx.txType) {
@@ -53,7 +54,7 @@ export const calcTxHash = (serializedTx: Uint8Array): string => {
 
 export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.txHash = calcTxHash(serializeTx(tx));
-    tx.signature = sign(privKey, hex2Buf(tx.txHash));
+    tx.signature = buf2Hex(sign(privKey, hex2Buf(tx.txHash)));
 };
 
 export const buildSignedSpendTx = (privKey: Uint8Array, fromAddr: Account, toAddr: Account, value: number): Transaction => {
@@ -63,7 +64,7 @@ export const buildSignedSpendTx = (privKey: Uint8Array, fromAddr: Account, toAdd
     // TODO ???
     tx.lastOutputValue = fromAddr.outputAmount;
     tx.nonce = fromAddr.nonce + 1;
-    tx.payload = new Uint8Array(0);
+    tx.payload = buf2Hex(new Uint8Array(0));
     tx.price = 10;
     tx.pubKey = fromAddr.pubKey;
     tx.to = toAddr.address;
@@ -82,7 +83,7 @@ export const buildSignedCommitteeTx = (privKey: Uint8Array, fromAddr: Account, s
     // TODO ???
     tx.lastOutputValue = fromAddr.outputAmount;
     tx.nonce = fromAddr.nonce + 1;
-    tx.payload = new Uint8Array(0);
+    tx.payload = buf2Hex(new Uint8Array(0));
     tx.price = 10;
     tx.pubKey = fromAddr.pubKey;
     // to aadress is empty
@@ -135,7 +136,7 @@ const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {
     return sha256(bon.getBuffer());
 };
 
-const testSerializeTx = (): void => {
+export const testSerializeTx = (): void => {
     const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
 
     const tx = new Transaction();
@@ -143,16 +144,21 @@ const testSerializeTx = (): void => {
     tx.gas = 1000;
     tx.lastOutputValue = 1000;
     tx.nonce = 1;
-    tx.payload = new TextEncoder().encode('abc');
+    tx.payload = 'abc';
     tx.price = 10;
-    tx.pubKey = pubKey;
+    tx.pubKey = buf2Hex(pubKey);
     tx.to = pubKeyToAddress(pubKey);
     tx.txType = TxType.SpendTx;
     tx.value = 100;
 
     signTx(privKey, tx);
     console.log('txHash: ', tx.txHash);
-    console.log('tx sig: ', buf2Hex(tx.signature));
+    console.log('tx sig: ', tx.signature);
+
+    const bkt = persistBucket(Transaction._$info.name);
+    bkt.put(tx.txHash, tx);
+
+    console.log(bkt.get(tx.txHash));
 };
 
 const testMerkleRootHash = (): void => {
