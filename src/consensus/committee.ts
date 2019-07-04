@@ -17,8 +17,13 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
     return;
 };
 
-export const calcWeightAtHeight = (forger: Forger, height: number): number => {
-    return;
+export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
+    const heightDiff = height - forger.lastHeight;
+    if (heightDiff > committeeCfg.maxAccHeight) {
+        return forger.initWeight * committeeCfg.maxAccHeight;
+    } else {
+        return forger.initWeight * heightDiff;
+    }
 };
 
 export const deriveNextGroupNumber = (address: string, blockRandom: Uint8Array, height: number): number => {
