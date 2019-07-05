@@ -8,7 +8,7 @@ import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Heig
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, getRand, sha256 } from '../util/crypto';
+import { buf2Hex, getRand, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 
 export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
@@ -111,4 +111,17 @@ export const deriveInitWeight = (address: string, blockRandom: string, height: n
     const data = buf2Hex(sha256(bon.getBuffer()));
 
     return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 4), 16) % 4 + 1));
+};
+
+export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string, height: number): void => {
+    const miningCfgBkt = persistBucket(MiningConfig._$info.name);
+    const cfg = miningCfgBkt.get<string, [MiningConfig]>('MC')[0];
+    cfg.beneficiary = pubKeyToAddress(hex2Buf(pubKey));
+    cfg.pubKey = pubKey;
+    cfg.privateKey = privKey;
+    cfg.groupNumber = deriveNextGroupNumber(cfg.beneficiary, blockRandm, height);
+
+    miningCfgBkt.put(cfg.pk, cfg);
+
+    return;
 };
