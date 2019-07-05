@@ -2,13 +2,15 @@
  * block chain
  */
 
-import { Body, ChainHead, CommitteeConfig, ForgerCommittee, Header, MiningConfig, Transaction, TxType } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, MiningConfig, Transaction, TxType } from './schema.s';
 
+import { deriveInitWeight } from '../consensus/committee';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
-import { buf2Hex, genKeyPairFromSeed, getRand, pubKeyToAddress } from '../util/crypto';
+import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
+import { generateMiners } from '../util/test_helper';
 import { calcHeaderHash } from './header';
 import { calcTxHash } from './transaction';
 
@@ -248,6 +250,39 @@ export const newBlockChain = (): void => {
 
         bkt3.put('CC', cc);
     }
-    
+
+    // load pre configured miners from genesis file
+    const bkt4 = persistBucket(ForgerCommittee._$info.name);
+    const forgerCommittee = bkt4.get<number, [ForgerCommittee]>(0)[0];
+    if (!forgerCommittee) {
+        const preConfiguredForgers = GENESIS.allocs;
+        const forgers = [];
+        for (let i = 0; i < preConfiguredForgers.length; i++) {
+            const f = new Forger();
+            f.address = preConfiguredForgers[i].address;
+            f.initWeight = deriveInitWeight(f.address, hex2Buf(GENESIS.blockRandom), 0, preConfiguredForgers[i].stake);
+            f.lastHeight = 0;
+            f.lastWeight = 0;
+            f.pubKey = preConfiguredForgers[i].pubKey;
+            f.stake = preConfiguredForgers[i].stake;
+
+            forgers.push(f);
+        }
+
+        for (let i = 0; i < GENESIS.totalGroups; i++) {
+            const fc = new ForgerCommittee();
+            const groupForgers = [];
+            for (let j = 0; j < forgers.length; j++) {
+                forgers[j].groupNumber = i;
+                if (parseInt(forgers[j].address.slice(forgers[j].address.length - 2), 16) === i) {
+                    groupForgers.push(forgers[j]);
+                }
+            }
+            fc.slot = i;
+            fc.forgers = groupForgers;
+            bkt4.put(fc.slot, fc);
+        }
+    }
+
     return;
 };
