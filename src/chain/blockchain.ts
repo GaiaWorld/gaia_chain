@@ -257,7 +257,7 @@ export const newBlockChain = (): void => {
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
-            f.initWeight = deriveInitWeight(f.address, hex2Buf(GENESIS.blockRandom), 0, preConfiguredForgers[i].stake);
+            f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             f.lastHeight = 0;
             f.lastWeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;

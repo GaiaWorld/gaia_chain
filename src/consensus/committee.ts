@@ -45,7 +45,10 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             inv.height = block.header.height;
 
             notifyNewBlock(inv);
-            // TODO
+
+            // adjust group
+            const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, block.header.blockRandom, block.header.height);
+
         }
     }
 
@@ -71,10 +74,10 @@ export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg:
     }
 };
 
-export const deriveNextGroupNumber = (address: string, blockRandom: Uint8Array, height: number): number => {
+export const deriveNextGroupNumber = (address: string, blockRandom: string, height: number): number => {
     const bon = new BonBuffer();
     bon.writeUtf8(address)
-        .writeBin(blockRandom)
+        .writeUtf8(blockRandom)
         .writeInt(height);
 
     const hash = buf2Hex(sha256(bon.getBuffer()));
@@ -82,10 +85,10 @@ export const deriveNextGroupNumber = (address: string, blockRandom: Uint8Array, 
     return parseInt(hash.slice(hash.length - 2), 16);
 };
 
-export const deriveInitWeight = (address: string, blockRandom: Uint8Array, height: number, stake: number): number => {
+export const deriveInitWeight = (address: string, blockRandom: string, height: number, stake: number): number => {
     const bon = new BonBuffer();
     bon.writeUtf8(address)
-        .writeBin(blockRandom)
+        .writeUtf8(blockRandom)
         .writeInt(height);
 
     const data = buf2Hex(sha256(bon.getBuffer()));
