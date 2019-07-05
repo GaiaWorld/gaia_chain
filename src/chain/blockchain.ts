@@ -2,16 +2,14 @@
  * block chain
  */
 
-import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, MiningConfig, Transaction, TxType } from './schema.s';
-
 import { deriveInitWeight } from '../consensus/committee';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
-import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress } from '../util/crypto';
+import { hex2Buf } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
-import { generateMiners } from '../util/test_helper';
 import { calcHeaderHash } from './header';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, MiningConfig, Transaction, TxType } from './schema.s';
 import { calcTxHash } from './transaction';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -207,8 +205,8 @@ export const runCommittee = (config: CommitteeConfig): void => {
 
 export const newBlockChain = (): void => {
     // load chain head
-    const bkt = persistBucket(ChainHead._$info.name);
-    const chainHead = bkt.get<string, [ChainHead]>('CH')[0];
+    const chainHeadBkt = persistBucket(ChainHead._$info.name);
+    const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
     if (!chainHead) {
         const ch = new ChainHead();
         ch.genesisHash = GENESIS.hash;
@@ -217,7 +215,7 @@ export const newBlockChain = (): void => {
         ch.totalWeight = 0;
         ch.pk = 'CH';
 
-        bkt.put(ch.pk, ch);
+        chainHeadBkt.put(ch.pk, ch);
     }
 
     // initialize mining config
@@ -225,20 +223,19 @@ export const newBlockChain = (): void => {
     const miningCfg = bkt2.get<string, [MiningConfig]>('MC')[0];
     if (!miningCfg) {
         const mc = new MiningConfig();
-        const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
-        mc.beneficiary = pubKeyToAddress(pubKey);
-        mc.blsRand = buf2Hex(getRand(32));
+        // load defalut miner config
+        mc.beneficiary = GENESIS.allocs[0].address;
         mc.groupNumber = 0;
-        mc.pubKey = buf2Hex(pubKey);
-        mc.privateKey = buf2Hex(privKey);
+        mc.pubKey = GENESIS.allocs[0].pubKey;
+        mc.privateKey = GENESIS.allocs[0].privKey;
         mc.pk = 'MC';
         
         bkt2.put(mc.pk, mc);
     }
     
     // initialize committee config
-    const bkt3 = persistBucket(CommitteeConfig._$info.name);
-    const committeeCfg = bkt3.get<string, [CommitteeConfig]>('CC')[0];
+    const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
+    const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
     if (!committeeCfg) {
         const cc = new CommitteeConfig();
         cc.pk = 'CC';
@@ -248,12 +245,12 @@ export const newBlockChain = (): void => {
         cc.minToken = 10000;
         cc.withdrawReserveBlocks = 256000;
 
-        bkt3.put('CC', cc);
+        committeeCfgBkt.put('CC', cc);
     }
 
     // load pre configured miners from genesis file
-    const bkt4 = persistBucket(ForgerCommittee._$info.name);
-    const forgerCommittee = bkt4.get<number, [ForgerCommittee]>(0)[0];
+    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+    const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(0)[0];
     if (!forgerCommittee) {
         const preConfiguredForgers = GENESIS.allocs;
         const forgers = [];
@@ -280,7 +277,7 @@ export const newBlockChain = (): void => {
             }
             fc.slot = i;
             fc.forgers = groupForgers;
-            bkt4.put(fc.slot, fc);
+            forgerCommitteeBkt.put(fc.slot, fc);
         }
     }
 
