@@ -18,12 +18,13 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
     const height2HashBkt = persistBucket(Height2Hash._$info.name);
+    const currentHeight = getTipHeight();
     // TODO: get mempool txs to mine
     const txs = [];
-    if (getTipHeight() % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
-        const forgersBkt = persistBucket(ForgerCommittee._$info.name);
-        const maxWeightForger = forgersBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0].forgers.sort()[0];
+    if (currentHeight % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
+        const maxWeightForger = selectMostWeightForger(miningCfg.groupNumber, currentHeight, committeeCfg);
 
+        // if we are the mosted weight forger
         if (maxWeightForger.address === miningCfg.beneficiary) {
             const block = generateBlock(maxWeightForger, chainHead, miningCfg, txs);
             // store generated header and body
@@ -32,11 +33,13 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             // height => block hash index
             height2HashBkt.put(block.header.height, block.header.bhHash);
             
-            // prev hash
+            // update chain head
             chainHead.prevHash = chainHead.headHash;
-            // change chain head
             chainHead.headHash = block.header.bhHash;
             chainHead.height = block.header.height;
+            chainHead.totalWeight = block.header.totalWeight;
+
+            // broad cast new block to peers
             const inv = new Inv();
             inv.hash = block.body.bhHash;
             inv.height = block.header.height;
@@ -49,14 +52,14 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
     return;
 };
 
-const selectMostWeightForger = (groupNumber: number, committeeCfg: CommitteeConfig): Forger => {
+const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(groupNumber)[0].forgers;
-    for (const forger of forgers) {
-        
-    }
+    forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(b, height, committeeCfg) - calcWeightAtHeight(a, height, committeeCfg));
+    // store sorted forgers by weight
+    forgersBkt.put(groupNumber, forgers);
 
-    return;
+    return forgers[0];
 };
 
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
