@@ -6,7 +6,6 @@ import { deriveInitWeight } from '../consensus/committee';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
-import { hex2Buf } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcHeaderHash } from './header';
 import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, MiningConfig, Transaction, TxType } from './schema.s';
@@ -140,46 +139,8 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
-export const adjustGroupPosistion = (seed: number): void => {
-    // 更具随机种子修改两个槽位，
-
-};
-
-// increase weight until it gets the maximum allowed
-export const increaseWeight = (): void => {
-    // TODO: 只计算本次出块的槽，返回排序后的矿工
-    const bkt = persistBucket(ForgerCommittee._$info.name);
-    const fc = bkt.get<string, [ForgerCommittee]>('FC')[0];
-    const groups = fc.groups;
-
-    const bkt2 = persistBucket(CommitteeConfig._$info.name);
-    const cc = bkt2.get<string, [CommitteeConfig]>('CC')[0];
-
-    if (getTipHeight() % cc.maxGroupNumber === 0) {
-        for (let i = 0; i < groups.length; i++) {
-            for (let j = 0; j < groups[i].length; j++) {
-                const maxWeight = groups[i][j].initWeigth * cc.maxAccHeight;
-                if (groups[i][j].lastWeight + groups[i][j].initWeigth > maxWeight) {
-                    groups[i][j].lastWeight = maxWeight;
-                } else {
-                    groups[i][j].lastWeight += groups[i][j].initWeigth;
-                }
-            }
-            // console.log('group: ', groups[i]);
-        }
-    }
-    bkt.put('FC', fc);
-};
-
 export const isSyncing = (): boolean => {
     return false;
-};
-
-export const bestWeightAddr = (round: number): string => {
-    const bkt = persistBucket(ForgerCommittee._$info.name);
-    const forgers = bkt.get < number, [ForgerCommittee]>(round)[0];
-
-    return forgers.forgers.sort()[0].address;
 };
 
 export const getMiningConfig = (): MiningConfig => {
@@ -192,15 +153,6 @@ export const getCommitteeConfig = (): CommitteeConfig => {
     const bkt = persistBucket(CommitteeConfig._$info.name);
 
     return bkt.get<string, [CommitteeConfig]>('CC')[0];
-};
-
-// TODO
-export const adjustGroup = (): string => {
-    return;
-};
-
-export const runCommittee = (config: CommitteeConfig): void => {
-    // syncing status
 };
 
 export const newBlockChain = (): void => {
