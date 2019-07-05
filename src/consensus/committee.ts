@@ -8,7 +8,7 @@ import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Heig
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, sha256 } from '../util/crypto';
+import { buf2Hex, getRand, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 
 export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
@@ -18,6 +18,10 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(Body._$info.name);
     const height2HashBkt = persistBucket(Height2Hash._$info.name);
+    const miningCfgBkt = persistBucket(MiningConfig._$info.name);
+    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+    const forgerBkt = persistBucket(Forger._$info.name);
+
     const currentHeight = getTipHeight();
     // TODO: get mempool txs to mine
     const txs = [];
@@ -44,11 +48,24 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             inv.hash = block.body.bhHash;
             inv.height = block.header.height;
 
+            // notify peers new block
             notifyNewBlock(inv);
 
             // adjust group
             const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, block.header.blockRandom, block.header.height);
+            miningCfg.groupNumber = newGroupNumber;
+            // save new group number
+            miningCfgBkt.put('MC', miningCfg);
 
+            const forger = forgerBkt.get<string, [Forger]>(miningCfg.beneficiary)[0];
+            forger.groupNumber = newGroupNumber;
+            // derive new weight
+            forger.initWeight = deriveInitWeight(forger.address, buf2Hex(getRand(32)), forger.initWeight, forger.stake);
+
+            const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
+            forgers.forgers.push(forger);
+            // add to new group
+            forgerCommitteeBkt.put(newGroupNumber, forgers);
         }
     }
 
