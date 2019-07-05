@@ -4,9 +4,9 @@ import { Header } from './schema.s';
 
 export const serializeHeader = (header: Header): Uint8Array => {
     const bon = new BonBuffer();
-    bon.writeBin(header.blockRandom)
+    bon.writeUtf8(header.blockRandom)
         .writeUtf8(header.forger)
-        .writeBin(header.forgerPubkey)
+        .writeUtf8(header.forgerPubkey)
         .writeInt(header.groupNumber)
         .writeInt(header.height)
         .writeUtf8(header.prevHash)
@@ -16,7 +16,7 @@ export const serializeHeader = (header: Header): Uint8Array => {
         .writeUtf8(header.txRootHash)
         .writeUtf8(header.version)
         .writeBigInt(header.weight)
-        .writeBin(header.signature);
+        .writeUtf8(header.signature);
 
     return bon.getBuffer();
 };
