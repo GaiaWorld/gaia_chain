@@ -9,9 +9,9 @@ import { notifyNewBlock, notifyNewTx } from './subscribe';
 // 启动rpc server
 // cloneServerNode(getNativeObj("rpcServer"));
 
-setTimeout(() => {
-    launch();
-}, 5000);
+// setTimeout(() => {
+//     launch();
+// }, 5000);
 
 // setTimeout(()=>{
 //     let invTx = new Inv;
