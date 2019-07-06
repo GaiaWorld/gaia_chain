@@ -176,8 +176,9 @@ export const newBlockChain = (): void => {
     if (!miningCfg) {
         const mc = new MiningConfig();
         // load defalut miner config
-        mc.beneficiary = GENESIS.allocs[0].address;
-        mc.groupNumber = 0;
+        // mc.beneficiary = GENESIS.allocs[0].address;
+        mc.beneficiary = '49fb96e79b3b3ac56d2789001534f7ae47c21200';
+        mc.groupNumber = 1;
         mc.pubKey = GENESIS.allocs[0].pubKey;
         mc.privateKey = GENESIS.allocs[0].privKey;
         mc.pk = 'MC';
@@ -200,6 +201,8 @@ export const newBlockChain = (): void => {
         committeeCfgBkt.put('CC', cc);
     }
 
+    // initialize all pre configured forgers
+    const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(0)[0];
@@ -225,6 +228,8 @@ export const newBlockChain = (): void => {
                 forgers[j].groupNumber = i;
                 if (parseInt(forgers[j].address.slice(forgers[j].address.length - 2), 16) === i) {
                     groupForgers.push(forgers[j]);
+                    // store to Forger bucket
+                    forgerBkt.put(forgers[j].address, forgers[j]);
                 }
             }
             fc.slot = i;

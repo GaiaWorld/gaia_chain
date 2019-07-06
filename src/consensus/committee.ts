@@ -23,6 +23,7 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
     const forgerBkt = persistBucket(Forger._$info.name);
 
     const currentHeight = getTipHeight();
+    console.log('currentHeight: ----------------------------------------- ', currentHeight);
     // TODO: get mempool txs to mine
     const txs = [];
     if (currentHeight % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
@@ -42,6 +43,7 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             chainHead.headHash = block.header.bhHash;
             chainHead.height = block.header.height;
             chainHead.totalWeight = block.header.totalWeight;
+            chBkt.put(chainHead.pk, chainHead);
 
             // broad cast new block to peers
             const inv = new Inv();
@@ -51,28 +53,37 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             // notify peers new block
             notifyNewBlock(inv);
 
+            console.log('miningCfg.groupNumber: ', miningCfg.groupNumber);
             // adjust group
-            const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, block.header.blockRandom, block.header.height);
-            miningCfg.groupNumber = newGroupNumber;
-            // save new group number
-            miningCfgBkt.put('MC', miningCfg);
+            const oldForgerCommitteeGroup = forgerCommitteeBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0];
+            const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, block.header.blockRandom, block.header.height, 5);
 
             const forger = forgerBkt.get<string, [Forger]>(miningCfg.beneficiary)[0];
+            const index = oldForgerCommitteeGroup.forgers.indexOf(forger);
+
             forger.groupNumber = newGroupNumber;
             // derive new weight
             forger.initWeight = deriveInitWeight(forger.address, buf2Hex(getRand(32)), forger.initWeight, forger.stake);
 
-            const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
-            forgers.forgers.push(forger);
-            // add to new group
-            forgerCommitteeBkt.put(newGroupNumber, forgers);
+            // new group is not the same as old group and old forger group length greater than 1
+            if (miningCfg.groupNumber !== newGroupNumber && oldForgerCommitteeGroup.forgers.length > 1) {
+                const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
+                // add to new group
+                forgers.forgers.push(forger);
+                // delete from old group
+                oldForgerCommitteeGroup.forgers.splice(index, 1);
+                forgerCommitteeBkt.put(newGroupNumber, forgers);
+                forgerCommitteeBkt.put(miningCfg.groupNumber, oldForgerCommitteeGroup);
+                miningCfg.groupNumber = newGroupNumber;
+                miningCfgBkt.put('MC', miningCfg);
+            }
         }
     }
 
     return;
 };
 
-const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
+export const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(groupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(b, height, committeeCfg) - calcWeightAtHeight(a, height, committeeCfg));
@@ -84,6 +95,10 @@ const selectMostWeightForger = (groupNumber: number, height: number, committeeCf
 
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
     const heightDiff = height - forger.lastHeight;
+    if (heightDiff === 0) {
+        return forger.initWeight;
+    }
+
     if (heightDiff > committeeCfg.maxAccHeight) {
         return forger.initWeight * committeeCfg.maxAccHeight;
     } else {
@@ -91,7 +106,7 @@ export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg:
     }
 };
 
-export const deriveNextGroupNumber = (address: string, blockRandom: string, height: number): number => {
+export const deriveNextGroupNumber = (address: string, blockRandom: string, height: number, maxGroupNumber: number = 256): number => {
     const bon = new BonBuffer();
     bon.writeUtf8(address)
         .writeUtf8(blockRandom)
@@ -99,7 +114,7 @@ export const deriveNextGroupNumber = (address: string, blockRandom: string, heig
 
     const hash = buf2Hex(sha256(bon.getBuffer()));
 
-    return parseInt(hash.slice(hash.length - 2), 16);
+    return parseInt(hash.slice(hash.length - 2), 16) % maxGroupNumber;
 };
 
 export const deriveInitWeight = (address: string, blockRandom: string, height: number, stake: number): number => {
