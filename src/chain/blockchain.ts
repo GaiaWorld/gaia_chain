@@ -3,8 +3,9 @@
  */
 
 import { H160, H256 } from '../pi_pt/rust/hash_value';
-import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, HeaderChain, MiningConfig, Receipt, Transaction, TxType } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, HeaderChain, Height2Hash, MiningConfig, Receipt, Transaction, TxType } from './schema.s';
 
+import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
@@ -60,10 +61,25 @@ export const getTx = (invMsg: Inv): Transaction => {
     return bkt.get<string, [Transaction]>('T' + `${invMsg.hash}`)[0];
 };
 
-export const getHeader = (invMsg: Inv): Header => {
+export const getHeader = (invMsg: Inv): Header|undefined => {
     const bkt = persistBucket(Header._$info.name);
 
     return bkt.get<string, [Header]>('H' + `${invMsg.hash}`)[0];
+};
+
+export const getHeaderByHeight = (height:number):Header|undefined => {
+    const bkt = persistBucket(Height2Hash._$info.name);
+    const height2Hash = bkt.get<number,[Height2Hash]>(height)[0];
+    if (height2Hash === undefined) {
+
+        return;
+    }
+    const invMsg = new Inv();
+    invMsg.MsgType = INV_MSG_TYPE.MSG_BLOCK;
+    invMsg.height = height;
+    invMsg.hash = height2Hash.bhHash;
+    
+    return getHeader(invMsg);
 };
 
 export const getBlock = (invMsg: Inv): Block => {

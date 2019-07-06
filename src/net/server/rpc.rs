@@ -10,7 +10,12 @@ struct ShakeHandsInfo {
     strPublicKey:String,
 }
 
-
+struct GetHeaderHeight{
+    strNetAddr:String,
+    from:usize,
+    to:usize,
+    heights:[usize],
+}
 
 
 struct TxArray{

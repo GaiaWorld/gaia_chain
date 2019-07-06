@@ -1,15 +1,13 @@
-import { getGenesisHash, getNodeType, getServiceFlags, getTipHeight, getTipTotalWeight, getVersion } from '../../chain/blockchain';
-import * as bigInt from '../../pi/bigint/biginteger';
+import { getGenesisHash, getNodeType, getTipHeight, getTipTotalWeight, getVersion } from '../../chain/blockchain';
 import { getCurrentPubkey } from '../../pubkeyMgr';
 import { memoryBucket } from '../../util/db';
-import { getNextConnNonce } from '../connMgr';
+import { checkVersion } from '../../validation';
 import { DEFAULT_STR_ERR } from '../const';
 import { CONNECTED, NODE_TYPE, Peer } from '../pNode.s';
 import { DEFAULT_PEER, OWN_NET_ADDR } from '../server/cfg/net';
 import { shakeHands, subscribeBlock, subscribeTx } from '../server/rpc.p';
 import { clientRequest } from '../server/rpc.r';
 import { ShakeHandsInfo } from '../server/rpc.s';
-import { getLocalAddr } from '../virtualEnv';
 
 /**
  * the main loop of client
@@ -39,7 +37,7 @@ export const launch = () => {
 
                         return;
                     }
-                    if (r.strNetAddr === DEFAULT_STR_ERR) {
+                    if (r.strNetAddr === DEFAULT_STR_ERR || r.strGensisHash !== getGenesisHash() || !checkVersion(r.strVersion)) {
                         existPeer.nConnected = CONNECTED.DISCONNECTED;                        
                     } else {
                         existPeer.nNodeType = r.nNodeType;
