@@ -20,7 +20,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     header.weight = forger.lastWeight;
     header.blockRandom = buf2Hex(getRand(32));
     header.groupNumber = forger.groupNumber;
-    header.signature = buf2Hex(sign(hex2Buf(header.blockRandom), hex2Buf(miningCfg.privateKey)));
+    header.signature = buf2Hex(sign(hex2Buf(miningCfg.privateKey), hex2Buf(header.blockRandom)));
 
     header.bhHash = calcHeaderHash(header);
 

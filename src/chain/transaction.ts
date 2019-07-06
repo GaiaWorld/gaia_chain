@@ -104,6 +104,9 @@ export const buildSignedCommitteeTx = (privKey: Uint8Array, fromAddr: Account, s
 };
 
 export const merkleRootHash = (txHashes: Uint8Array[]): string => {
+    if (txHashes.length === 0) {
+        return buf2Hex(sha256(new TextEncoder().encode('')));
+    }
     let hashes = [];
     for (const tx of txHashes) {
         hashes.push(tx);
