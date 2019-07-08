@@ -1,11 +1,11 @@
 import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, Forger, Header, MiningConfig, Transaction } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, Header, MiningConfig, Transaction } from './schema.s';
 import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
 // TODO: 如何给矿工手续费
-export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, txs: Transaction[]): Block => {
+export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
     const header = new Header();
     header.forger = miningCfg.beneficiary;
     header.forgerPubkey = miningCfg.pubKey;
@@ -14,10 +14,10 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     // not used right now
     header.receiptRoot = '0';
     header.timestamp = Date.now();
-    header.totalWeight = chainHead.totalWeight + forger.lastWeight;
+    header.weight = forger.initWeight * (header.height - forger.addHeight - committeeCfg.withdrawReserveBlocks);
+    header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
-    header.weight = forger.lastWeight;
     header.blockRandom = buf2Hex(getRand(32));
     header.groupNumber = forger.groupNumber;
     header.signature = buf2Hex(sign(hex2Buf(miningCfg.privateKey), hex2Buf(header.blockRandom)));

@@ -57,35 +57,33 @@ export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.signature = buf2Hex(sign(privKey, hex2Buf(tx.txHash)));
 };
 
-export const buildSignedSpendTx = (privKey: Uint8Array, fromAddr: Account, toAddr: Account, value: number): Transaction => {
+export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Account, toAddr: Account, value: number, gas: number, gasPrice: number): Transaction => {
     const tx = new Transaction();
     tx.from = fromAddr.address;
-    tx.gas = 21000;
-    // TODO ???
+    tx.gas = gas;
     tx.lastOutputValue = fromAddr.outputAmount;
     tx.nonce = fromAddr.nonce + 1;
     tx.payload = buf2Hex(new Uint8Array(0));
-    tx.price = 10;
-    tx.pubKey = fromAddr.pubKey;
+    tx.price = gasPrice;
+    tx.pubKey = pubKey;
     tx.to = toAddr.address;
     tx.txType = TxType.SpendTx;
     tx.value = value;
 
-    signTx(privKey, tx);
+    signTx(hex2Buf(privKey), tx);
 
     return tx;
 };
 
-export const buildSignedCommitteeTx = (privKey: Uint8Array, fromAddr: Account, stake: number, addGroup: boolean): Transaction => {
+export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr: Account, stake: number, addGroup: boolean, gas: number, gasPrice: number): Transaction => {
     const tx = new Transaction();
     tx.from = fromAddr.address;
-    tx.gas = 21000;
-    // TODO ???
+    tx.gas = gas;
     tx.lastOutputValue = fromAddr.outputAmount;
     tx.nonce = fromAddr.nonce + 1;
     tx.payload = buf2Hex(new Uint8Array(0));
-    tx.price = 10;
-    tx.pubKey = fromAddr.pubKey;
+    tx.price = gasPrice;
+    tx.pubKey = pubKey;
     // to aadress is empty
     tx.to = '';
     tx.txType = TxType.SpendTx;
@@ -98,7 +96,7 @@ export const buildSignedCommitteeTx = (privKey: Uint8Array, fromAddr: Account, s
 
     tx.forgerTx = fct;
 
-    signTx(privKey, tx);
+    signTx(hex2Buf(privKey), tx);
 
     return tx;
 };
