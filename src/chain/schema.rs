@@ -4,9 +4,8 @@ struct Forger {
     address: String,
     pubKey: String,
     initWeight: usize,
-    lastWeight: usize,
-    lastHeight: usize,
-    groupNumber: u16,
+    addHeight: usize,
+    groupNumber: u8,
     stake: usize,
 }
 
@@ -170,11 +169,10 @@ struct ChainHead {
 #[db=file,primary=address]
 struct Account {
     address: String,
-    pubKey: String,
     nonce: usize,
     inputAmount: usize,
     outputAmount: usize,
-    codeHash: String,
+    codeHash: Option<String>,
 }
 
 #[db=memory,primary=txHash]

@@ -66,8 +66,7 @@ export const generateMiners = (len: number): void => {
                 forger.address = address;
                 forger.groupNumber = i;
                 forger.initWeight = deriveInitWeight(address, GENESIS.blockRandom, 0, stake);
-                forger.lastHeight = 0;
-                forger.lastWeight = 0;
+                forger.addHeight = 0;
                 forger.pubKey = buf2Hex(pubKey);
                 forger.stake = stake;
 

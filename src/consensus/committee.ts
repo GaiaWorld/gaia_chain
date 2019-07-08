@@ -31,7 +31,7 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
 
         // if we are the mosted weight forger
         if (maxWeightForger.address === miningCfg.beneficiary) {
-            const block = generateBlock(maxWeightForger, chainHead, miningCfg, txs);
+            const block = generateBlock(maxWeightForger, chainHead, miningCfg, committeeCfg, txs);
             // store generated header and body
             headerBkt.put(block.header.bhHash, block.header);
             bodyBkt.put(block.body.bhHash, block.body);
@@ -128,15 +128,15 @@ export const selectMostWeightForger = (groupNumber: number, height: number, comm
 };
 
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
-    const heightDiff = height - forger.lastHeight;
+    const heightDiff = height - forger.addHeight - committeeCfg.withdrawReserveBlocks;
     if (heightDiff === 0) {
         return forger.initWeight;
     }
 
     if (heightDiff > committeeCfg.maxAccHeight) {
-        return forger.initWeight * committeeCfg.maxAccHeight;
+        return forger.initWeight * (committeeCfg.maxAccHeight / committeeCfg.maxGroupNumber);
     } else {
-        return forger.initWeight * heightDiff;
+        return forger.initWeight * (heightDiff / committeeCfg.maxGroupNumber);
     }
 };
 
