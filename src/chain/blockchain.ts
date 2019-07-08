@@ -7,10 +7,9 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
-import { memoryBucket, persistBucket } from '../util/db';
+import { persistBucket } from '../util/db';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Height2Hash, MiningConfig, Transaction, TxType } from './schema.s';
-import { calcTxHash } from './transaction';
+import { Account, Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, Transaction, TxType } from './schema.s';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -95,46 +94,82 @@ export const newTxsReach = (txs: Transaction[]): void => {
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (validateTx(tx)) {
-            const txBkt = persistBucket(Transaction._$info.name);
-            txBkt.put<string, Transaction>('T' + `${calcTxHash(tx)}`, tx);
-            switch (tx.txType) {
-                case TxType.ForgerGroupTx:
-                    if (tx.forgerGroupTx && tx.forgerGroupTx.AddGroup) {
-                        addCommitteeGroup(tx);
-                    } else if (tx.forgerGroupTx && !tx.forgerGroupTx.AddGroup) {
-                        exitCommitteeGroup(tx);
-                    }
-                    break;
-                case TxType.SpendTx:
-                    const txpoolBkt = memoryBucket(TxPool._$info.name);
-                    const tp = new TxPool();
-                    tp.tx = tx;
-                    tp.txHash = calcTxHash(tx);
-                    txpoolBkt.put<string, TxPool>(tp.txHash, tp);
-                    break;
-                case TxType.PenaltyTx:
-                    // TODO
-                    break;
-    
-                default:
-            }
+            // TODO: add to tx pool
         }
     }
 };
 
 export const newBlocksReach = (bodys: Body[]): void => {
     console.log('\n\nnewBlocksReach: ---------------------- ', bodys);
-    // validate blocks
-    // add to chain store
+    const waitForAddForgers = new ForgerWaitAdd();
+    const waitForExitForgers = new ForgerWaitExit();
+    const currentHeight = getTipHeight();
     const bodyBkt = persistBucket(Body._$info.name);
     for (const body of bodys) {
-        // TODO: add to orphans pool if no parent found
-        // TODO: advertise new height to peers
-        // TODO: validateBlock(block);
-        bodyBkt.put<string, Body>('B' + `${body.bhHash}`, body);
+        // store body
+        bodyBkt.put<string, Body>(body.bhHash, body);
+        for (const tx of body.txs) {
+            if (validateTx(tx)) {
+                switch (tx.txType) {
+                    case TxType.ForgerGroupTx:
+                        const forger = new Forger();
+                        forger.address = tx.forgerTx.address;
+                        forger.groupNumber = currentHeight % getCommitteeConfig().maxGroupNumber;
+                        forger.initWeight = 0;
+                        forger.addHeight = currentHeight;
+                        forger.pubKey = tx.pubKey;
+                        forger.stake = tx.forgerTx.stake;
+
+                        if (tx.forgerTx.AddGroup === true) {
+                            waitForAddForgers.height = currentHeight;
+                            waitForAddForgers.forgers.push(forger);
+    
+                        } else if (tx.forgerTx.AddGroup === false) {
+                            waitForExitForgers.height = currentHeight;
+                            waitForExitForgers.forgers.push(forger);
+                        }
+                        break;
+                    case TxType.SpendTx:
+                        const accountBkt = persistBucket(Account._$info.name);
+                        const fromAccount = accountBkt.get<string, [Account]>(tx.from)[0];
+                        const toAccount = accountBkt.get<string, [Account]>(tx.to)[0];
+
+                        if (fromAccount) {
+                            fromAccount.nonce += 1;
+                            fromAccount.outputAmount += tx.value;
+                        } else {
+                            throw new Error('unknown account spending');
+                        }
+
+                        if (toAccount) {
+                            toAccount.inputAmount += tx.value;
+                        } else {
+                            // create new account in db
+                            const newAccount = new Account();
+                            newAccount.address = tx.to;
+                            newAccount.nonce = 0;
+                            newAccount.inputAmount = tx.value;
+                            newAccount.outputAmount = 0;
+                        }
+                        // update account info
+                        accountBkt.put([fromAccount.address, toAccount.address], [fromAccount, toAccount]);
+
+                        break;
+                    case TxType.PenaltyTx:
+                        // TODO
+                        break;
+                    default:
+                }
+            }
+        }
     }
 
-    // TODO: notify peers that we changed our height
+    // update forger committee info
+    const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
+    const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
+
+    forgerWaitAddBkt.put(getTipHeight(), waitForAddForgers);
+    forgerWaitExitBkt.put(getTipHeight(), waitForExitForgers);
 
     return;
 };
@@ -229,8 +264,7 @@ export const newBlockChain = (): void => {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
-            f.lastHeight = 0;
-            f.lastWeight = 0;
+            f.addHeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;
             f.stake = preConfiguredForgers[i].stake;
 

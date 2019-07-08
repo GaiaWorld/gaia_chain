@@ -4,11 +4,11 @@
 
 import { generateBlock } from '../chain/block';
 import { getTipHeight } from '../chain/blockchain';
-import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, getRand, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
+import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 
 export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
@@ -31,7 +31,7 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
 
         // if we are the mosted weight forger
         if (maxWeightForger.address === miningCfg.beneficiary) {
-            const block = generateBlock(maxWeightForger, chainHead, miningCfg, txs);
+            const block = generateBlock(maxWeightForger, chainHead, miningCfg, committeeCfg, txs);
             // store generated header and body
             headerBkt.put(block.header.bhHash, block.header);
             bodyBkt.put(block.body.bhHash, block.body);
@@ -61,23 +61,57 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             const forger = forgerBkt.get<string, [Forger]>(miningCfg.beneficiary)[0];
             const index = oldForgerCommitteeGroup.forgers.indexOf(forger);
 
-            forger.groupNumber = newGroupNumber;
             // derive new weight
-            forger.initWeight = deriveInitWeight(forger.address, buf2Hex(getRand(32)), forger.initWeight, forger.stake);
+            forger.initWeight = deriveInitWeight(forger.address, block.header.blockRandom, block.header.height, forger.stake);
 
             // new group is not the same as old group and old forger group length greater than 1
             if (miningCfg.groupNumber !== newGroupNumber && oldForgerCommitteeGroup.forgers.length > 1) {
-                const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
-                // add to new group
-                forgers.forgers.push(forger);
-                // delete from old group
-                oldForgerCommitteeGroup.forgers.splice(index, 1);
-                forgerCommitteeBkt.put(newGroupNumber, forgers);
+                forger.groupNumber = newGroupNumber; // assign new group number
+                const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
+                forgerCommittee.forgers.push(forger); // add to new group
+                oldForgerCommitteeGroup.forgers.splice(index, 1); // delete from old group
+                forgerCommitteeBkt.put(newGroupNumber, forgerCommittee);
                 forgerCommitteeBkt.put(miningCfg.groupNumber, oldForgerCommitteeGroup);
                 miningCfg.groupNumber = newGroupNumber;
                 miningCfgBkt.put('MC', miningCfg);
             }
+
+            forgerBkt.put(miningCfg.beneficiary, forger); // update forger info
         }
+    }
+
+    // update forger committee every round
+    updateForgerCommittee(currentHeight, committeeCfg);
+
+    return;
+};
+
+export const updateForgerCommittee = (height: number, committeeCfg: CommitteeConfig): void => {
+    const forgerBkt = persistBucket(ForgerCommittee._$info.name);
+    const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
+    const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
+    const addForgers = forgerWaitAddBkt.get<number, [ForgerWaitAdd]>(height - committeeCfg.withdrawReserveBlocks)[0];
+    const exitForgers = forgerWaitExitBkt.get<number, [ForgerWaitExit]>(height - committeeCfg.withdrawReserveBlocks)[0];
+    const forgers = forgerBkt.get<number, [ForgerCommittee]>(height % committeeCfg.maxGroupNumber)[0];
+
+    // if there are forgers wait for add
+    if (addForgers) {
+        forgers.forgers.push(...addForgers.forgers);
+        forgerWaitAddBkt.delete(height - committeeCfg.withdrawReserveBlocks);
+        forgerBkt.put(height % committeeCfg.maxGroupNumber, forgers);
+    }
+
+    // if there are forgers wait to exit
+    if (exitForgers) {
+        for (let i = 0; i < exitForgers.forgers.length; i++) {
+            for (let j = 0; j < forgers.forgers.length; j++) {
+                if (exitForgers.forgers[i].address === forgers.forgers[j].address) {
+                    forgers.forgers.splice(j, 1);
+                }
+            }
+        }
+        forgerWaitExitBkt.delete(height - committeeCfg.withdrawReserveBlocks);
+        forgerBkt.put(height % committeeCfg.maxGroupNumber, forgers);
     }
 
     return;
@@ -94,15 +128,15 @@ export const selectMostWeightForger = (groupNumber: number, height: number, comm
 };
 
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
-    const heightDiff = height - forger.lastHeight;
+    const heightDiff = height - forger.addHeight - committeeCfg.withdrawReserveBlocks;
     if (heightDiff === 0) {
         return forger.initWeight;
     }
 
     if (heightDiff > committeeCfg.maxAccHeight) {
-        return forger.initWeight * committeeCfg.maxAccHeight;
+        return forger.initWeight * (committeeCfg.maxAccHeight / committeeCfg.maxGroupNumber);
     } else {
-        return forger.initWeight * heightDiff;
+        return forger.initWeight * (heightDiff / committeeCfg.maxGroupNumber);
     }
 };
 
