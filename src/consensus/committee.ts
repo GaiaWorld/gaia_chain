@@ -4,7 +4,7 @@
 
 import { generateBlock } from '../chain/block';
 import { getTipHeight } from '../chain/blockchain';
-import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
@@ -78,6 +78,40 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
 
             forgerBkt.put(miningCfg.beneficiary, forger); // update forger info
         }
+    }
+
+    // update forger committee every round
+    updateForgerCommittee(currentHeight, committeeCfg);
+
+    return;
+};
+
+export const updateForgerCommittee = (height: number, committeeCfg: CommitteeConfig): void => {
+    const forgerBkt = persistBucket(ForgerCommittee._$info.name);
+    const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
+    const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
+    const addForgers = forgerWaitAddBkt.get<number, [ForgerWaitAdd]>(height - committeeCfg.withdrawReserveBlocks)[0];
+    const exitForgers = forgerWaitExitBkt.get<number, [ForgerWaitExit]>(height - committeeCfg.withdrawReserveBlocks)[0];
+    const forgers = forgerBkt.get<number, [ForgerCommittee]>(height % committeeCfg.maxGroupNumber)[0];
+
+    // if there are forgers wait for add
+    if (addForgers) {
+        forgers.forgers.push(...addForgers.forgers);
+        forgerWaitAddBkt.delete(height - committeeCfg.withdrawReserveBlocks);
+        forgerBkt.put(height % committeeCfg.maxGroupNumber, forgers);
+    }
+
+    // if there are forgers wait to exit
+    if (exitForgers) {
+        for (let i = 0; i < exitForgers.forgers.length; i++) {
+            for (let j = 0; j < forgers.forgers.length; j++) {
+                if (exitForgers.forgers[i].address === forgers.forgers[j].address) {
+                    forgers.forgers.splice(j, 1);
+                }
+            }
+        }
+        forgerWaitExitBkt.delete(height - committeeCfg.withdrawReserveBlocks);
+        forgerBkt.put(height % committeeCfg.maxGroupNumber, forgers);
     }
 
     return;
