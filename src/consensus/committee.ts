@@ -8,7 +8,7 @@ import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Heig
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, getRand, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
+import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 
 export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
@@ -61,22 +61,22 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
             const forger = forgerBkt.get<string, [Forger]>(miningCfg.beneficiary)[0];
             const index = oldForgerCommitteeGroup.forgers.indexOf(forger);
 
-            forger.groupNumber = newGroupNumber;
             // derive new weight
-            forger.initWeight = deriveInitWeight(forger.address, buf2Hex(getRand(32)), forger.initWeight, forger.stake);
+            forger.initWeight = deriveInitWeight(forger.address, block.header.blockRandom, block.header.height, forger.stake);
 
             // new group is not the same as old group and old forger group length greater than 1
             if (miningCfg.groupNumber !== newGroupNumber && oldForgerCommitteeGroup.forgers.length > 1) {
-                const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
-                // add to new group
-                forgers.forgers.push(forger);
-                // delete from old group
-                oldForgerCommitteeGroup.forgers.splice(index, 1);
-                forgerCommitteeBkt.put(newGroupNumber, forgers);
+                forger.groupNumber = newGroupNumber; // assign new group number
+                const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
+                forgerCommittee.forgers.push(forger); // add to new group
+                oldForgerCommitteeGroup.forgers.splice(index, 1); // delete from old group
+                forgerCommitteeBkt.put(newGroupNumber, forgerCommittee);
                 forgerCommitteeBkt.put(miningCfg.groupNumber, oldForgerCommitteeGroup);
                 miningCfg.groupNumber = newGroupNumber;
                 miningCfgBkt.put('MC', miningCfg);
             }
+
+            forgerBkt.put(miningCfg.beneficiary, forger); // update forger info
         }
     }
 
