@@ -1,6 +1,5 @@
 import { getTipHeight, getTipTotalWeight, newBlocksReach, newHeadersReach } from '../chain/blockchain';
 import { Header, Height2Hash } from '../chain/schema.s';
-import { stringifyMessage } from '../pi/dgraph/util';
 import { memoryBucket, persistBucket } from '../util/db';
 import { getOwnNetAddr } from './client/launch';
 import { CurrentInfo } from './memory.s';
@@ -96,6 +95,7 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
     console.log('skeleton header syncing');
     clientRequest(pNetAddr,getHeadersByHeight,heights,(headers:HeaderArray,pNet:string) => {
         // TODO:此处需要对区块头进行验证
+        
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
         if (headers.arr.length > 0) {

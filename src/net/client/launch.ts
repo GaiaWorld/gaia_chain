@@ -3,6 +3,7 @@ import { getCurrentPubkey } from '../../pubkeyMgr';
 import { memoryBucket } from '../../util/db';
 import { checkVersion } from '../../validation';
 import { DEFAULT_STR_ERR } from '../const';
+import { download } from '../download';
 import { CONNECTED, NODE_TYPE, Peer } from '../pNode.s';
 import { DEFAULT_PEER, OWN_NET_ADDR } from '../server/cfg/net';
 import { shakeHands, subscribeBlock, subscribeTx } from '../server/rpc.p';
@@ -86,9 +87,8 @@ export const launch = () => {
                     }
                     console.log(`success shakehands with ${pNetAddr}`);
                 });
-
+                download(peer);
             }
-            
         }
     });
 };
