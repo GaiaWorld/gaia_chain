@@ -85,6 +85,7 @@ struct Transaction {
     from: String,
     to: String,
     value: usize,
+    lastInputValue: usize,
     lastOutputValue: usize,
     txType: TxType,
     forgerTx: Option<ForgerCommitteeTx>,
@@ -176,21 +177,9 @@ struct Account {
 }
 
 #[db=memory,primary=txHash]
-struct SpendTxPool {
+struct TxPool {
     txHash: String,
     tx: Transaction,
-}
-
-#[db=file,primary=txHash]
-struct ForgerCommitteeTxPool {
-    txHash: String,
-    tx: ForgerCommitteeTx,
-}
-
-#[db=file,primary=txHash]
-struct PenaltyTxPool {
-    txHash: String,
-    tx: PenaltyTx,
 }
 
 #[db=file,primary=pk]

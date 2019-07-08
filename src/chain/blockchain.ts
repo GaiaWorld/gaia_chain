@@ -8,6 +8,7 @@ import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
 import { persistBucket } from '../util/db';
+import { addTx2Pool, simpleVerifyTx } from '../validation';
 import { calcHeaderHash } from './header';
 import { Account, Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, Transaction, TxType } from './schema.s';
 
@@ -93,8 +94,9 @@ export const getBlock = (invMsg: Inv): Block => {
 export const newTxsReach = (txs: Transaction[]): void => {
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
-        if (validateTx(tx)) {
+        if (simpleVerifyTx(tx)) {
             // TODO: add to tx pool
+            addTx2Pool(tx);
         }
     }
 };
