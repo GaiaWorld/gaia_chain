@@ -1,5 +1,5 @@
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, sha256 } from '../util/crypto';
+import { buf2Hex, hex2Buf, sha256, sign } from '../util/crypto';
 import { Header } from './schema.s';
 
 export const serializeHeader = (header: Header): Uint8Array => {
@@ -15,8 +15,7 @@ export const serializeHeader = (header: Header): Uint8Array => {
         .writeBigInt(header.totalWeight)
         .writeUtf8(header.txRootHash)
         .writeUtf8(header.version)
-        .writeBigInt(header.weight)
-        .writeUtf8(header.signature);
+        .writeBigInt(header.weight);
 
     return bon.getBuffer();
 };
@@ -26,4 +25,11 @@ export const calcHeaderHash = (header: Header): string => {
     header.bhHash = buf2Hex(sha256(serializeHeader(header)));
 
     return header.bhHash;
+};
+
+export const signHeader = (header: Header, privKey: string): string => {
+    const sig = buf2Hex(sign(hex2Buf(privKey), hex2Buf(calcHeaderHash(header))));
+    header.signature = sig;
+
+    return sig;
 };
