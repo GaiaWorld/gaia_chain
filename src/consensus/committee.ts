@@ -3,7 +3,7 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getTipHeight } from '../chain/blockchain';
+import { getCommitteeConfig, getTipHeight } from '../chain/blockchain';
 import { Body, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
@@ -173,4 +173,18 @@ export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string
     miningCfgBkt.put(cfg.pk, cfg);
 
     return;
+};
+
+export const getForgerWeight = (height: number, address: string): number => {
+    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+    const config = getCommitteeConfig();
+
+    const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(height % config.maxGroupNumber)[0].forgers;
+    for (const forger of forgers) {
+        if (forger.address === address) {
+            return calcWeightAtHeight(forger, height, config);
+        }
+    }
+
+    return -1;
 };
