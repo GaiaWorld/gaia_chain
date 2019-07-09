@@ -15,7 +15,9 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
         .writeUtf8(tx.to)
         .writeBigInt(tx.value)
         .writeUtf8(tx.pubKey)
-        .writeInt(tx.txType);
+        .writeInt(tx.txType)
+        .writeBigInt(tx.lastInputValue)
+        .writeBigInt(tx.lastOutputValue);
 
     switch (tx.txType) {
         case TxType.SpendTx:
@@ -36,6 +38,7 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
 export const serializeForgerCommitteeTx = (tx: ForgerCommitteeTx): Uint8Array => {
     const bon = new BonBuffer();
     bon.writeBool(tx.AddGroup)
+        .writeUtf8(tx.blsPubKey)
         .writeUtf8(tx.address)
         .writeBigInt(tx.stake);
 
@@ -58,13 +61,14 @@ export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.signature = buf2Hex(sign(privKey, hex2Buf(tx.txHash)));
 };
 
-export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Account, toAddr: Account, value: number, gas: number, gasPrice: number): Transaction => {
+export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Account, toAddr: Account, value: number, gas: number, gasPrice: number, payload: string): Transaction => {
     const tx = new Transaction();
     tx.from = fromAddr.address;
     tx.gas = gas;
+    tx.lastInputValue = fromAddr.inputAmount;
     tx.lastOutputValue = fromAddr.outputAmount;
     tx.nonce = fromAddr.nonce + 1;
-    tx.payload = buf2Hex(new Uint8Array(0));
+    tx.payload = payload;
     tx.price = gasPrice;
     tx.pubKey = pubKey;
     tx.to = toAddr.address;
@@ -76,25 +80,26 @@ export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Ac
     return tx;
 };
 
-export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr: Account, stake: number, addGroup: boolean, gas: number, gasPrice: number): Transaction => {
+export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr: Account, stake: number, addGroup: boolean, gas: number, gasPrice: number, payload: string): Transaction => {
     const tx = new Transaction();
     tx.from = fromAddr.address;
     tx.gas = gas;
+    tx.lastInputValue = fromAddr.inputAmount;
     tx.lastOutputValue = fromAddr.outputAmount;
     tx.nonce = fromAddr.nonce + 1;
-    tx.payload = buf2Hex(new Uint8Array(0));
+    tx.payload = payload;
     tx.price = gasPrice;
     tx.pubKey = pubKey;
     // to aadress is empty
     tx.to = '';
-    tx.txType = TxType.SpendTx;
-    tx.value = 0;
+    tx.txType = TxType.ForgerGroupTx;
+    tx.value = stake;
 
     const fct = new ForgerCommitteeTx();
     fct.AddGroup = addGroup;
     fct.address = fromAddr.address;
     fct.stake = stake;
-    fct.txHash = buf2Hex(sha256(serializeForgerCommitteeTx(fct)));
+    fct.forgeTxHash = buf2Hex(sha256(serializeForgerCommitteeTx(fct)));
 
     tx.forgerTx = fct;
 
