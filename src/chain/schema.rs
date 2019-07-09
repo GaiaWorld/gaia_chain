@@ -59,24 +59,43 @@ enum TxType {
     PenaltyTx = 3,
 }
 
-#[db=file,primary=txHash]
+#[db=file,primary=forgeTxHash]
 struct ForgerCommitteeTx {
-    txHash: String,
+    forgeTxHash: String,
     // true: add
     // false exit
     AddGroup: bool,
+    blsPubKey: String,
     address: String,
     stake: usize,
 }
 
-#[db=file,primary=txHash]
+#[db=file,primary=penaltyTxHash]
 struct PenaltyTx {
-    txHash: String,
+    penaltyTxHash: String,
     loseStake: usize,
 }
 
 // spend tx
 #[db=file,primary=txHash]
+struct DBTransaction {
+    txHash: String,
+    nonce: usize,
+    gas: usize,
+    price: usize,
+    from: String,
+    to: String,
+    value: usize,
+    lastInputValue: usize,
+    lastOutputValue: usize,
+    txType: TxType,
+    forgerTx: String,
+    penaltyTx: String,
+    payload: Option<String>,
+    pubKey: String,
+    signature: String,
+}
+
 struct Transaction {
     txHash: String,
     nonce: usize,
@@ -149,8 +168,13 @@ struct Height2Hash {
 
 // block body
 #[db=file,primary=bhHash]
-struct Body {
+struct DBBody {
     // block header hash
+    bhHash: String,
+    txs: [String],
+}
+
+struct Body {
     bhHash: String,
     txs: [Transaction],
 }
