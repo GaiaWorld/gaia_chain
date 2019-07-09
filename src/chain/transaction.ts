@@ -35,7 +35,8 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
 
 export const serializeForgerCommitteeTx = (tx: ForgerCommitteeTx): Uint8Array => {
     const bon = new BonBuffer();
-    bon.writeUtf8(tx.address)
+    bon.writeBool(tx.AddGroup)
+        .writeUtf8(tx.address)
         .writeBigInt(tx.stake);
 
     return bon.getBuffer();
@@ -93,6 +94,7 @@ export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr
     fct.AddGroup = addGroup;
     fct.address = fromAddr.address;
     fct.stake = stake;
+    fct.txHash = buf2Hex(sha256(serializeForgerCommitteeTx(fct)));
 
     tx.forgerTx = fct;
 
