@@ -1,14 +1,13 @@
 /**
  * main function
  */
-import { getCommitteeConfig, getMiningConfig, getTipHeight } from '../chain/blockchain';
+import { getCommitteeConfig, getMiningConfig, getTipHeight, isSyncing, newBlockChain } from '../chain/blockchain';
 import { startMining } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { persistBucket } from '../util/db';
 import { setTimer } from '../util/task';
-import { isSyncing, newBlockChain } from './blockchain';
 import { ChainHead, CommitteeConfig } from './schema.s';
 
 const start = (): void => {
