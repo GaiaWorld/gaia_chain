@@ -143,10 +143,15 @@ export const newBlocksReach = (bodys: Body[]): void => {
     const waitForExitForgers = new ForgerWaitExit();
     const currentHeight = getTipHeight();
     const dbBodyBkt = persistBucket(DBBody._$info.name);
+    const headerBkt = persistBucket(Header._$info.name);
+    const accountBkt = persistBucket(Account._$info.name);
 
     for (const body of bodys) {
         const txHashes = [];
+        let minerFee = 0;
         for (const tx of body.txs) {
+            // all tx is fixed fee at present
+            minerFee += 21000;
             if (validateTx(tx)) {
                 txHashes.push(calcTxHash(serializeTx(tx)));
                 switch (tx.txType) {
@@ -199,6 +204,14 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         break;
                     default:
                 }
+            }
+            const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
+
+            if (minerFee > 0) {
+                const account = accountBkt.get<string, [Account]>(header.forger)[0];
+                account.inputAmount += minerFee;
+                // give miner fee to forger
+                accountBkt.put(account.address, account);
             }
         }
         dbBodyBkt.put(body.bhHash, txHashes);

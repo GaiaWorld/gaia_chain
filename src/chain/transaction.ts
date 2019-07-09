@@ -8,6 +8,7 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
     const bon = new BonBuffer();
     bon.writeUtf8(tx.from)
         .writeBigInt(tx.gas)
+        .writeBigInt(tx.lastInputValue)
         .writeBigInt(tx.lastOutputValue)
         .writeBigInt(tx.nonce)
         .writeUtf8(tx.payload)
@@ -15,9 +16,7 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
         .writeUtf8(tx.to)
         .writeBigInt(tx.value)
         .writeUtf8(tx.pubKey)
-        .writeInt(tx.txType)
-        .writeBigInt(tx.lastInputValue)
-        .writeBigInt(tx.lastOutputValue);
+        .writeInt(tx.txType);
 
     switch (tx.txType) {
         case TxType.SpendTx:
