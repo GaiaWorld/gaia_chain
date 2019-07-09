@@ -30,7 +30,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     return new Block(header, body);
 };
 
-const calcTxRootHash = (txs: Transaction[]): string => {
+export const calcTxRootHash = (txs: Transaction[]): string => {
     const txHashes = [];
     for (const tx of txs) {
         txHashes.push(calcTxHash(serializeTx(tx)));
