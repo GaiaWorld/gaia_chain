@@ -186,7 +186,7 @@ export const newHeadersReach = (headers: Header[]): void => {
     for (const header of headers) {
         validateHeader(header);
         // TODO: retrive body
-        bkt.put<string, Header>('H' + `${calcHeaderHash(header)}`, header);
+        bkt.put<string, Header>(calcHeaderHash(header), header);
     }
 
     return;
