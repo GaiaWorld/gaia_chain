@@ -66,11 +66,6 @@ export const simpleValidateHeader = (header:Header):boolean => {
 export const simpleValidateTx = (tx:Transaction):boolean => {
     const serTx = serializeTx(tx);
 
-    if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.from) {
-        console.log(`the pubkey do not match the from address`);
-        
-        return false;
-    }
     if (tx.gas < MIN_GAS || tx.price < MIN_PRICE) {
         console.log(`gas price is too low`);
 
@@ -91,7 +86,15 @@ export const simpleValidateTx = (tx:Transaction):boolean => {
 
         return false;
     }
+    const spendTxVerify = ():boolean => {
+        if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.from) {
+            console.log(`the pubkey do not match the from address`);
+            
+            return false;
+        }
 
+        return true;
+    };
     const forgerTxVerify = ():boolean => {
         if (buf2Hex(sha256(serializeForgerCommitteeTx(tx.forgerTx))) !== tx.forgerTx.forgeTxHash) {
             console.log(`forgeTxHash do not match`);
@@ -110,6 +113,12 @@ export const simpleValidateTx = (tx:Transaction):boolean => {
 
                 return false;
             }
+            if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.from) {
+                console.log(`the pubkey do not match the from address`);
+                
+                return false;
+            }
+
         }
         if (tx.forgerTx.AddGroup === false) {// leave 
             if (tx.to !== tx.forgerTx.address || tx.from !== GOD_ADDRESS) {
@@ -118,13 +127,18 @@ export const simpleValidateTx = (tx:Transaction):boolean => {
                 return false;
             }
         }
+        if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.to) {
+            console.log(`the pubkey do not match the to address`);
+            
+            return false;
+        }
 
         return true;
     };
 
     switch (tx.txType) {
         case TxType.SpendTx:
-            return true;
+            return spendTxVerify();
         case TxType.ForgerGroupTx:
             return forgerTxVerify(); 
         case TxType.PenaltyTx:
