@@ -1,5 +1,7 @@
 import { Block } from './chain/blockchain';
-import { Header, Transaction, TxPool } from './chain/schema.s';
+import { Header, Transaction, TxPool, TxType } from './chain/schema.s';
+import { calcTxHash, serializeTx } from './chain/transaction';
+import { hex2Buf, pubKeyToAddress, verify } from './util/crypto';
 import { memoryBucket } from './util/db';
 
 /**
@@ -19,16 +21,22 @@ export const checkVersion = (consenseVersion:string):boolean => {
  * 4. 协议版本是否正确
  */
 export const simpleVerifyHeader = (header:Header):boolean => {
-    
+
     return;
 };
 
 /**
- * 1. 签名是否正确
+ * 公钥和from地址是对应的
+ * 交易hash是否正确
+ * gas不小于系统允许的最小gas
+ * price不小于系统允许的最小price
+ * lastInputValue >= lastOutputValue + value + gas*price
+ * 签名是否正确
+ * 
+ * 1. 
  * 2. 交易类型存在
- * 3. gas不小于系统允许的最小gas
- * 4. price不小于系统允许的最小price
- * 5. lastInputValue >= lastOutputValue + value + gas*price
+
+ * 5. 
  * 如果是加入委员会则需要额外验证
  * 1. to地址为上帝地址from地址和publickey是匹配的
  * 2. value需要和stake一致
@@ -37,8 +45,48 @@ export const simpleVerifyHeader = (header:Header):boolean => {
  * //暂未处理惩罚交易
  */
 export const simpleVerifyTx = (tx:Transaction):boolean => {
+    const serTx = serializeTx(tx);
 
-    return;
+    if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.from) {
+        console.log(`the pubkey do not match the from address`);
+        
+        return false;
+    }
+
+    if (calcTxHash(serTx) !== tx.txHash) {
+        console.log(`tx hash is not match`);
+
+        return false;
+    }
+    if (tx.gas < MIN_GAS || tx.price < MIN_PRICE) {
+        console.log(`gas price is too low`);
+
+        return false;
+    }
+    if (tx.lastInputValue < tx.lastOutputValue + tx.value + tx.gas * tx.price) {
+        console.log(`the account do not have enough money`);
+
+        return false;
+    }
+    if (!verify(hex2Buf(tx.signature), hex2Buf(tx.pubKey), hex2Buf(tx.txHash))) {
+        console.log(`wrong signature`);
+
+        return false;
+    }
+
+    if (tx.txType === TxType.SpendTx) {
+        
+        return true;
+    }
+    if (tx.txType === TxType.ForgerGroupTx) {
+        if (tx.forgerTx.AddGroup === true) {// join in
+            
+        }
+        if (tx.forgerTx.AddGroup === false) {// leave 
+
+        }
+    }
+
 };
 
 /**
@@ -93,3 +141,6 @@ export const getTxsFromPool = ():Transaction[] => {
 };
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差
 const MAX_BLOCK_TX = 1000;// 一个区块最多包含1000个交易
+const MIN_GAS = 1000;
+const MIN_PRICE = 10;
+const GOD_ADDRESS = '00000000000000000000';
