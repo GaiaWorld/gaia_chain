@@ -155,6 +155,7 @@ struct Header {
     forger: String,
     groupNumber: u16,
     timestamp: usize,
+    pubkey:String,
     forgerPubkey: String,
     blockRandom: String,
     signature: String,

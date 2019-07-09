@@ -1,8 +1,10 @@
-import { Block } from './chain/blockchain';
-import { Header, Transaction, TxPool, TxType } from './chain/schema.s';
-import { calcTxHash, serializeTx } from './chain/transaction';
-import { hex2Buf, pubKeyToAddress, verify } from './util/crypto';
-import { memoryBucket } from './util/db';
+import { Block, getVersion } from './chain/blockchain';
+import { calcHeaderHash } from './chain/header';
+import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './chain/schema.s';
+import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './chain/transaction';
+import { getCurTime } from './net/server/rpc.p';
+import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from './util/crypto';
+import { memoryBucket, persistBucket } from './util/db';
 
 /**
  * 
@@ -11,32 +13,50 @@ import { memoryBucket } from './util/db';
 export const checkVersion = (consenseVersion:string):boolean => {
     // TODO:
     
+    return getVersion() === consenseVersion;
+};
+
+/**
+ * 协议版本是否正确
+ * hash是否正确
+ * 签名是否正确
+ * 时间戳是否低于当前时间戳+误差范围
+ */
+export const simpleVerifyHeader = (header:Header):boolean => {
+    if (!checkVersion(header.version)) {
+        console.log(`the consense version do not match`);
+
+        return false;
+    }
+    if (calcHeaderHash(header) !== header.bhHash) {
+        console.log(`header hash do not match`);
+
+        return false;
+    }
+    if (!verify(hex2Buf(header.signature), hex2Buf(header.pubkey), hex2Buf(header.bhHash))) {
+        console.log(`signature is wrong`);
+
+        return false;
+    }
+    if (Date.now() + MAX_TIME_STAMP <  header.timestamp) {
+        console.log(`the timestamp is in the future`);
+
+        return false;
+    }
+
     return true;
 };
 
 /**
- * 1. 签名是否正确
- * 2. 对应字段是否存在
- * 3. 时间戳是否低于当前时间戳+误差范围
- * 4. 协议版本是否正确
- */
-export const simpleVerifyHeader = (header:Header):boolean => {
-
-    return;
-};
-
-/**
  * 公钥和from地址是对应的
- * 交易hash是否正确
- * gas不小于系统允许的最小gas
- * price不小于系统允许的最小price
+ * gas不小于系统允许的最小gas,price不小于系统允许的最小price
  * lastInputValue >= lastOutputValue + value + gas*price
+ *  交易hash是否正确
  * 签名是否正确
  * 
  * 1. 
  * 2. 交易类型存在
-
- * 5. 
+ * 5. 如果是其他交易还要检验其他交易的hash值
  * 如果是加入委员会则需要额外验证
  * 1. to地址为上帝地址from地址和publickey是匹配的
  * 2. value需要和stake一致
@@ -52,12 +72,6 @@ export const simpleVerifyTx = (tx:Transaction):boolean => {
         
         return false;
     }
-
-    if (calcTxHash(serTx) !== tx.txHash) {
-        console.log(`tx hash is not match`);
-
-        return false;
-    }
     if (tx.gas < MIN_GAS || tx.price < MIN_PRICE) {
         console.log(`gas price is too low`);
 
@@ -68,41 +82,99 @@ export const simpleVerifyTx = (tx:Transaction):boolean => {
 
         return false;
     }
+    if (calcTxHash(serTx) !== tx.txHash) {
+        console.log(`tx hash is not match`);
+
+        return false;
+    }
     if (!verify(hex2Buf(tx.signature), hex2Buf(tx.pubKey), hex2Buf(tx.txHash))) {
         console.log(`wrong signature`);
 
         return false;
     }
 
-    if (tx.txType === TxType.SpendTx) {
-        
-        return true;
-    }
-    if (tx.txType === TxType.ForgerGroupTx) {
+    const forgerTxVerify = ():boolean => {
+        if (buf2Hex(sha256(serializeForgerCommitteeTx(tx.forgerTx))) !== tx.forgerTx.forgeTxHash) {
+            console.log(`forgeTxHash do not match`);
+
+            return false;
+        }
+
+        if (tx.value !== tx.forgerTx.stake) {
+            console.log(`stake and value do not match`);
+
+            return false;
+        }
         if (tx.forgerTx.AddGroup === true) {// join in
-            
+            if (tx.to !== GOD_ADDRESS || tx.from !== tx.forgerTx.address) {
+                console.log(`forge address do not match`);
+
+                return false;
+            }
         }
         if (tx.forgerTx.AddGroup === false) {// leave 
+            if (tx.to !== tx.forgerTx.address || tx.from !== GOD_ADDRESS) {
+                console.log(`forge address do not match`);
 
+                return false;
+            }
+        }
+
+        return true;
+    };
+
+    switch (tx.txType) {
+        case TxType.SpendTx:
+            return true;
+        case TxType.ForgerGroupTx:
+            return forgerTxVerify(); 
+        case TxType.PenaltyTx:
+            // TODO:
+            return false;
+        default:
+            return false;
+    }
+};
+
+/**
+ * bhHash正确
+ * 交易数量不超过1000
+ * 1. 对应的区块头存在，且通过了简单验证
+ * 2. 
+ * 3. 简单验证所有交易
+ * 4. 
+ */
+export const simpleVerifyBlock = (block:Block):boolean => {
+    if (block.header.bhHash !== block.body.bhHash) {
+        console.log(`the header and body hash do not match`);
+
+        return false;
+    }
+    if (block.body.txs.length > MAX_BLOCK_TX_NUMBER) {
+        console.log(`the txs amount is too large`);
+        
+        return false;
+    }
+    if (!simpleVerifyHeader(block.header)) {
+        console.log(`fail to verify the header`);
+
+        return false;
+    }
+    for (let i = 0; i < block.body.txs.length; i++) {
+        if (!simpleVerifyTx(block.body.txs[i])) {
+            console.log(`fail to verify the tx`);
+            
+            return false;
         }
     }
 
+    return true;
 };
 
 /**
- * 1. 对应的区块头存在，且通过了简单验证
- * 2. 交易数量不超过1000
- * 3. 简单验证所有交易
- * 4. bhHash正确
- */
-export const simpleVerifyBlock = (block:Block):boolean => {
-
-    return;
-};
-
-/**
+ * 父hash正确
  * 1. 区块高度正确
- * 2. 父hash正确
+ * 2. 
  * 3. 所有交易进行了严格验证
  * 4. txrootHash正确
  * 5. receiptRoot正确
@@ -112,20 +184,86 @@ export const simpleVerifyBlock = (block:Block):boolean => {
  * 9. 随机值正确
  */
 export const verifyBlock = (block:Block):boolean => {
+    if (!simpleVerifyBlock(block)) {
+        console.log(`simple veridate the block failed`);
 
+        return false;
+    }
+    const parentHeader = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>('CH')[0];
+    if (parentHeader.headHash !== block.header.prevHash) {
+        console.log(`prevHash do not matach`);
+
+        return false;
+    }
+    if (parentHeader.height + 1 !== block.header.height) {
+        console.log(`height is wrong`);
+
+        return false;
+    }
+
+    for (let i = 0; i < block.body.txs.length; i++) {
+        if (!verifyTx(block.body.txs[i])) {
+            console.log(`fail to veridate the txs`);
+
+            return false;
+        }
+    }
+
+    return; 
 };
 
 /**
  * 区块放到主链上的时候需要执行严格验证
- * 1. lastInputValue和lastOutputValue和账户信息对应
+ * lastInputValue和lastOutputValue和账户信息对应
  * 如果是退出委员会则需要额外验证
- * 1. 该用户是否在委员会中
- * 2. 用户持有的资金是否和退出资金相同
+ * 1.该用户是否在委员会中
+ * 2.用户持有的资金是否和退出资金相同
  * 如果是加入委员会则需要额外验证
- * 1. 该用户是否在委员会中
+ * 1.该用户是否在委员会中
  */
 export const verifyTx = (tx:Transaction):boolean => {
+    if (!simpleVerifyTx(tx)) {
+        console.log(`fail to simple verify the transaction`);
 
+        return false;
+    }
+    let account = persistBucket(Account._$info.name).get<string,[Account]>(tx.from)[0];
+    if (account === undefined) {
+        account = new Account();
+        account.address = tx.from;
+        account.nonce = 0;
+        account.inputAmount = 0;
+        account.outputAmount = 0;
+    }
+    if (account.inputAmount !== tx.lastInputValue || account.outputAmount !== tx.lastOutputValue) {
+        console.log(`the account balance do not match`);
+
+        return false;
+    }
+    if (tx.txType === TxType.ForgerGroupTx) {
+        if (tx.forgerTx.AddGroup === true) {
+            if (persistBucket(Forger._$info.name).get<string,[Forger]>(tx.from) !== undefined) {
+                console.log(`this address already in forger, can not join in again`);
+
+                return false;
+            }
+        } else {
+            const forger = persistBucket(Forger._$info.name).get<string,[Forger]>(tx.from)[0];
+            if (forger === undefined) {
+                console.log(`the address is not in forger, can not exit forger`);
+
+                return false;
+            }
+            if (tx.value !== forger.stake) {
+                console.log(`the stake is wrong`);
+
+                return false;
+            }
+        }
+    }
+    // TODO:暂时没有处理惩罚交易的问题
+
+    return true;
 };
 
 export const addTx2Pool = (tx:Transaction):boolean => {
@@ -137,10 +275,18 @@ export const addTx2Pool = (tx:Transaction):boolean => {
 export const getTxsFromPool = ():Transaction[] => {
     // 通过迭代返回pool里面的所有交易
     // TODO:
-    return [];
+    const list:Transaction[] = [];
+    const iter = memoryBucket(TxPool._$info.name).iter(null);
+    let el = iter.next();
+    while (el) {
+        list.push(<Transaction>el[1].value);
+        el = iter.next();
+    }
+
+    return list;
 };
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差
-const MAX_BLOCK_TX = 1000;// 一个区块最多包含1000个交易
+const MAX_BLOCK_TX_NUMBER = 1000;// 一个区块最多包含1000个交易
 const MIN_GAS = 1000;
 const MIN_PRICE = 10;
 const GOD_ADDRESS = '00000000000000000000';
