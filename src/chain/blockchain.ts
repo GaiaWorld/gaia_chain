@@ -277,11 +277,11 @@ export const newBlockChain = (): void => {
     if (!miningCfg) {
         const mc = new MiningConfig();
         // load defalut miner config
-        // mc.beneficiary = GENESIS.allocs[0].address;
+        // mc.beneficiary = GENESIS.forgers[0].address;
         mc.beneficiary = '49fb96e79b3b3ac56d2789001534f7ae47c21200';
         mc.groupNumber = 1;
-        mc.pubKey = GENESIS.allocs[0].pubKey;
-        mc.privateKey = GENESIS.allocs[0].privKey;
+        mc.pubKey = GENESIS.forgers[0].pubKey;
+        mc.privateKey = GENESIS.forgers[0].privKey;
         mc.pk = 'MC';
         
         bkt2.put(mc.pk, mc);
@@ -308,7 +308,7 @@ export const newBlockChain = (): void => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(0)[0];
     if (!forgerCommittee) {
-        const preConfiguredForgers = GENESIS.allocs;
+        const preConfiguredForgers = GENESIS.forgers;
         const forgers = [];
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
