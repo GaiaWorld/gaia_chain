@@ -86,6 +86,7 @@ export const startMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConf
     return;
 };
 
+// handle forgers wait for add and exit
 export const updateForgerCommittee = (height: number, committeeCfg: CommitteeConfig): void => {
     const forgerBkt = persistBucket(ForgerCommittee._$info.name);
     const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
@@ -127,6 +128,7 @@ export const selectMostWeightForger = (groupNumber: number, height: number, comm
     return forgers[0];
 };
 
+// calculate forger's weight at a specific height
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
     const heightDiff = height - forger.addHeight - committeeCfg.withdrawReserveBlocks;
     if (heightDiff === 0) {

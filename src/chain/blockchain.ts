@@ -8,10 +8,10 @@ import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
 import { persistBucket } from '../util/db';
-import { addTx2Pool, simpleValidateTx } from '../validation';
 import { calcHeaderHash } from './header';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
+import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -147,19 +147,21 @@ export const newBlocksReach = (bodys: Body[]): void => {
     const accountBkt = persistBucket(Account._$info.name);
 
     for (const body of bodys) {
-        const txHashes = [];
-        let minerFee = 0;
-        for (const tx of body.txs) {
-            // all tx is fixed fee at present
-            minerFee += 21000;
-            if (validateTx(tx)) {
+        const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
+        const block = new Block(header, body);
+        if (validateBlock(block)) {
+            const txHashes = [];
+            let minerFee = 0;
+            for (const tx of body.txs) {
+                // all tx is fixed fee at present
+                minerFee += MIN_GAS * tx.price;
                 txHashes.push(calcTxHash(serializeTx(tx)));
                 switch (tx.txType) {
                     case TxType.ForgerGroupTx:
                         const forger = new Forger();
                         forger.address = tx.forgerTx.address;
                         forger.groupNumber = currentHeight % getCommitteeConfig().maxGroupNumber;
-                        forger.initWeight = 0;
+                        forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
                         forger.addHeight = currentHeight;
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
@@ -167,14 +169,13 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         if (tx.forgerTx.AddGroup === true) {
                             waitForAddForgers.height = currentHeight;
                             waitForAddForgers.forgers.push(forger);
-    
+
                         } else if (tx.forgerTx.AddGroup === false) {
                             waitForExitForgers.height = currentHeight;
                             waitForExitForgers.forgers.push(forger);
                         }
                         break;
                     case TxType.SpendTx:
-                        const accountBkt = persistBucket(Account._$info.name);
                         const fromAccount = accountBkt.get<string, [Account]>(tx.from)[0];
                         const toAccount = accountBkt.get<string, [Account]>(tx.to)[0];
 
@@ -204,17 +205,18 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         break;
                     default:
                 }
-            }
-            const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
 
-            if (minerFee > 0) {
-                const account = accountBkt.get<string, [Account]>(header.forger)[0];
-                account.inputAmount += minerFee;
-                // give miner fee to forger
-                accountBkt.put(account.address, account);
+                if (minerFee > 0) {
+                    const forgerAccount = accountBkt.get<string, [Account]>(header.forger)[0];
+                    forgerAccount.inputAmount += minerFee;
+                    // give miner fee to forger
+                    accountBkt.put(forgerAccount.address, forgerAccount);
+                }
             }
+            dbBodyBkt.put(body.bhHash, txHashes);
+        } else {
+            // TODO: ban peer
         }
-        dbBodyBkt.put(body.bhHash, txHashes);
     }
 
     // update forger committee info
@@ -230,15 +232,12 @@ export const newBlocksReach = (bodys: Body[]): void => {
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
-    // validate headers
-    // retrive corresponding body
-    // reassemly to a complete block
-    // add to chain store
+
     const bkt = persistBucket(Header._$info.name);
     for (const header of headers) {
-        validateHeader(header);
-        // TODO: retrive body
-        bkt.put<string, Header>(calcHeaderHash(header), header);
+        if (simpleValidateHeader(header)) {
+            bkt.put<string, Header>(calcHeaderHash(header), header);
+        }
     }
 
     return;
@@ -264,11 +263,18 @@ export const newBlockChain = (): void => {
     // load chain head
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
+
+    if (chainHead) {
+        return;
+    }
+
     if (!chainHead) {
         const ch = new ChainHead();
         ch.genesisHash = GENESIS.hash;
         ch.headHash = GENESIS.hash;
-        ch.height = 1;
+        // genesis parent hash is empty string
+        ch.prevHash = '';
+        ch.height = 0;
         ch.totalWeight = 0;
         ch.pk = 'CH';
 
@@ -281,11 +287,11 @@ export const newBlockChain = (): void => {
     if (!miningCfg) {
         const mc = new MiningConfig();
         // load defalut miner config
-        // mc.beneficiary = GENESIS.allocs[0].address;
+        // mc.beneficiary = GENESIS.forgers[0].address;
         mc.beneficiary = '49fb96e79b3b3ac56d2789001534f7ae47c21200';
         mc.groupNumber = 1;
-        mc.pubKey = GENESIS.allocs[0].pubKey;
-        mc.privateKey = GENESIS.allocs[0].privKey;
+        mc.pubKey = GENESIS.forgers[0].pubKey;
+        mc.privateKey = GENESIS.forgers[0].privKey;
         mc.pk = 'MC';
         
         bkt2.put(mc.pk, mc);
@@ -312,7 +318,7 @@ export const newBlockChain = (): void => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(0)[0];
     if (!forgerCommittee) {
-        const preConfiguredForgers = GENESIS.allocs;
+        const preConfiguredForgers = GENESIS.forgers;
         const forgers = [];
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
@@ -325,6 +331,7 @@ export const newBlockChain = (): void => {
             forgers.push(f);
         }
 
+        // populate forger committee
         for (let i = 0; i < GENESIS.totalGroups; i++) {
             const fc = new ForgerCommittee();
             const groupForgers = [];

@@ -15,7 +15,8 @@ export const serializeHeader = (header: Header): Uint8Array => {
         .writeBigInt(header.totalWeight)
         .writeUtf8(header.txRootHash)
         .writeUtf8(header.version)
-        .writeBigInt(header.weight);
+        .writeBigInt(header.weight)
+        .writeUtf8(header.pubkey);
 
     return bon.getBuffer();
 };

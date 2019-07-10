@@ -2,7 +2,7 @@ export const GENESIS = {
     hash: 'f80ac0800aeba0e82ed53a4451527223fe3726e6',
     blockRandom: 'cc6c85a369f741fd6f409627a0f73fd166f7dba6ba1b5be6c55703bb5243e013',
     totalGroups: 5,
-    allocs: [
+    forgers: [
         {
             address:  'ad79369c817b24f8b924789bb2f1ca1d1ac63c00',
             pubKey:  '4c113bf96822ea63eea2cd3441a2c2059ad6be3590a71f0fea7021b786dba9b4',

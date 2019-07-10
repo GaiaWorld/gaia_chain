@@ -1,7 +1,7 @@
 import { getGenesisHash, getNodeType, getTipHeight, getTipTotalWeight, getVersion } from '../../chain/blockchain';
+import { checkVersion } from '../../chain/validation';
 import { getCurrentPubkey } from '../../pubkeyMgr';
 import { memoryBucket } from '../../util/db';
-import { checkVersion } from '../../validation';
 import { DEFAULT_STR_ERR } from '../const';
 import { download } from '../download';
 import { CONNECTED, NODE_TYPE, Peer } from '../pNode.s';

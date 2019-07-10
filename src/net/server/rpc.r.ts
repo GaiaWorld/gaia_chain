@@ -3,10 +3,10 @@
  */
 import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipTotalWeight, getTx, newBlocksReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { Height2Hash } from '../../chain/schema.s';
+import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
 import { memoryBucket, persistBucket } from '../../util/db';
-import { checkVersion } from '../../validation';
 import { getOwnNetAddr, makeShakeHandsInfo } from '../client/launch';
 import { DEFAULT_STR_ERR } from '../const';
 import { CURRENT_DOWNLOAD_PEER_NET_ADDR, MAX_HEADER_NUMBER } from '../download';

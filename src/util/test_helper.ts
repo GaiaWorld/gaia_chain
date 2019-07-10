@@ -37,6 +37,20 @@ export const generateTxs = (len: number): Transaction[] => {
 };
 
 export const generateAccounts = (len: number): void => {
+    for (let i = 0; i < len; i++) {
+        const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
+        const address = pubKeyToAddress(pubKey);
+        const balance = parseInt(buf2Hex(getRand(4)), 16) % 100000;
+
+        console.log('{');
+        console.log('address: ', `'${address}',`);
+        console.log('pubKey: ', `'${buf2Hex(pubKey)}',`);
+        console.log('privKey: ', `'${buf2Hex(privKey)}',`);
+        console.log('balance: ', balance);
+        console.log('},');
+        console.log('\n');
+    }
+
     return;
 };
 

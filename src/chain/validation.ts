@@ -1,11 +1,11 @@
-import { calcTxRootHash } from './chain/block';
-import { Block, getVersion } from './chain/blockchain';
-import { calcHeaderHash } from './chain/header';
-import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './chain/schema.s';
-import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './chain/transaction';
-import { getForgerWeight } from './consensus/committee';
-import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from './util/crypto';
-import { memoryBucket, persistBucket } from './util/db';
+import { getForgerWeight } from '../consensus/committee';
+import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { memoryBucket, persistBucket } from '../util/db';
+import { calcTxRootHash } from './block';
+import { Block, getVersion } from './blockchain';
+import { calcHeaderHash } from './header';
+import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
+import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
  * 
@@ -306,6 +306,6 @@ export const getTxsFromPool = ():Transaction[] => {
 };
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差
 const MAX_BLOCK_TX_NUMBER = 1000;// 一个区块最多包含1000个交易
-const MIN_GAS = 1000;
+export const MIN_GAS = 1000;
 const MIN_PRICE = 10;
 const GOD_ADDRESS = '00000000000000000000';
