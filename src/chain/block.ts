@@ -1,7 +1,8 @@
 import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
+import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, CommitteeConfig, Forger, Header, MiningConfig, Transaction } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, Forger, Header, Height2Hash, MiningConfig, Transaction } from './schema.s';
 import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
 export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
@@ -38,4 +39,11 @@ export const calcTxRootHash = (txs: Transaction[]): string => {
     }
 
     return merkleRootHash(txHashes);
+};
+
+export const getBlockHashByHeight = (height: number): string => {
+    const height2HashBkt = persistBucket(Height2Hash._$info.name);
+    const hash = height2HashBkt.get<number, [Height2Hash]>(height)[0];
+
+    return hash.bhHash;
 };
