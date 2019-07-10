@@ -260,11 +260,18 @@ export const newBlockChain = (): void => {
     // load chain head
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
+
+    if (chainHead) {
+        return;
+    }
+
     if (!chainHead) {
         const ch = new ChainHead();
         ch.genesisHash = GENESIS.hash;
         ch.headHash = GENESIS.hash;
-        ch.height = 1;
+        // genesis parent hash is empty string
+        ch.prevHash = '';
+        ch.height = 0;
         ch.totalWeight = 0;
         ch.pk = 'CH';
 
@@ -321,6 +328,7 @@ export const newBlockChain = (): void => {
             forgers.push(f);
         }
 
+        // populate forger committee
         for (let i = 0; i < GENESIS.totalGroups; i++) {
             const fc = new ForgerCommittee();
             const groupForgers = [];
