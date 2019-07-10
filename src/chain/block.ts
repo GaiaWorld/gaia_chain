@@ -7,6 +7,7 @@ import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
     const header = new Header();
     header.forger = miningCfg.beneficiary;
+    header.pubkey = miningCfg.pubKey;
     header.forgerPubkey = miningCfg.pubKey;
     header.height = chainHead.height + 1;
     header.prevHash = chainHead.headHash;
@@ -19,12 +20,12 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     header.version = getVersion();
     header.blockRandom = buf2Hex(getRand(32));
     header.groupNumber = forger.groupNumber;
-    header.signature = buf2Hex(sign(hex2Buf(miningCfg.privateKey), hex2Buf(header.blockRandom)));
-
     header.bhHash = calcHeaderHash(header);
+    // sign the whole block
+    header.signature = buf2Hex(sign(hex2Buf(miningCfg.privateKey), hex2Buf(header.bhHash)));
 
     const body = new Body();
-    body.bhHash = calcHeaderHash(header);
+    body.bhHash = header.bhHash;
     body.txs = txs;
 
     return new Block(header, body);
