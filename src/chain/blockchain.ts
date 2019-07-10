@@ -8,7 +8,7 @@ import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
 import { persistBucket } from '../util/db';
-import { addTx2Pool, simpleValidateTx } from '../validation';
+import { addTx2Pool, simpleValidateHeader, simpleValidateTx, validateTx } from '../validation';
 import { calcHeaderHash } from './header';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
@@ -147,6 +147,7 @@ export const newBlocksReach = (bodys: Body[]): void => {
     const accountBkt = persistBucket(Account._$info.name);
 
     for (const body of bodys) {
+        const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
         const txHashes = [];
         let minerFee = 0;
         for (const tx of body.txs) {
@@ -159,7 +160,7 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         const forger = new Forger();
                         forger.address = tx.forgerTx.address;
                         forger.groupNumber = currentHeight % getCommitteeConfig().maxGroupNumber;
-                        forger.initWeight = 0;
+                        forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
                         forger.addHeight = currentHeight;
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
@@ -174,7 +175,6 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         }
                         break;
                     case TxType.SpendTx:
-                        const accountBkt = persistBucket(Account._$info.name);
                         const fromAccount = accountBkt.get<string, [Account]>(tx.from)[0];
                         const toAccount = accountBkt.get<string, [Account]>(tx.to)[0];
 
@@ -205,7 +205,6 @@ export const newBlocksReach = (bodys: Body[]): void => {
                     default:
                 }
             }
-            const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
 
             if (minerFee > 0) {
                 const account = accountBkt.get<string, [Account]>(header.forger)[0];
@@ -230,15 +229,12 @@ export const newBlocksReach = (bodys: Body[]): void => {
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
-    // validate headers
-    // retrive corresponding body
-    // reassemly to a complete block
-    // add to chain store
+
     const bkt = persistBucket(Header._$info.name);
     for (const header of headers) {
-        validateHeader(header);
-        // TODO: retrive body
-        bkt.put<string, Header>(calcHeaderHash(header), header);
+        if (simpleValidateHeader(header)) {
+            bkt.put<string, Header>(calcHeaderHash(header), header);
+        }
     }
 
     return;
