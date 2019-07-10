@@ -1,11 +1,11 @@
-import { calcTxRootHash } from './chain/block';
-import { Block, getVersion } from './chain/blockchain';
-import { calcHeaderHash } from './chain/header';
-import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './chain/schema.s';
-import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './chain/transaction';
-import { getForgerWeight } from './consensus/committee';
-import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from './util/crypto';
-import { memoryBucket, persistBucket } from './util/db';
+import { getForgerWeight } from '../consensus/committee';
+import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { memoryBucket, persistBucket } from '../util/db';
+import { calcTxRootHash } from './block';
+import { Block, getVersion } from './blockchain';
+import { calcHeaderHash } from './header';
+import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
+import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
  * 
