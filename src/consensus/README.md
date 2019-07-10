@@ -166,13 +166,6 @@
 代码review：没有错误和警告，符合编码规范,rust格式化工具，和编码规范的编写：
 维护文档:
 数据库/网络长期任务: 开发和维护
-
-Hi Stancia,
-    I am sorry to tell you that I have to suspend learning English from you. We hired an American employee who graduated from the University of California, Berkeley with a doctorate. We think he is the better person to speak abroad, as I am busy and English speech is not my strength. Maybe teacher Huang will give you more details this weekend. You are a good teacher, and I am so glad to meet you. Thank you very very much. I hope you have all the best in China.
-
-    Sure, we share the same opinion. I will still improve my English. Thank you, Stancia
-
-
     
     1. 我们的分叉会在几个区块以内结束
     2. 我们需要初始投入的资金应该占据总资金量的百分之多少才是绝对安全的
