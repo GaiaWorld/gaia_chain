@@ -15,7 +15,7 @@ import { BodyArray, GetHeaderHeight, HeaderArray, Inv, InvArray, InvArrayNet } f
 
 /**
  * 判断是否要向当前peer进行代码同步
- * @param peer 
+ * @param peer Peer
  */
 export const download = (peer:Peer):boolean => {
     // 首先比较当前peer和本地peer的高度和权重，如果本地更高则不需要同步

@@ -3,6 +3,6 @@
  */
 // ================================================export
 
-export class Nat{
-    
+export class Nat {
+    public ip:string;
 }

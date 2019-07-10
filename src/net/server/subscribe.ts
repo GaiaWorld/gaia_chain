@@ -8,9 +8,9 @@ import { Inv, InvNet, SubTable } from './rpc.s';
  * 作为服务器允许对等节点订阅的主题，并且主动给对等节点发送相应的信息
  */
 
- /**
+/**
  * core主动调用该函数，告诉网络层有新的TX产生了，TX可以来源于自身也可以来源于外部节点
- * @param invMsg 
+ * @param invMsg Inv
  */
 export const notifyNewTx = (invMsg:Inv): void => {
     notifyNewInv('tx',invMsg);
@@ -38,7 +38,7 @@ const notifyNewInv = (key:string, invMsg:Inv): void => {
 
 /**
  * core主动调用该函数，告诉网络层有新的block产生了，block可以来源于自身也可以来源于外部节点
- * @param invMsg 
+ * @param invMsg Inv
  */
 export const notifyNewBlock = (invMsg: Inv): void => {
     notifyNewInv('block',invMsg);
