@@ -306,6 +306,6 @@ export const getTxsFromPool = ():Transaction[] => {
 };
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差
 const MAX_BLOCK_TX_NUMBER = 1000;// 一个区块最多包含1000个交易
-const MIN_GAS = 1000;
+export const MIN_GAS = 1000;
 const MIN_PRICE = 10;
 const GOD_ADDRESS = '00000000000000000000';

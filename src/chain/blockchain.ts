@@ -8,7 +8,7 @@ import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
 import { persistBucket } from '../util/db';
-import { addTx2Pool, simpleValidateHeader, simpleValidateTx, validateTx } from '../validation';
+import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from '../validation';
 import { calcHeaderHash } from './header';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
@@ -148,12 +148,13 @@ export const newBlocksReach = (bodys: Body[]): void => {
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
-        const txHashes = [];
-        let minerFee = 0;
-        for (const tx of body.txs) {
-            // all tx is fixed fee at present
-            minerFee += 21000;
-            if (validateTx(tx)) {
+        const block = new Block(header, body);
+        if (validateBlock(block)) {
+            const txHashes = [];
+            let minerFee = 0;
+            for (const tx of body.txs) {
+                // all tx is fixed fee at present
+                minerFee += MIN_GAS * tx.price;
                 txHashes.push(calcTxHash(serializeTx(tx)));
                 switch (tx.txType) {
                     case TxType.ForgerGroupTx:
@@ -168,7 +169,7 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         if (tx.forgerTx.AddGroup === true) {
                             waitForAddForgers.height = currentHeight;
                             waitForAddForgers.forgers.push(forger);
-    
+
                         } else if (tx.forgerTx.AddGroup === false) {
                             waitForExitForgers.height = currentHeight;
                             waitForExitForgers.forgers.push(forger);
@@ -204,16 +205,18 @@ export const newBlocksReach = (bodys: Body[]): void => {
                         break;
                     default:
                 }
-            }
 
-            if (minerFee > 0) {
-                const account = accountBkt.get<string, [Account]>(header.forger)[0];
-                account.inputAmount += minerFee;
-                // give miner fee to forger
-                accountBkt.put(account.address, account);
+                if (minerFee > 0) {
+                    const forgerAccount = accountBkt.get<string, [Account]>(header.forger)[0];
+                    forgerAccount.inputAmount += minerFee;
+                    // give miner fee to forger
+                    accountBkt.put(forgerAccount.address, forgerAccount);
+                }
             }
+            dbBodyBkt.put(body.bhHash, txHashes);
+        } else {
+            // TODO: ban peer
         }
-        dbBodyBkt.put(body.bhHash, txHashes);
     }
 
     // update forger committee info
