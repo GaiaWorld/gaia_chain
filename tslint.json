@@ -13,6 +13,7 @@
         "tslint-microsoft-contrib"
     ],
     "rules": {
+        "max-func-body-length": false,
         "prefer-for-of": false,
         "max-line-length": false,
         "prefer-type-cast": false,

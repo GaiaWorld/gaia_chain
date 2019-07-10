@@ -281,6 +281,18 @@ export const newBlockChain = (): void => {
         chainHeadBkt.put(ch.pk, ch);
     }
 
+    // setup initial accounts
+    const accountBkt = persistBucket(Account._$info.name);
+    for (let i = 0; i < GENESIS.accounts.length; i++) {
+        const account = new Account();
+        account.address = GENESIS.accounts[i].address;
+        account.codeHash = '';
+        account.inputAmount = GENESIS.accounts[i].balance;
+        account.outputAmount = 0;
+        account.nonce = 0;
+        accountBkt.put(account.address, account);
+    }
+
     // initialize mining config
     const bkt2 = persistBucket(MiningConfig._$info.name);
     const miningCfg = bkt2.get<string, [MiningConfig]>('MC')[0];
