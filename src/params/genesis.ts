@@ -153,5 +153,37 @@ export const GENESIS = {
             privKey:  'd1797822a895ac521ff5a885d3a0b62e4c8a975cfb4c09c211bb230e14c0aa240b8306e8f00958360ded4f619dfca0b5bd2c9f9b25268a8ed102d0d2b0752c41',
             stake:  74265
         }
+    ],
+    accounts: [
+        {
+            address:  '040a7b003d7b3ee3d1a8d462eb4e6c43eaa4c4c6',
+            pubKey:  '8544f6274e42c3aae0974f6eda5b6c5e6343b9b2537fbef7a446e4aacc9902b5',
+            privKey:  'c5fa6ef149ef9070a86457e11dfcf3ce5b9e038134aca1b8c1e67fb29f4bf5a08544f6274e42c3aae0974f6eda5b6c5e6343b9b2537fbef7a446e4aacc9902b5',
+            balance:  20000000
+        },
+        {
+            address:  '5a4ea303e408858d4c8a3791a4f9141552ff82f8',
+            pubKey:  '298906f58f181ed187cd800eddf36545e00b0aaddc109d115963b2df1b904f12',
+            privKey:  'b4de98791830877ba53ca300cf89fba327632a5f9fb01674abc8ee52fbc19d43298906f58f181ed187cd800eddf36545e00b0aaddc109d115963b2df1b904f12',
+            balance:  20000000
+        },
+        {
+            address:  'a44374814a53e3bfc0afb55ae7cbf60ad5b38dc8',
+            pubKey:  '766682fb9e934dc36725b4772cbe5e1274d6ef8087d85f03f4e6f5601c9342c4',
+            privKey:  'dc8e82b2cb148e96b89af6f5e6e49fe490475e5afbf093e3a9b5cbedd168e286766682fb9e934dc36725b4772cbe5e1274d6ef8087d85f03f4e6f5601c9342c4',
+            balance:  20000000
+        },
+        {
+            address:  'b0eec29f9e62e514b6be6dd3162349a2d40ddc78',
+            pubKey:  'fb9b63640799492ea659f024831d8ed3699c8af93de9d9b1828858a0a57025d3',
+            privKey:  '55abbcbf93de05b020aaa904389e521e16f40a21b0954a9334b9a1e53cf53574fb9b63640799492ea659f024831d8ed3699c8af93de9d9b1828858a0a57025d3',
+            balance:  20000000
+        },
+        {
+            address:  'e9a3e4c2c6f8c31eaa2a856bc3e423ef1d652401',
+            pubKey:  '860ef60b68201f3e4fa4631c0fa24e6ca7994cee633d738f50be4e0c3343d188',
+            privKey:  'f045deaccbb0a072deb6a0231c00ebb31501ed872932610cdd24bee112b8b77f860ef60b68201f3e4fa4631c0fa24e6ca7994cee633d738f50be4e0c3343d188',
+            balance:  20000000
+        }
     ]
 };
