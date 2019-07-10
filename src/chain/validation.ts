@@ -4,7 +4,7 @@ import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
+import { Account, ChainHead, Forger, Header, Height2Hash, Transaction, TxPool, TxType } from './schema.s';
 import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
@@ -96,6 +96,11 @@ export const simpleValidateTx = (tx:Transaction):boolean => {
         return true;
     };
     const forgerTxVerify = ():boolean => {
+        if (tx.forgerTx.stake < MIN_STAKE) {
+            console.log(`the stake is too low`);
+
+            return false;
+        }
         if (buf2Hex(sha256(serializeForgerCommitteeTx(tx.forgerTx))) !== tx.forgerTx.forgeTxHash) {
             console.log(`forgeTxHash do not match`);
 
@@ -197,19 +202,28 @@ export const validateBlock = (block:Block):boolean => {
 
         return false;
     }
-    const preHeader = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>('CH')[0];
-    if (preHeader.headHash !== block.header.prevHash) {
+    const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>('CH')[0];
+    if (preHeaderTip.headHash !== block.header.prevHash) {
         console.log(`prevHash do not matach`);
 
         return false;
     }
-    if (preHeader.height + 1 !== block.header.height) {
+    if (preHeaderTip.height + 1 !== block.header.height) {
         console.log(`height is wrong`);
 
         return false;
     }
+
+    const preHeader = persistBucket(Header._$info.name).get<string,[Header]>(preHeaderTip.headHash)[0];
+
+    if (preHeader.timestamp + MIN_TIME_INTERVAL / 2 > block.header.timestamp) {
+        console.log(`the time interval is too small`);
+
+        return false;
+    }
+    
     const forgerWeight = getForgerWeight(block.header.height, pubKeyToAddress(hex2Buf(block.header.pubkey)));
-    if (forgerWeight < 0 || forgerWeight !== block.header.weight || preHeader.totalWeight + forgerWeight !== block.header.totalWeight) {
+    if (forgerWeight < 0 || forgerWeight !== block.header.weight || preHeaderTip.totalWeight + forgerWeight !== block.header.totalWeight) {
         console.log(`weight is wrong`);
 
         return false;
@@ -309,3 +323,5 @@ const MAX_BLOCK_TX_NUMBER = 1000;// 一个区块最多包含1000个交易
 export const MIN_GAS = 1000;
 const MIN_PRICE = 10;
 const GOD_ADDRESS = '00000000000000000000';
+const MIN_STAKE = 100000;
+const MIN_TIME_INTERVAL = 2000;
