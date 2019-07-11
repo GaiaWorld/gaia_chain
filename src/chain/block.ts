@@ -60,6 +60,34 @@ export const writeBodyToDB = (body: Body): void => {
         txValues.push(tx);
         txHashes.push(txHash);
     }
-    dbBodyBkt.put(body.bhHash, txHashes);
+    const dbBody = new DBBody();
+    dbBody.bhHash = body.bhHash;
+    dbBody.txs = txHashes;
+    dbBodyBkt.put(body.bhHash, dbBody);
+
     txBkt.put(txKeys, txValues);
+};
+
+export const getBlockByHeight = (height: number): Block => {
+    const blockHash = getBlockHashByHeight(height);
+    const headerBkt = persistBucket(Header._$info.name);
+    const dbBodyBkt = persistBucket(DBBody._$info.name);
+    const txBkt = persistBucket(Transaction._$info.name);
+
+    const header = headerBkt.get<string, [Header]>(blockHash)[0];
+    if (!header) {
+        return;
+    }
+
+    const dbBody = dbBodyBkt.get<string, [DBBody]>(blockHash)[0];
+    const txs = [];
+    for (const txHash of dbBody.txs) {
+        txs.push(txBkt.get<string, [Transaction]>(txHash)[0]);
+    }
+
+    const body = new Body();
+    body.bhHash = blockHash;
+    body.txs = txs;
+
+    return new Block(header, body);
 };
