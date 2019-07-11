@@ -164,15 +164,15 @@ export const deriveInitWeight = (address: string, blockRandom: string, height: n
     return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 4), 16) % 4 + 1));
 };
 
-export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string, height: number): void => {
+export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string, height: number, maxGroupNumber: number): void => {
+    const miningCfg = new MiningConfig();
     const miningCfgBkt = persistBucket(MiningConfig._$info.name);
-    const cfg = miningCfgBkt.get<string, [MiningConfig]>('MC')[0];
-    cfg.beneficiary = pubKeyToAddress(hex2Buf(pubKey));
-    cfg.pubKey = pubKey;
-    cfg.privateKey = privKey;
-    cfg.groupNumber = deriveNextGroupNumber(cfg.beneficiary, blockRandm, height);
+    miningCfg.beneficiary = pubKeyToAddress(hex2Buf(pubKey));
+    miningCfg.pubKey = pubKey;
+    miningCfg.privateKey = privKey;
+    miningCfg.groupNumber = deriveNextGroupNumber(miningCfg.beneficiary, blockRandm, height, maxGroupNumber);
 
-    miningCfgBkt.put(cfg.pk, cfg);
+    miningCfgBkt.put('MC', miningCfg);
 
     return;
 };

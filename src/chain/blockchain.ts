@@ -293,22 +293,6 @@ export const newBlockChain = (): void => {
         accountBkt.put(account.address, account);
     }
 
-    // initialize mining config
-    const bkt2 = persistBucket(MiningConfig._$info.name);
-    const miningCfg = bkt2.get<string, [MiningConfig]>('MC')[0];
-    if (!miningCfg) {
-        const mc = new MiningConfig();
-        // load defalut miner config
-        // mc.beneficiary = GENESIS.forgers[0].address;
-        mc.beneficiary = '49fb96e79b3b3ac56d2789001534f7ae47c21200';
-        mc.groupNumber = 1;
-        mc.pubKey = GENESIS.forgers[0].pubKey;
-        mc.privateKey = GENESIS.forgers[0].privKey;
-        mc.pk = 'MC';
-        
-        bkt2.put(mc.pk, mc);
-    }
-    
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
@@ -317,7 +301,7 @@ export const newBlockChain = (): void => {
         cc.pk = 'CC';
         cc.blockIterval = 2000;
         cc.maxAccHeight = 150000;
-        cc.maxGroupNumber = 5;
+        cc.maxGroupNumber = 2;
         cc.minToken = 10000;
         cc.withdrawReserveBlocks = 256000;
 
