@@ -281,22 +281,28 @@ export const newBlockChain = (): void => {
         chainHeadBkt.put(ch.pk, ch);
     }
 
-    // initialize mining config
-    const bkt2 = persistBucket(MiningConfig._$info.name);
-    const miningCfg = bkt2.get<string, [MiningConfig]>('MC')[0];
-    if (!miningCfg) {
-        const mc = new MiningConfig();
-        // load defalut miner config
-        // mc.beneficiary = GENESIS.forgers[0].address;
-        mc.beneficiary = '49fb96e79b3b3ac56d2789001534f7ae47c21200';
-        mc.groupNumber = 1;
-        mc.pubKey = GENESIS.forgers[0].pubKey;
-        mc.privateKey = GENESIS.forgers[0].privKey;
-        mc.pk = 'MC';
-        
-        bkt2.put(mc.pk, mc);
+    setupInitialAccounts();
+    initCommitteeConfig();
+    initPreConfiguredForgers();
+
+    return;
+};
+
+const setupInitialAccounts = (): void => {
+    // setup initial accounts
+    const accountBkt = persistBucket(Account._$info.name);
+    for (let i = 0; i < GENESIS.accounts.length; i++) {
+        const account = new Account();
+        account.address = GENESIS.accounts[i].address;
+        account.codeHash = '';
+        account.inputAmount = GENESIS.accounts[i].balance;
+        account.outputAmount = 0;
+        account.nonce = 0;
+        accountBkt.put(account.address, account);
     }
-    
+};
+
+const initCommitteeConfig = (): void => {
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
@@ -305,13 +311,15 @@ export const newBlockChain = (): void => {
         cc.pk = 'CC';
         cc.blockIterval = 2000;
         cc.maxAccHeight = 150000;
-        cc.maxGroupNumber = 5;
+        cc.maxGroupNumber = 2;
         cc.minToken = 10000;
-        cc.withdrawReserveBlocks = 256000;
+        cc.withdrawReserveBlocks = 0;
 
         committeeCfgBkt.put('CC', cc);
     }
+};
 
+const initPreConfiguredForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
@@ -348,6 +356,4 @@ export const newBlockChain = (): void => {
             forgerCommitteeBkt.put(fc.slot, fc);
         }
     }
-
-    return;
 };

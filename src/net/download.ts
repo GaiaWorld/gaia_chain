@@ -28,7 +28,8 @@ export const download = (peer:Peer):boolean => {
         return false;
     }
     const bkt = memoryBucket(CurrentInfo._$info.name);
-    if (bkt.get<string,[CurrentInfo]>(SYNC)[0].value ===  SYNC_STATE.SYNCING) {
+    const syncState = bkt.get<string,[CurrentInfo]>(SYNC)[0];
+    if (syncState !== undefined && syncState.value ===  SYNC_STATE.SYNCING) {
         const currentDownloadPeerNetAddr = bkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0];
         if (currentDownloadPeerNetAddr !== undefined) {
             const currentDownloadPeer = memoryBucket(Peer._$info.name).get<string,Peer>(currentDownloadPeerNetAddr.value)[0];
