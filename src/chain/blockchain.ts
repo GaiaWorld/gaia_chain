@@ -313,7 +313,7 @@ const initCommitteeConfig = (): void => {
         cc.maxAccHeight = 150000;
         cc.maxGroupNumber = 2;
         cc.minToken = 10000;
-        cc.withdrawReserveBlocks = 256000;
+        cc.withdrawReserveBlocks = 0;
 
         committeeCfgBkt.put('CC', cc);
     }

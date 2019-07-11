@@ -15,7 +15,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     // not used right now
     header.receiptRoot = '0';
     header.timestamp = Date.now();
-    header.weight = forger.initWeight * (Math.abs(header.height - forger.addHeight - committeeCfg.withdrawReserveBlocks));
+    header.weight = forger.initWeight * (header.height - forger.addHeight - committeeCfg.withdrawReserveBlocks);
     header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
@@ -48,22 +48,24 @@ export const getBlockHashByHeight = (height: number): string => {
     return hash.bhHash;
 };
 
-export const writeBodyToDB = (body: Body): void => {
+export const writeBlockToDB = (block: Block): void => {
     const dbBodyBkt = persistBucket(DBBody._$info.name);
+    const headerBkt = persistBucket(Header._$info.name);
     const txBkt = persistBucket(Transaction._$info.name);
     const txHashes = [];
     const txKeys = [];
     const txValues = [];
-    for (const tx of body.txs) {
+    for (const tx of block.body.txs) {
         const txHash = calcTxHash(serializeTx(tx));
         txKeys.push(txHash);
         txValues.push(tx);
         txHashes.push(txHash);
     }
     const dbBody = new DBBody();
-    dbBody.bhHash = body.bhHash;
+    dbBody.bhHash = block.body.bhHash;
     dbBody.txs = txHashes;
-    dbBodyBkt.put(body.bhHash, dbBody);
+    dbBodyBkt.put(block.body.bhHash, dbBody);
+    headerBkt.put(block.header.bhHash, block.header);
 
     txBkt.put(txKeys, txValues);
 };

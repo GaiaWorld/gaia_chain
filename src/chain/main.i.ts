@@ -1,8 +1,8 @@
 /**
  * main function
  */
-import { getCommitteeConfig, getMiningConfig, getTipHeight, isSyncing, newBlockChain } from '../chain/blockchain';
-import { setMiningCfg, startMining } from '../consensus/committee';
+import { getMiningConfig, getTipHeight, isSyncing, newBlockChain } from '../chain/blockchain';
+import { runMining, setMiningCfg } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
@@ -14,11 +14,12 @@ const start = (): void => {
     newBlockChain();
 
     // setup mining config
-    const pubKey = '4c113bf96822ea63eea2cd3441a2c2059ad6be3590a71f0fea7021b786dba9b4';
-    const privKey = '71fef143755bc71b58cb44d7339f9dadab256cbb00e431e79796d631622103b94c113bf96822ea63eea2cd3441a2c2059ad6be3590a71f0fea7021b786dba9b4';
+    const pubKey = '0fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';
+    const privKey = '61bd92548e50464c94da8c33a076b7956bda74ca1957ec43a7095e92b5a011b80fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';
     const blockRandom = 'cc6c85a369f741fd6f409627a0f73fd166f7dba6ba1b5be6c55703bb5243e013';
     const heigt = getTipHeight();
     setMiningCfg(pubKey, privKey, blockRandom, heigt, 2);
+    console.log('mining config: ', getMiningConfig());
 
     const commitCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const commitCfg = commitCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
@@ -26,16 +27,14 @@ const start = (): void => {
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
     if (!isSyncing()) {
         setTimer(() => {
-            console.log('commitCfg2: ', commitCfg);
-            startMining(getMiningConfig(), commitCfg);
+            runMining(getMiningConfig(), commitCfg);
 
             const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
             chainHead.height += 1;
+            console.log('chainHead: ', chainHead);
             chainHeadBkt.put('CH', chainHead);
         }, null, 2000);
     }
-    
-    console.log('starting gaia ......');
 };
 
 start();
