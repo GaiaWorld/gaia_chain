@@ -2,7 +2,7 @@ import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, CommitteeConfig, Forger, Header, Height2Hash, MiningConfig, Transaction } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, DBBody, Forger, Header, Height2Hash, MiningConfig, Transaction } from './schema.s';
 import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
 export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
@@ -15,7 +15,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     // not used right now
     header.receiptRoot = '0';
     header.timestamp = Date.now();
-    header.weight = forger.initWeight * (header.height - forger.addHeight - committeeCfg.withdrawReserveBlocks);
+    header.weight = forger.initWeight * (Math.abs(header.height - forger.addHeight - committeeCfg.withdrawReserveBlocks));
     header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
@@ -46,4 +46,20 @@ export const getBlockHashByHeight = (height: number): string => {
     const hash = height2HashBkt.get<number, [Height2Hash]>(height)[0];
 
     return hash.bhHash;
+};
+
+export const writeBodyToDB = (body: Body): void => {
+    const dbBodyBkt = persistBucket(DBBody._$info.name);
+    const txBkt = persistBucket(Transaction._$info.name);
+    const txHashes = [];
+    const txKeys = [];
+    const txValues = [];
+    for (const tx of body.txs) {
+        const txHash = calcTxHash(serializeTx(tx));
+        txKeys.push(txHash);
+        txValues.push(tx);
+        txHashes.push(txHash);
+    }
+    dbBodyBkt.put(body.bhHash, txHashes);
+    txBkt.put(txKeys, txValues);
 };
