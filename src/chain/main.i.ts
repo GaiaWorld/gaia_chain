@@ -3,6 +3,7 @@
  */
 import { getMiningConfig, getTipHeight, isSyncing, newBlockChain } from '../chain/blockchain';
 import { runMining, setMiningCfg } from '../consensus/committee';
+import { launch } from '../net/client/launch';
 import { INV_MSG_TYPE } from '../net/msg';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
@@ -12,6 +13,9 @@ import { ChainHead, CommitteeConfig } from './schema.s';
 
 const start = (): void => {
     newBlockChain();
+    setTimeout(() => {
+        launch();
+    }, 10000);
 
     // setup mining config
     const pubKey = '0fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';

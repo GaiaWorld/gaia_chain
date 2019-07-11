@@ -16,6 +16,8 @@ export const runMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig
     const currentHeight = getTipHeight();
     if (currentHeight % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
         const maxWeightForger = selectMostWeightForger(miningCfg.groupNumber, currentHeight, committeeCfg);
+        console.log('maxWeightForger: ', maxWeightForger);
+        console.log('miningCfg: ', miningCfg);
         // if we are the mosted weight forger
         if (maxWeightForger.address === miningCfg.beneficiary) {
             const chainHeadBkt = persistBucket(ChainHead._$info.name);
@@ -49,6 +51,8 @@ export const updateForgerCommittee = (height: number, committeeCfg: CommitteeCon
     const exitForgers = forgerWaitExitBkt.get<number, [ForgerWaitExit]>(height - committeeCfg.withdrawReserveBlocks)[0];
     const forgers = forgerBkt.get<number, [ForgerCommittee]>(height % committeeCfg.maxGroupNumber)[0];
 
+    // console.log('forges: ', forgers);
+
     // if there are forgers wait for add
     if (addForgers) {
         forgers.forgers.push(...addForgers.forgers);
@@ -75,9 +79,10 @@ export const updateForgerCommittee = (height: number, committeeCfg: CommitteeCon
 export const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(groupNumber)[0].forgers;
-    forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(a, height, committeeCfg) - calcWeightAtHeight(b, height, committeeCfg));
+    forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(b, height, committeeCfg) - calcWeightAtHeight(a, height, committeeCfg));
     // store sorted forgers by weight
     // forgersBkt.put(groupNumber, forgers);
+    console.log('sorted forgers: ', forgers);
 
     return forgers[0];
 };
@@ -185,7 +190,7 @@ const adjustGroup = (header: Header): void => {
     const miningCfg = getMiningConfig();
 
     const oldForgerCommitteeGroup = forgerCommitteeBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0];
-    const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, header.blockRandom, header.height, 5);
+    const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, header.blockRandom, header.height, 2);
 
     const forger = forgerBkt.get<string, [Forger]>(miningCfg.beneficiary)[0];
     const index = oldForgerCommitteeGroup.forgers.indexOf(forger);
@@ -195,6 +200,8 @@ const adjustGroup = (header: Header): void => {
 
     // new group is not the same as old group and old forger group length greater than 1
     if (miningCfg.groupNumber !== newGroupNumber && oldForgerCommitteeGroup.forgers.length > 1) {
+        console.log('change group: ', forger.groupNumber, ' ====>', newGroupNumber);
+        console.log('oldForgerCommitteeGroup length: ', oldForgerCommitteeGroup.forgers.length);
         forger.groupNumber = newGroupNumber; // assign new group number
         const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
         forgerCommittee.forgers.push(forger); // add to new group
