@@ -281,6 +281,14 @@ export const newBlockChain = (): void => {
         chainHeadBkt.put(ch.pk, ch);
     }
 
+    setupInitialAccounts();
+    initCommitteeConfig();
+    initPreConfiguredForgers();
+
+    return;
+};
+
+const setupInitialAccounts = (): void => {
     // setup initial accounts
     const accountBkt = persistBucket(Account._$info.name);
     for (let i = 0; i < GENESIS.accounts.length; i++) {
@@ -292,7 +300,9 @@ export const newBlockChain = (): void => {
         account.nonce = 0;
         accountBkt.put(account.address, account);
     }
+};
 
+const initCommitteeConfig = (): void => {
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
@@ -307,7 +317,9 @@ export const newBlockChain = (): void => {
 
         committeeCfgBkt.put('CC', cc);
     }
+};
 
+const initPreConfiguredForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
@@ -344,6 +356,4 @@ export const newBlockChain = (): void => {
             forgerCommitteeBkt.put(fc.slot, fc);
         }
     }
-
-    return;
 };

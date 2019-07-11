@@ -9,7 +9,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     const header = new Header();
     header.forger = miningCfg.beneficiary;
     header.pubkey = miningCfg.pubKey;
-    header.forgerPubkey = miningCfg.pubKey;
+    header.forgerPubkey = miningCfg.blsPubKey;
     header.height = chainHead.height + 1;
     header.prevHash = chainHead.headHash;
     // not used right now
