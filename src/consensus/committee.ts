@@ -4,7 +4,7 @@
 
 import { generateBlock, writeBlockToDB } from '../chain/block';
 import { getCommitteeConfig, getMiningConfig, getTipHeight } from '../chain/blockchain';
-import { ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
@@ -65,7 +65,8 @@ export const updateForgerCommittee = (height: number, committeeCfg: CommitteeCon
         for (let i = 0; i < exitForgers.forgers.length; i++) {
             for (let j = 0; j < forgers.forgers.length; j++) {
                 if (exitForgers.forgers[i].address === forgers.forgers[j].address) {
-                    forgers.forgers.splice(j, 1);
+                    const exitForger = forgers.forgers.splice(j, 1);
+                    returnStake(exitForger[0]);
                 }
             }
         }
@@ -74,6 +75,14 @@ export const updateForgerCommittee = (height: number, committeeCfg: CommitteeCon
     }
 
     return;
+};
+
+const returnStake = (forger: Forger): void => {
+    const accountBkt = persistBucket(Account._$info.name);
+    const account = accountBkt.get<string, [Account]>(forger.address)[0];
+
+    account.inputAmount += forger.stake;
+    accountBkt.put(forger.address, forger);
 };
 
 export const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
