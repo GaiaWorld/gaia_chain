@@ -243,10 +243,6 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
-export const isSyncing = (): boolean => {
-    return false;
-};
-
 export const getMiningConfig = (): MiningConfig => {
     const bkt = persistBucket(MiningConfig._$info.name);
 

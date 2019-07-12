@@ -196,6 +196,17 @@ const downloadBlocks = ():void => {
     });
 };
 
+export const isSyncing = (): boolean => {
+    const bkt = memoryBucket(CurrentInfo._$info.name);
+    const syncState = bkt.get<string,[CurrentInfo]>(SYNC)[0];
+
+    if (syncState.value === SYNC_STATE.SUCCESS) {
+        return false;
+    }
+
+    return true;
+};
+
 export const CURRENT_DOWNLOAD_PEER_NET_ADDR = 'current_download_peer_net_addr';
 const SYNC = 'sync';
 const SKELETON_SYNC = 'skeleton_sync'; 

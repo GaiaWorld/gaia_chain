@@ -1,9 +1,10 @@
 /**
  * main function
  */
-import { getMiningConfig, getTipHeight, isSyncing, newBlockChain } from '../chain/blockchain';
+import { getMiningConfig, getTipHeight, newBlockChain } from '../chain/blockchain';
 import { runMining, setMiningCfg } from '../consensus/committee';
 import { launch } from '../net/client/launch';
+import { isSyncing } from '../net/download';
 import { INV_MSG_TYPE } from '../net/msg';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
