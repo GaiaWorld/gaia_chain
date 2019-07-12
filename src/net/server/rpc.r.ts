@@ -81,11 +81,10 @@ export const getHeadersByHeight = (heights:GetHeaderHeight):HeaderArray => {
     }
     if (heights.to - heights.from > 0) {
         heights.heights = [];
-        for (let i = heights.to; i < heights.from; i++) {
+        for (let i = heights.from; i <= heights.to; i++) {
             heights.heights.push(i);
         }
     }
-    console.log(`length is : ${heights.heights.length}, the value is : ${JSON.stringify(heights.heights)}`);
     heights.heights.forEach((height:number) => {
         const header = getHeaderByHeight(height);
         // 只要有一条没取到就返回空
