@@ -1,5 +1,6 @@
 import { getTipHeight, getTipTotalWeight, newBlocksReach, newHeadersReach } from '../chain/blockchain';
 import { Header, Height2Hash } from '../chain/schema.s';
+import { startMining } from '../consensus/committee';
 import { memoryBucket, persistBucket } from '../util/db';
 import { getOwnNetAddr } from './client/launch';
 import { CurrentInfo } from './memory.s';
@@ -18,6 +19,8 @@ import { BodyArray, GetHeaderHeight, HeaderArray, Inv, InvArray, InvArrayNet } f
  * @param peer Peer
  */
 export const download = (peer:Peer):boolean => {
+    console.log('begin download ================================: ', peer, getTipTotalWeight());
+
     // 首先比较当前peer和本地peer的高度和权重，如果本地更高则不需要同步
     if (getTipTotalWeight() > peer.nCurrentTotalWeight) {
         // 本地权重更高不需要同步
@@ -45,13 +48,31 @@ export const download = (peer:Peer):boolean => {
             }
         }
     }
+    const currentInfo = new CurrentInfo();
     const startHeight = verifyStartHeight(peer.strNetAddr);
-    bkt.put(CURRENT_DOWNLOAD_PEER_NET_ADDR, peer.strNetAddr);
-    bkt.put(SYNC, SYNC_STATE.SYNCING);
-    bkt.put(SKELETON_SYNC, SYNC_STATE.SYNCING);
-    bkt.put(CURRENT_SKELETON_HEIGHT, `${startHeight}`);
-    bkt.put(CURRENT_FILLED_HEIGHT, `${startHeight}`);
-    bkt.put(CURRENT_DOWNLOAD_HEIGHT, `${startHeight}`);
+    currentInfo.key = CURRENT_DOWNLOAD_PEER_NET_ADDR;
+    currentInfo.value = peer.strNetAddr;
+    bkt.put(CURRENT_DOWNLOAD_PEER_NET_ADDR, currentInfo);
+
+    currentInfo.key = SYNC;
+    currentInfo.value = SYNC_STATE.SYNCING;
+    bkt.put(SYNC, currentInfo);
+
+    currentInfo.key = SKELETON_SYNC;
+    currentInfo.value = SYNC_STATE.SYNCING;
+    bkt.put(SKELETON_SYNC, currentInfo);
+
+    currentInfo.key = CURRENT_SKELETON_HEIGHT;
+    currentInfo.value = `${startHeight}`;
+    bkt.put(CURRENT_SKELETON_HEIGHT, currentInfo);
+
+    currentInfo.key = CURRENT_DOWNLOAD_HEIGHT;
+    currentInfo.value = `${startHeight}`;
+    bkt.put(CURRENT_FILLED_HEIGHT, currentInfo);
+
+    currentInfo.key = CURRENT_DOWNLOAD_HEIGHT;
+    currentInfo.value = `${startHeight}`;
+    bkt.put(CURRENT_DOWNLOAD_HEIGHT, currentInfo);
     // SYNC
     getSkeletonHeader(startHeight, peer.nCurrentHeight, peer.strNetAddr);
 
@@ -89,6 +110,9 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
                 i = toHeight;
             }
             heights.heights.push(i);
+            if (i === toHeight) {
+                break;
+            }
         } else {
             break;
         }
@@ -100,7 +124,10 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
         if (headers.arr.length > 0) {
-            currentInfoBkt.put(CURRENT_SKELETON_HEIGHT, `${headers.arr[headers.arr.length - 1].height}`);
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = CURRENT_SKELETON_HEIGHT;
+            currentInfo.value = `${headers.arr[headers.arr.length - 1].height}`;
+            currentInfoBkt.put(CURRENT_SKELETON_HEIGHT, currentInfo);
         }
         // tslint:disable-next-line:radix
         const currentSkeletonHeight = parseInt(currentInfoBkt.get<string,[CurrentInfo]>(CURRENT_SKELETON_HEIGHT)[0].value);
@@ -110,8 +137,14 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
         if (currentSkeletonHeight < lastSkeletonHeight) {
             getSkeletonHeader(currentSkeletonHeight + 1, lastSkeletonHeight, pNet);
         } else {
-            currentInfoBkt.put(SKELETON_SYNC,SYNC_STATE.SUCCESS);
-            currentInfoBkt.put(FILLED_SYNC, SYNC_STATE.SYNCING);
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = SKELETON_SYNC;
+            currentInfo.value = SYNC_STATE.SUCCESS;
+            currentInfoBkt.put(SKELETON_SYNC,currentInfo);
+
+            currentInfo.key = FILLED_SYNC;
+            currentInfo.value = SYNC_STATE.SYNCING;
+            currentInfoBkt.put(FILLED_SYNC, currentInfo);
             // 开始获取填充数据
             // TODO:理想情况下Skeleton和filled不应该从同一个节点获取，防止同一个节点作恶
             // TODO:此处暂时没有考虑作恶的情况
@@ -135,7 +168,10 @@ const getFilledHeader = (fromHeight:number, toHeight:number, pNetAddr:string):vo
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
         if (headers.arr.length > 0) {
-            currentInfoBkt.put(CURRENT_FILLED_HEIGHT, `${headers.arr[headers.arr.length - 1].height}`);
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = CURRENT_FILLED_HEIGHT;
+            currentInfo.value = `${headers.arr[headers.arr.length - 1].height}`;
+            currentInfoBkt.put(CURRENT_FILLED_HEIGHT, currentInfo);
         }
         
         // tslint:disable-next-line:radix
@@ -145,8 +181,10 @@ const getFilledHeader = (fromHeight:number, toHeight:number, pNetAddr:string):vo
         if (currentFilledHeight < lastFilledHeight) {
             getFilledHeader(currentFilledHeight + 1, lastFilledHeight, pNet);
         } else {
-            currentInfoBkt.put(FILLED_SYNC, SYNC_STATE.SYNCING);
-            currentInfoBkt.put(FILLED_SYNC, SYNC_STATE.SUCCESS);
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = FILLED_SYNC;
+            currentInfo.value = SYNC_STATE.SUCCESS;
+            currentInfoBkt.put(FILLED_SYNC, currentInfo);
             console.log('filled header done');
             // 开始获取区块数据数据
             downloadBlocks();
@@ -182,15 +220,22 @@ const downloadBlocks = ():void => {
         newBlocksReach(bodys.arr);
 
         if (bodys.arr.length > 0) {
-            currentInfoBkt.put(CURRENT_DOWNLOAD_HEIGHT, `${persistBucket(Header._$info.name).get(bodys.arr[bodys.arr.length - 1].bhHash)[0].height}`);
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = CURRENT_DOWNLOAD_HEIGHT;
+            currentInfo.value = `${persistBucket(Header._$info.name).get(bodys.arr[bodys.arr.length - 1].bhHash)[0].height}`;
+            currentInfoBkt.put(CURRENT_DOWNLOAD_HEIGHT, currentInfo);
         }
         // tslint:disable-next-line:radix
         const currentDownloadHeight = parseInt(currentInfoBkt.get(CURRENT_DOWNLOAD_HEIGHT)[0].value);
         if (currentDownloadHeight < lastDownloadHeight) {
             downloadBlocks();
         } else {
-            currentInfoBkt.put(SYNC, SYNC_STATE.SUCCESS);
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = SYNC;
+            currentInfo.value = SYNC_STATE.SUCCESS;
+            currentInfoBkt.put(SYNC, currentInfo);
             console.log('block download done');
+            startMining();
             
         }
     });
