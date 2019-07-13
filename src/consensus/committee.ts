@@ -4,13 +4,39 @@
 
 import { generateBlock, writeBlockToDB } from '../chain/block';
 import { getCommitteeConfig, getMiningConfig, getTipHeight } from '../chain/blockchain';
-import { ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
+import { setTimer } from '../util/task';
+
+export const startMining = (): void => {
+    // setup mining config
+    const pubKey = '0fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';
+    const privKey = '61bd92548e50464c94da8c33a076b7956bda74ca1957ec43a7095e92b5a011b80fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';
+    const blockRandom = 'cc6c85a369f741fd6f409627a0f73fd166f7dba6ba1b5be6c55703bb5243e013';
+    const heigt = getTipHeight();
+    setMiningCfg(pubKey, privKey, blockRandom, heigt, 2);
+    console.log('mining config: ', getMiningConfig());
+
+    const commitCfgBkt = persistBucket(CommitteeConfig._$info.name);
+    const commitCfg = commitCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
+    console.log('commitCfg: ', commitCfg);
+    const chainHeadBkt = persistBucket(ChainHead._$info.name);
+
+    setTimer(() => {
+        runMining(getMiningConfig(), commitCfg);
+
+        const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
+        chainHead.height += 1;
+        console.log('chainHead: ', chainHead);
+        chainHeadBkt.put('CH', chainHead);
+    }, null, 2000);
+
+};
 
 export const runMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
@@ -65,7 +91,8 @@ export const updateForgerCommittee = (height: number, committeeCfg: CommitteeCon
         for (let i = 0; i < exitForgers.forgers.length; i++) {
             for (let j = 0; j < forgers.forgers.length; j++) {
                 if (exitForgers.forgers[i].address === forgers.forgers[j].address) {
-                    forgers.forgers.splice(j, 1);
+                    const exitForger = forgers.forgers.splice(j, 1);
+                    returnStake(exitForger[0]);
                 }
             }
         }
@@ -74,6 +101,14 @@ export const updateForgerCommittee = (height: number, committeeCfg: CommitteeCon
     }
 
     return;
+};
+
+const returnStake = (forger: Forger): void => {
+    const accountBkt = persistBucket(Account._$info.name);
+    const account = accountBkt.get<string, [Account]>(forger.address)[0];
+
+    account.inputAmount += forger.stake;
+    accountBkt.put(forger.address, forger);
 };
 
 export const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
