@@ -154,7 +154,7 @@ export const deriveInitWeight = (address: string, blockRandom: string, height: n
 
     const data = buf2Hex(sha256(bon.getBuffer()));
 
-    return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 4), 16) % 4 + 1));
+    return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 2), 16) % 4 + 1));
 };
 
 export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string, height: number, maxGroupNumber: number): void => {
