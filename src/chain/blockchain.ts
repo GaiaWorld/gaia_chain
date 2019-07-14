@@ -132,6 +132,7 @@ export const getBlock = (invMsg: Inv): Block => {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
         txs.push(dbTx2Tx(dbTx));
     }
+    body.bhHash = invMsg.hash;
     body.txs = txs;
 
     return new Block(header, body);
@@ -177,10 +178,11 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
 
+                        // tx that forger want to add to forger committee
                         if (tx.forgerTx.AddGroup === true) {
                             waitForAddForgers.height = currentHeight;
                             waitForAddForgers.forgers.push(forger);
-
+                        // tx that forger want to leave forger committee
                         } else if (tx.forgerTx.AddGroup === false) {
                             waitForExitForgers.height = currentHeight;
                             waitForExitForgers.forgers.push(forger);
@@ -206,6 +208,8 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                             newAccount.nonce = 0;
                             newAccount.inputAmount = tx.value;
                             newAccount.outputAmount = 0;
+
+                            accountBkt.put(newAccount.address, newAccount);
                         }
                         // update account info
                         accountBkt.put([fromAccount.address, toAccount.address], [fromAccount, toAccount]);
@@ -221,6 +225,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                     const forgerAccount = accountBkt.get<string, [Account]>(header.forger)[0];
                     forgerAccount.inputAmount += minerFee;
                     // give miner fee to forger
+                    // TODO: delay forger reward
                     accountBkt.put(forgerAccount.address, forgerAccount);
                 }
             }
@@ -231,11 +236,15 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
     }
 
     // update forger committee info
-    const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
-    const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
-
-    forgerWaitAddBkt.put(getTipHeight(), waitForAddForgers);
-    forgerWaitExitBkt.put(getTipHeight(), waitForExitForgers);
+    const height = getTipHeight();
+    if (waitForAddForgers.forgers && waitForAddForgers.forgers.length > 0) {
+        const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
+        forgerWaitAddBkt.put(height, waitForAddForgers);
+    }
+    if (waitForExitForgers.forgers && waitForExitForgers.forgers.length > 0) {
+        const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
+        forgerWaitExitBkt.put(height, waitForExitForgers);
+    }
 
     return;
 };
@@ -244,10 +253,15 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
 export const newHeadersReach = (headers: Header[]): void => {
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
 
-    const bkt = persistBucket(Header._$info.name);
+    const headerBkt = persistBucket(Header._$info.name);
+    const height2HashBkt = persistBucket(Height2Hash._$info.name);
+    const height2Hash = new Height2Hash();
     for (const header of headers) {
         if (simpleValidateHeader(header)) {
-            bkt.put<string, Header>(calcHeaderHash(header), header);
+            headerBkt.put(header.bhHash, header);
+            height2Hash.height = header.height;
+            height2Hash.bhHash = header.bhHash;
+            height2HashBkt.put(header.height, height2Hash);
         }
     }
 
