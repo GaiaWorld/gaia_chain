@@ -7,6 +7,7 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
+import { deepCopy } from '../pi/util/util';
 import { persistBucket } from '../util/db';
 import { calcHeaderHash } from './header';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, PenaltyTx, Transaction, TxType } from './schema.s';
@@ -58,9 +59,29 @@ export const getNodeType = (): NODE_TYPE => {
 // retrive transaction to peer
 export const getTx = (invMsg: Inv): Transaction => {
     const dbTxbkt = persistBucket(DBTransaction._$info.name);
-    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const dbtx = dbTxbkt.get<string, [DBTransaction]>(invMsg.hash)[0];
+
+    return dbTx2Tx(dbtx);
+};
+
+// convert DBTransaction to Transaction
+const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
+    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const tx = new Transaction();
+    
+    tx.from = dbtx.from;
+    tx.gas = dbtx.gas;
+    tx.lastInputValue = dbtx.lastInputValue;
+    tx.lastOutputValue = dbtx.lastOutputValue;
+    tx.nonce = dbtx.nonce;
+    tx.payload = dbtx.payload;
+    tx.price = dbtx.price;
+    tx.pubKey = dbtx.pubKey;
+    tx.signature = dbtx.signature;
+    tx.to = dbtx.to;
+    tx.txHash = dbtx.txHash;
+    tx.txType = dbtx.txType;
+    tx.value = dbtx.value;
 
     if (dbtx.txType === TxType.ForgerGroupTx) {
         const forgerTx = forgerCommitteeBkt.get<string, [ForgerCommitteeTx]>(dbtx.forgerTx)[0];
@@ -100,7 +121,6 @@ export const getBlock = (invMsg: Inv): Block => {
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(DBBody._$info.name);
     const txBkt = persistBucket(DBTransaction._$info.name);
-    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
 
     const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
     const dbBody = bodyBkt.get<string, [DBBody]>(invMsg.hash)[0];
@@ -110,15 +130,7 @@ export const getBlock = (invMsg: Inv): Block => {
 
     for (const tx of dbBody.txs) {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
-        const newTx = new Transaction();
-        if (dbTx.txType === TxType.ForgerGroupTx) {
-            const forgerTx = forgerCommitteeBkt.get<string, [ForgerCommitteeTx]>(dbTx.forgerTx)[0];
-            newTx.forgerTx = forgerTx;
-        } else if (dbTx.txType === TxType.PenaltyTx) {
-            const penaltyTx = forgerCommitteeBkt.get<string, [PenaltyTx]>(dbTx.penaltyTx)[0];
-            newTx.penaltyTx = penaltyTx;
-        }
-        txs.push(newTx);
+        txs.push(dbTx2Tx(dbTx));
     }
     body.txs = txs;
 
