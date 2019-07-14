@@ -2,7 +2,7 @@
  * forge committee
  */
 
-import { generateBlock, writeBlockToDB } from '../chain/block';
+import { generateBlock, writeBlockToDB, writeHeaderToDB } from '../chain/block';
 import { getCommitteeConfig, getMiningConfig, getTipHeight } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
@@ -48,14 +48,13 @@ export const runMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig
         if (maxWeightForger.address === miningCfg.beneficiary) {
             const chainHeadBkt = persistBucket(ChainHead._$info.name);
             const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
-            const headerBkt = persistBucket(Header._$info.name);
             const txs = getTxsFromPool();
             const block = generateBlock(maxWeightForger, chainHead, miningCfg, committeeCfg, txs);
             console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
             console.log(block);
             console.log('\n\n');
-            // store generated header and body
-            headerBkt.put(block.header.bhHash, block.header);
+
+            writeHeaderToDB(block.header);
             writeBlockToDB(block);
             writeHeigh2HashIndex(block.header.height, block.header.bhHash);
             updateChainHead(block.header);

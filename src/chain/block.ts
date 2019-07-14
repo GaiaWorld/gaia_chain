@@ -48,6 +48,12 @@ export const getBlockHashByHeight = (height: number): string => {
     return hash.bhHash;
 };
 
+export const writeHeaderToDB = (header: Header): void => {
+    const headerBkt = persistBucket(Header._$info.name);
+
+    headerBkt.put(header.bhHash, header);
+};
+
 export const writeBlockToDB = (block: Block): void => {
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
