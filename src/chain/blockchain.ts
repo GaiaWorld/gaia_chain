@@ -142,15 +142,14 @@ export const newTxsReach = (txs: Transaction[]): void => {
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (simpleValidateTx(tx)) {
-            // TODO: add to tx pool
             addTx2Pool(tx);
         }
     }
 };
 
 // new blocks from peer
-export const newBlocksReach = (bodys: Body[]): void => {
-    console.log('\n\nnewBlocksReach: ---------------------- ', bodys);
+export const newBlockBodiesReach = (bodys: Body[]): void => {
+    console.log('\n\nnewBlockBodiesReach: ---------------------- ', bodys);
     const waitForAddForgers = new ForgerWaitAdd();
     const waitForExitForgers = new ForgerWaitExit();
     const currentHeight = getTipHeight();

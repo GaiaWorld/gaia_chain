@@ -1,4 +1,4 @@
-import { getTipHeight, getTipTotalWeight, newBlocksReach, newHeadersReach } from '../chain/blockchain';
+import { getTipHeight, getTipTotalWeight, newBlockBodiesReach, newHeadersReach } from '../chain/blockchain';
 import { Header, Height2Hash } from '../chain/schema.s';
 import { startMining } from '../consensus/committee';
 import { memoryBucket, persistBucket } from '../util/db';
@@ -217,7 +217,7 @@ const downloadBlocks = ():void => {
     console.log('block download syncing');
     clientRequest(downloadPeer, getBlocks, invArray, (bodys:BodyArray, pNetAddr:string) => {
         // TODO:此处需要对body和TX进行验证，验证成功之后如果已经超过了主链长度则应该更换为主链
-        newBlocksReach(bodys.arr);
+        newBlockBodiesReach(bodys.arr);
 
         if (bodys.arr.length > 0) {
             const currentInfo = new CurrentInfo();

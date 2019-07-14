@@ -1,7 +1,7 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipTotalWeight, getTx, newBlocksReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
+import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipTotalWeight, getTx, newBlockBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { Height2Hash } from '../../chain/schema.s';
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
@@ -205,7 +205,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             newHeadersReach(headerArray.arr);
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
-                newBlocksReach(bodyArray.arr);
+                newBlockBodiesReach(bodyArray.arr);
             });
         });
     }
