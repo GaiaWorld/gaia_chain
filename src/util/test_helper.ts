@@ -90,7 +90,7 @@ export const generateMiners = (len: number): void => {
 
             }
             
-            if (count >= 5) {
+            if (count >= 15) {
                 break;
             }
         }
