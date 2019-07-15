@@ -18,15 +18,9 @@ export const startMining = (): void => {
     const commitCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const commitCfg = commitCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
     console.log('commitCfg: ', commitCfg);
-    const chainHeadBkt = persistBucket(ChainHead._$info.name);
 
     setTimer(() => {
         runMining(commitCfg);
-
-        const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
-        chainHead.height += 1;
-        console.log('chainHead: ', chainHead);
-        chainHeadBkt.put('CH', chainHead);
     }, null, 2000);
 
 };
@@ -50,9 +44,6 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
         broadcastNewBlock(block.header);
         adjustGroup(block.header);
     }
-
-    // update forger committee every round
-    updateForgerCommittee(currentHeight, committeeCfg);
 };
 
 // handle forgers wait for add and exit
@@ -103,9 +94,6 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
     const minersBkt = persistBucket(Miner._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.maxGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(b, height, committeeCfg) - calcWeightAtHeight(a, height, committeeCfg));
-    // store sorted forgers by weight
-    // forgersBkt.put(groupNumber, forgers);
-    console.log('sorted forgers: ', forgers);
 
     for (const forger of myForgers.forgers) {
         if (forger.address === forgers[0].address) {

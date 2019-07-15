@@ -2,7 +2,7 @@
  * block chain
  */
 
-import { deriveInitWeight, updateChainHead } from '../consensus/committee';
+import { deriveInitWeight, updateChainHead, updateForgerCommittee } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
@@ -157,6 +157,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
     const accountBkt = persistBucket(Account._$info.name);
+    const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
@@ -231,6 +232,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
             }
             dbBodyBkt.put(body.bhHash, txHashes);
             updateChainHead(header);
+            updateForgerCommittee(currentHeight, committeeCfgBkt.get('CC')[0]);
         } else {
             // TODO: ban peer
         }
@@ -253,6 +255,9 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
+    if (!headers) {
+        return;
+    }
 
     const headerBkt = persistBucket(Header._$info.name);
     const height2HashBkt = persistBucket(Height2Hash._$info.name);
