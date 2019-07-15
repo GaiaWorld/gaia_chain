@@ -35,7 +35,7 @@ export const download = (peer:Peer):boolean => {
     if (syncState !== undefined && syncState.value ===  SYNC_STATE.SYNCING) {
         const currentDownloadPeerNetAddr = bkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0];
         if (currentDownloadPeerNetAddr !== undefined) {
-            const currentDownloadPeer = memoryBucket(Peer._$info.name).get<string,Peer>(currentDownloadPeerNetAddr.value)[0];
+            const currentDownloadPeer = memoryBucket(Peer._$info.name).get<string,[Peer]>(currentDownloadPeerNetAddr.value)[0];
             if (currentDownloadPeer !== undefined) {
                 if (currentDownloadPeer.nCurrentTotalWeight > peer.nCurrentTotalWeight) {
                     // 正在同步的链权重更高不需要更改同步链
