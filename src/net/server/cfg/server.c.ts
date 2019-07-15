@@ -18,7 +18,7 @@ import { MqttCfg, NetCfg, NetCfg_Enum, RawNetCfg, RawNetMgr, RpcCfg } from '../.
 
 // 启动http与ws
 const rawNetMgr = new RawNetMgr('rawNetMgr', []);
-const rawNetCfg = new NetCfg(NetCfg_Enum.Raw, new RawNetCfg('0.0.0.0:2001', 'tcp', true, rawNetMgr, []));
+const rawNetCfg = new NetCfg(NetCfg_Enum.Raw, new RawNetCfg('0.0.0.0:2002', 'tcp', true, rawNetMgr, []));
 const mqttCfg = new MqttCfg(rawNetCfg, 1024 * 1024, 500 * 1000, 'mqttServer', []);
 const rpcCfg = new RpcCfg(mqttCfg, 'rpcServer', ['mqttServer']);
 

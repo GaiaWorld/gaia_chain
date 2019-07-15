@@ -3,8 +3,8 @@
  */
 
 import { generateBlock, writeBlockToDB, writeHeaderToDB } from '../chain/block';
-import { getCommitteeConfig, getMiningConfig, getTipHeight } from '../chain/blockchain';
-import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { getCommitteeConfig, getMiners, getTipHeight } from '../chain/blockchain';
+import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miners } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
@@ -21,7 +21,7 @@ export const startMining = (): void => {
     const blockRandom = 'cc6c85a369f741fd6f409627a0f73fd166f7dba6ba1b5be6c55703bb5243e013';
     const heigt = getTipHeight();
     setMiningCfg(pubKey, privKey, blockRandom, heigt, 2);
-    console.log('mining config: ', getMiningConfig());
+    console.log('mining config: ', getMiners());
 
     const commitCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const commitCfg = commitCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
@@ -29,7 +29,7 @@ export const startMining = (): void => {
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
 
     setTimer(() => {
-        runMining(getMiningConfig(), commitCfg);
+        runMining(getMiners(), commitCfg);
 
         const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
         chainHead.height += 1;
@@ -39,7 +39,7 @@ export const startMining = (): void => {
 
 };
 
-export const runMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
+export const runMining = (miningCfg: Miners, committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
     if (currentHeight % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
         const maxWeightForger = selectMostWeightForger(currentHeight, committeeCfg);
@@ -163,8 +163,8 @@ export const deriveInitWeight = (address: string, blockRandom: string, height: n
 };
 
 export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string, height: number, maxGroupNumber: number): void => {
-    const miningCfg = new MiningConfig();
-    const miningCfgBkt = persistBucket(MiningConfig._$info.name);
+    const miningCfg = new Miners();
+    const miningCfgBkt = persistBucket(Miners._$info.name);
     miningCfg.beneficiary = pubKeyToAddress(hex2Buf(pubKey));
     miningCfg.pubKey = pubKey;
     miningCfg.privateKey = privKey;
@@ -233,8 +233,8 @@ const broadcastNewBlock = (header: Header): void => {
 const adjustGroup = (header: Header): void => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const forgerBkt = persistBucket(Forger._$info.name);
-    const miningCfgBkt = persistBucket(MiningConfig._$info.name);
-    const miningCfg = getMiningConfig();
+    const miningCfgBkt = persistBucket(Miners._$info.name);
+    const miningCfg = getMiners();
 
     const oldForgerCommitteeGroup = forgerCommitteeBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0];
     const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, header.blockRandom, header.height, 2);

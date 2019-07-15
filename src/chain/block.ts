@@ -2,10 +2,10 @@ import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, CommitteeConfig, DBBody, Forger, Header, Height2Hash, MiningConfig, Transaction } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, DBBody, Forger, Header, Height2Hash, Miners, Transaction } from './schema.s';
 import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
-export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: MiningConfig, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
+export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: Miners, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
     const header = new Header();
     header.forger = miningCfg.beneficiary;
     header.pubkey = miningCfg.pubKey;

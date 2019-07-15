@@ -10,7 +10,7 @@ import { GENESIS } from '../params/genesis';
 import { deepCopy } from '../pi/util/util';
 import { persistBucket } from '../util/db';
 import { calcHeaderHash } from './header';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig, PenaltyTx, Transaction, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miners, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
 import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
@@ -269,10 +269,10 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
-export const getMiningConfig = (): MiningConfig => {
-    const bkt = persistBucket(MiningConfig._$info.name);
+export const getMiners = (): Miners => {
+    const bkt = persistBucket(Miners._$info.name);
 
-    return bkt.get<string, [MiningConfig]>('MC')[0];
+    return bkt.get<string, [Miners]>('MC')[0];
 };
 
 export const getCommitteeConfig = (): CommitteeConfig => {
