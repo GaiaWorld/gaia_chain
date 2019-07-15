@@ -6,7 +6,9 @@ import { deriveInitWeight, updateChainHead } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
+import { myForgers } from '../params/config';
 import { GENESIS } from '../params/genesis';
+import { buf2Hex, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
@@ -304,6 +306,7 @@ export const newBlockChain = (): void => {
     setupInitialAccounts();
     initCommitteeConfig();
     initPreConfiguredForgers();
+    setupMiners();
 
     return;
 };
@@ -319,6 +322,21 @@ const setupInitialAccounts = (): void => {
         account.outputAmount = 0;
         account.nonce = 0;
         accountBkt.put(account.address, account);
+    }
+};
+
+const setupMiners = (): void => {
+    const minersBkt = persistBucket(Miner._$info.name);
+    const miner = new Miner();
+    for (const forger of myForgers.forgers) {
+        miner.beneficiary = forger.address;
+        miner.blsPrivKey = buf2Hex(getRand(32));
+        miner.blsPubKey = buf2Hex(getRand(32));
+        miner.groupNumber = parseInt(forger.address.slice(forger.address.length - 2), 16);
+        miner.privateKey = forger.privKey;
+        miner.pubKey = forger.pubKey;
+
+        minersBkt.put(miner.beneficiary, miner);
     }
 };
 
