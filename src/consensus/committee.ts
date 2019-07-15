@@ -8,6 +8,7 @@ import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWai
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
+import { myForgers } from '../params/config';
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
@@ -41,11 +42,11 @@ export const startMining = (): void => {
 export const runMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
     if (currentHeight % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
-        const maxWeightForger = selectMostWeightForger(miningCfg.groupNumber, currentHeight, committeeCfg);
+        const maxWeightForger = selectMostWeightForger(currentHeight, committeeCfg);
         console.log('maxWeightForger: ', maxWeightForger);
         console.log('miningCfg: ', miningCfg);
         // if we are the mosted weight forger
-        if (maxWeightForger.address === miningCfg.beneficiary) {
+        if (maxWeightForger) {
             const chainHeadBkt = persistBucket(ChainHead._$info.name);
             const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
             const txs = getTxsFromPool();
@@ -110,15 +111,19 @@ const returnStake = (forger: Forger): void => {
     accountBkt.put(forger.address, forger);
 };
 
-export const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
+export const selectMostWeightForger = (height: number, committeeCfg: CommitteeConfig): Forger => {
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
-    const forgers = forgersBkt.get<number, [ForgerCommittee]>(groupNumber)[0].forgers;
+    const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.maxGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(b, height, committeeCfg) - calcWeightAtHeight(a, height, committeeCfg));
     // store sorted forgers by weight
     // forgersBkt.put(groupNumber, forgers);
     console.log('sorted forgers: ', forgers);
 
-    return forgers[0];
+    for (const forger of myForgers.forgers) {
+        if (forger.address === forgers[0].address) {
+            return forgers[0];
+        }
+    }
 };
 
 // calculate forger's weight at a specific height
