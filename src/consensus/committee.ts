@@ -196,7 +196,7 @@ const writeHeigh2HashIndex = (height: number, blockHash: string): void => {
 };
 
 // update chain head
-const updateChainHead = (header: Header): void => {
+export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>('CH')[0];
     chainHead.prevHash = chainHead.headHash;

@@ -2,7 +2,7 @@
  * block chain
  */
 
-import { deriveInitWeight } from '../consensus/committee';
+import { deriveInitWeight, updateChainHead } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
@@ -230,6 +230,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                 }
             }
             dbBodyBkt.put(body.bhHash, txHashes);
+            updateChainHead(header);
         } else {
             // TODO: ban peer
         }
