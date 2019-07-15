@@ -332,8 +332,8 @@ const initCommitteeConfig = (): void => {
         const cc = new CommitteeConfig();
         cc.pk = 'CC';
         cc.blockIterval = 2000;
-        cc.maxAccHeight = 150000;
-        cc.maxGroupNumber = 2;
+        cc.maxGroupNumber = GENESIS.totalGroups;
+        cc.maxAccHeight = GENESIS.totalGroups * 100;
         cc.minToken = 10000;
         cc.withdrawReserveBlocks = 0;
 
