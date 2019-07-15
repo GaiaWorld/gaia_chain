@@ -2,14 +2,14 @@ import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, CommitteeConfig, DBBody, Forger, Header, Height2Hash, Miners, Transaction } from './schema.s';
+import { Body, ChainHead, CommitteeConfig, DBBody, Forger, Header, Height2Hash, Miner, Transaction } from './schema.s';
 import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
-export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: Miners, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
+export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
     const header = new Header();
-    header.forger = miningCfg.beneficiary;
-    header.pubkey = miningCfg.pubKey;
-    header.forgerPubkey = miningCfg.blsPubKey;
+    header.forger = miner.beneficiary;
+    header.pubkey = miner.pubKey;
+    header.forgerPubkey = miner.blsPubKey;
     header.height = chainHead.height + 1;
     header.prevHash = chainHead.headHash;
     // not used right now
@@ -23,7 +23,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miningCfg: M
     header.groupNumber = forger.groupNumber;
     header.bhHash = calcHeaderHash(header);
     // sign the whole block
-    header.signature = buf2Hex(sign(hex2Buf(miningCfg.privateKey), hex2Buf(header.bhHash)));
+    header.signature = buf2Hex(sign(hex2Buf(miner.privateKey), hex2Buf(header.bhHash)));
 
     const body = new Body();
     body.bhHash = header.bhHash;

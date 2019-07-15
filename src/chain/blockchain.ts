@@ -7,10 +7,8 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { GENESIS } from '../params/genesis';
-import { deepCopy } from '../pi/util/util';
 import { persistBucket } from '../util/db';
-import { calcHeaderHash } from './header';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miners, PenaltyTx, Transaction, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
 import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
@@ -269,10 +267,10 @@ export const newHeadersReach = (headers: Header[]): void => {
     return;
 };
 
-export const getMiners = (): Miners => {
-    const bkt = persistBucket(Miners._$info.name);
+export const getMiner = (address: string): Miner => {
+    const bkt = persistBucket(Miner._$info.name);
 
-    return bkt.get<string, [Miners]>('MC')[0];
+    return bkt.get<string, [Miner]>(address)[0];
 };
 
 export const getCommitteeConfig = (): CommitteeConfig => {

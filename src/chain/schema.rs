@@ -208,7 +208,7 @@ struct TxPool {
 }
 
 #[db=file,primary=beneficiary]
-struct Miners {
+struct Miner {
     beneficiary: String,
     privateKey: String,
     pubKey: String,
