@@ -199,12 +199,20 @@ const writeHeigh2HashIndex = (height: number, blockHash: string): void => {
 export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>('CH')[0];
-    chainHead.prevHash = chainHead.headHash;
-    chainHead.headHash = header.bhHash;
-    chainHead.height = header.height;
-    chainHead.totalWeight = header.totalWeight;
 
-    chBkt.put(chainHead.pk, chainHead);
+    console.log('before update chain head: ', chainHead);
+
+    if (chainHead.headHash === header.prevHash && chainHead.height + 1 === header.height) {
+        chainHead.prevHash = chainHead.headHash;
+        chainHead.headHash = header.bhHash;
+        chainHead.height = header.height;
+        chainHead.totalWeight = header.totalWeight;
+
+        chBkt.put(chainHead.pk, chainHead);
+    } else {
+        console.log('out of order header -------------------------------------------', header);
+        // TODO: add to Orphans pool
+    }
 };
 
 // broad cast new block to peers
