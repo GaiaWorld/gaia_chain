@@ -230,7 +230,12 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                     accountBkt.put(forgerAccount.address, forgerAccount);
                 }
             }
-            dbBodyBkt.put(body.bhHash, txHashes);
+
+            // wirte body to db
+            const dbBody = new DBBody();
+            dbBody.bhHash = body.bhHash;
+            dbBody.txs = txHashes;
+            dbBodyBkt.put(body.bhHash, dbBody);
             updateChainHead(header);
             updateForgerCommittee(currentHeight, committeeCfgBkt.get('CC')[0]);
         } else {
