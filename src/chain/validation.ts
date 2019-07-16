@@ -215,15 +215,15 @@ export const validateBlock = (block:Block):boolean => {
         return false;
     }
 
-    const preHeader = persistBucket(Header._$info.name).get<string,[Header]>(preHeaderTip.headHash)[0];
+    // const preHeader = persistBucket(Header._$info.name).get<string,[Header]>(preHeaderTip.headHash)[0];
 
-    if (preHeaderTip.headHash !== GENESIS.hash) {
-        if (block.header.timestamp - preHeader.timestamp > MIN_TIME_INTERVAL * 1.5) {
-            console.log(`the time interval is too small`);
+    // if (preHeaderTip.headHash !== GENESIS.hash) {
+    //     if (block.header.timestamp - preHeader.timestamp > MIN_TIME_INTERVAL * 1.5) {
+    //         console.log(`the time interval is too small`);
 
-            return false;
-        }
-    }
+    //         return false;
+    //     }
+    // }
 
     const forgerWeight = getForgerWeight(block.header.height, pubKeyToAddress(hex2Buf(block.header.pubkey)));
     if (forgerWeight < 0 || forgerWeight !== block.header.weight || preHeaderTip.totalWeight + forgerWeight !== block.header.totalWeight) {
