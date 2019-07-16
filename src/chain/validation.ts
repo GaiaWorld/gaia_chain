@@ -221,7 +221,7 @@ export const validateBlock = (block:Block):boolean => {
 
         return false;
     }
-    
+
     const forgerWeight = getForgerWeight(block.header.height, pubKeyToAddress(hex2Buf(block.header.pubkey)));
     if (forgerWeight < 0 || forgerWeight !== block.header.weight || preHeaderTip.totalWeight + forgerWeight !== block.header.totalWeight) {
         console.log(`weight is wrong`);

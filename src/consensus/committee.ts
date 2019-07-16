@@ -142,7 +142,7 @@ export const getForgerWeight = (height: number, address: string): number => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const config = getCommitteeConfig();
 
-    const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(height % config.maxGroupNumber)[0].forgers;
+    const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>((height - 1) % config.maxGroupNumber)[0].forgers;
     for (const forger of forgers) {
         if (forger.address === address) {
             return calcWeightAtHeight(forger, height, config);
