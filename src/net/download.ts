@@ -123,7 +123,7 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
         
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
-        if (headers.arr.length > 0) {
+        if (headers.arr && headers.arr.length > 0) {
             const currentInfo = new CurrentInfo();
             currentInfo.key = CURRENT_SKELETON_HEIGHT;
             currentInfo.value = `${headers.arr[headers.arr.length - 1].height}`;
@@ -167,7 +167,7 @@ const getFilledHeader = (fromHeight:number, toHeight:number, pNetAddr:string):vo
         // TODO:此处没有考虑skeleton节点作恶的情况，默认两次取到的值是一样的
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
-        if (headers.arr.length > 0) {
+        if (headers.arr && headers.arr.length > 0) {
             const currentInfo = new CurrentInfo();
             currentInfo.key = CURRENT_FILLED_HEIGHT;
             currentInfo.value = `${headers.arr[headers.arr.length - 1].height}`;
@@ -219,7 +219,7 @@ const downloadBlocks = ():void => {
         // TODO:此处需要对body和TX进行验证，验证成功之后如果已经超过了主链长度则应该更换为主链
         newBlockBodiesReach(bodys.arr);
 
-        if (bodys.arr.length > 0) {
+        if (bodys.arr && bodys.arr.length > 0) {
             const currentInfo = new CurrentInfo();
             currentInfo.key = CURRENT_DOWNLOAD_HEIGHT;
             currentInfo.value = `${persistBucket(Header._$info.name).get(bodys.arr[bodys.arr.length - 1].bhHash)[0].height}`;
