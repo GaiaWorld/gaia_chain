@@ -1,10 +1,11 @@
 import { getForgerWeight } from '../consensus/committee';
+import { GENESIS } from '../params/genesis';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Account, ChainHead, Forger, Header, Height2Hash, Transaction, TxPool, TxType } from './schema.s';
+import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
 import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
@@ -216,10 +217,12 @@ export const validateBlock = (block:Block):boolean => {
 
     const preHeader = persistBucket(Header._$info.name).get<string,[Header]>(preHeaderTip.headHash)[0];
 
-    if (preHeader.timestamp + MIN_TIME_INTERVAL / 2 > block.header.timestamp) {
-        console.log(`the time interval is too small`);
+    if (preHeaderTip.headHash !== GENESIS.hash) {
+        if (block.header.timestamp - preHeader.timestamp > MIN_TIME_INTERVAL * 1.5) {
+            console.log(`the time interval is too small`);
 
-        return false;
+            return false;
+        }
     }
 
     const forgerWeight = getForgerWeight(block.header.height, pubKeyToAddress(hex2Buf(block.header.pubkey)));
