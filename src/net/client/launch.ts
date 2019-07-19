@@ -86,8 +86,8 @@ export const launch = () => {
                         });                      
                     }
                     console.log(`success shakehands with ${pNetAddr}`);
+                    download(existPeer);
                 });
-                download(peer);
             }
         }
     });

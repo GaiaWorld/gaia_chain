@@ -1,5 +1,7 @@
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, hex2Buf, sha256, sign } from '../util/crypto';
+import { persistBucket } from '../util/db';
+import { getBlockHashByHeight } from './block';
 import { Header } from './schema.s';
 
 export const serializeHeader = (header: Header): Uint8Array => {
@@ -33,4 +35,12 @@ export const signHeader = (header: Header, privKey: string): string => {
     header.signature = sig;
 
     return sig;
+};
+
+export const getParentHash = (height: number): string => {
+    const bkt = persistBucket(Header._$info.name);
+    const hash = getBlockHashByHeight(height);
+    const header = bkt.get<string, [Header]>(hash)[0];
+
+    return header.prevHash;
 };

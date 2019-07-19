@@ -213,6 +213,8 @@ struct MiningConfig {
     beneficiary: String,
     privateKey: String,
     pubKey: String,
+    blsPubKey: String,
+    blsPrivKey: String,
     groupNumber: usize,
 }
 
