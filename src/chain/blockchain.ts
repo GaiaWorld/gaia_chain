@@ -336,7 +336,7 @@ const setupMiners = (): void => {
     const miner = new Miner();
     // TODO:JFB read forger from independent files
     for (const forger of myForgers.forgers) {
-        // TODO: bls key are ephmeral
+        // set my own bls private and public keys
         const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
         miner.address = forger.address;
         miner.blsPrivKey = buf2Hex(privKey);
@@ -387,12 +387,11 @@ const initPreConfiguredForgers = (): void => {
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.addHeight = 0;
-            f.pubKey = preConfiguredForgers[i].pubKey;// FIXME:JFB use random pubkey
+            f.pubKey = preConfiguredForgers[i].pubKey;
             f.stake = preConfiguredForgers[i].stake;
             f.groupNumber = calcInitialGroupNumber(f.address);
             console.log(`initPreConfiguredForgers: add ${f.address} to group number ${f.groupNumber}`);
             // TODO:JFB neet verify the forger
-            // TODO:JFB put forger into slot
             forgers.push(f);
             forgerBkt.put(f.address, f);
 
