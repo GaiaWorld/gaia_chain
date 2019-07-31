@@ -38,13 +38,13 @@ export const getVersion = (): string => {
 export const getTipHeight = (): number => {
     const bkt = persistBucket(ChainHead._$info.name);
 
-    return bkt.get<string, [ChainHead]>('CH')[0].height;
+    return bkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0].height;
 };
 
 export const getTipTotalWeight = (): number => {
     const bkt = persistBucket(ChainHead._$info.name);
 
-    return bkt.get<string, [ChainHead]>('CH')[0].totalWeight;
+    return bkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0].totalWeight;
 };
 
 export const getServiceFlags = ():number => {
@@ -331,7 +331,6 @@ const setupInitialAccounts = (): void => {
     }
 };
 
-// FIXME:JFB use forger instead of miner
 const setupMiners = (): void => {
     const minersBkt = persistBucket(Miner._$info.name);
     const miner = new Miner();
@@ -381,6 +380,7 @@ const initPreConfiguredForgers = (): void => {
     if (!forgerCommittee) {
         const preConfiguredForgers = GENESIS.forgers;
         const forgers = [];
+        const forgersMap = new Map<number, any[]>();
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
@@ -389,27 +389,29 @@ const initPreConfiguredForgers = (): void => {
             f.addHeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;// FIXME:JFB use random pubkey
             f.stake = preConfiguredForgers[i].stake;
+            f.groupNumber = calcInitialGroupNumber(f.address);
+            console.log(`initPreConfiguredForgers: add ${f.address} to group number ${f.groupNumber}`);
             // TODO:JFB neet verify the forger
             // TODO:JFB put forger into slot
-            // FIXME: delete prikey from config
-            // forgers.push(f);
+            forgers.push(f);
+            forgerBkt.put(f.address, f);
+
+            let groupForgers = forgersMap.get(f.groupNumber);
+            if (!groupForgers) {
+                groupForgers = [f];
+            } else {
+                groupForgers.push(f);
+                forgersMap.set(f.groupNumber, groupForgers);
+            }
         }
 
-        // // populate forger committee
-        // for (let i = 0; i < GENESIS.totalGroups; i++) {
-        //     const fc = new ForgerCommittee();
-        //     const groupForgers = [];
-        //     for (let j = 0; j < forgers.length; j++) {                
-        //         forgers[j].groupNumber = i;
-        //         if (parseInt(forgers[j].address.slice(forgers[j].address.length - 2), 16) === i) {
-        //             groupForgers.push(forgers[j]);
-        //             // store to Forger bucket
-        //             forgerBkt.put(forgers[j].address, forgers[j]);
-        //         }
-        //     }
-        //     fc.slot = i;
-        //     fc.forgers = groupForgers;
-        //     forgerCommitteeBkt.put(fc.slot, fc);
-        // }
+        // populate forger committee
+        forgersMap.forEach((value: any[], key: number) => {
+            const fc = new ForgerCommittee();
+            fc.slot = key;
+            fc.forgers = value;
+
+            forgerCommitteeBkt.put(fc.slot, fc);
+        });
     }
 };

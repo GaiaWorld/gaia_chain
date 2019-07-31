@@ -146,7 +146,7 @@ export const generateMockChain = (len: number): void => {
         chainHead.genesisHash = '';
         chainHead.headHash = header.bhHash;
         chainHead.height = i;
-        chainHead.pk = 'CH';
+        chainHead.pk = CHAIN_HEAD_PRIMARY_KEY;
         chainHead.prevHash = '0';
         chainHead.totalWeight = header.totalWeight;
 
