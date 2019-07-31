@@ -7,8 +7,9 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { myForgers } from '../params/config';
+import { BLOCK_INTERVAL, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
-import { buf2Hex, getRand } from '../util/crypto';
+import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
@@ -173,7 +174,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                     case TxType.ForgerGroupTx:
                         const forger = new Forger();
                         forger.address = tx.forgerTx.address;
-                        forger.groupNumber = currentHeight % getCommitteeConfig().maxGroupNumber;
+                        forger.groupNumber = currentHeight % getCommitteeConfig().totalGroupNumber;
                         forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
                         forger.addHeight = currentHeight;
                         forger.pubKey = tx.pubKey;
@@ -237,7 +238,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
             dbBody.txs = txHashes;
             dbBodyBkt.put(body.bhHash, dbBody);
             updateChainHead(header);
-            updateForgerCommittee(currentHeight, committeeCfgBkt.get('CC')[0]);
+            updateForgerCommittee(currentHeight, committeeCfgBkt.get(COMMITTEECONFIG_PRIMARY_KEY)[0]);
         } else {
             // TODO: ban peer
         }
@@ -288,32 +289,30 @@ export const getMiner = (address: string): Miner => {
 export const getCommitteeConfig = (): CommitteeConfig => {
     const bkt = persistBucket(CommitteeConfig._$info.name);
 
-    return bkt.get<string, [CommitteeConfig]>('CC')[0];
+    return bkt.get<string, [CommitteeConfig]>(COMMITTEECONFIG_PRIMARY_KEY)[0];
 };
 
 export const newBlockChain = (): void => {
     // load chain head
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
-    const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
+    const chainHead = chainHeadBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
     if (!chainHead) {
-        const ch = new ChainHead();//FIXME:only one element
+        const ch = new ChainHead(); // FIXME:only one element
         ch.genesisHash = GENESIS.hash;
         ch.headHash = GENESIS.hash;
         // genesis parent hash is empty string
-        ch.prevHash = '';//FIXME:JFB use contant
+        ch.prevHash = GENESIS_PREV_HASH;
         ch.height = 0;
         ch.totalWeight = 0;
-        ch.pk = 'CH';//TODO:JFB PK->primaryKey
+        ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
+        chainHeadBkt.put(ch.primaryKey, ch);
 
-        chainHeadBkt.put(ch.pk, ch);
-        setupInitialAccounts();//TODO:JFB gensis account with balance
+        setupInitialAccounts();
         initCommitteeConfig();
         initPreConfiguredForgers();
         setupMiners();
     }
-
-    
 
     return;
 };
@@ -324,7 +323,7 @@ const setupInitialAccounts = (): void => {
     for (let i = 0; i < GENESIS.accounts.length; i++) {
         const account = new Account();
         account.address = GENESIS.accounts[i].address;
-        account.codeHash = '';
+        account.codeHash = EMPTY_CODE_HASH;
         account.inputAmount = GENESIS.accounts[i].balance;
         account.outputAmount = 0;
         account.nonce = 0;
@@ -332,46 +331,52 @@ const setupInitialAccounts = (): void => {
     }
 };
 
-//FIXME:JFB use forger instead of miner
+// FIXME:JFB use forger instead of miner
 const setupMiners = (): void => {
     const minersBkt = persistBucket(Miner._$info.name);
     const miner = new Miner();
-    //TODO:JFB read forger from independent files
+    // TODO:JFB read forger from independent files
     for (const forger of myForgers.forgers) {
-        miner.beneficiary = forger.address;//FIXME:JFB use address instead of beneficiary
-        miner.blsPrivKey = buf2Hex(getRand(32));//FIXEME:JFB use sig instead of random
-        miner.blsPubKey = buf2Hex(getRand(32));//FIXEME:JFB use sig instead of random
-        //FIXME:JFB use function
-        miner.groupNumber = parseInt(forger.address.slice(forger.address.length - 2), 16);
-        miner.privateKey = forger.privKey;////FIXME:JFB use the same name
+        // TODO: bls key are ephmeral
+        const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
+        miner.address = forger.address;
+        miner.blsPrivKey = buf2Hex(privKey);
+        miner.blsPubKey = buf2Hex(pubKey);
+        miner.groupNumber = calcInitialGroupNumber(forger.address);
+        miner.privKey = forger.privKey;
         miner.pubKey = forger.pubKey;
 
-        minersBkt.put(miner.beneficiary, miner);
+        minersBkt.put(miner.address, miner);
     }
+};
+
+const calcInitialGroupNumber = (address: string): number => {
+    return parseInt(address.slice(address.length - 2), 16);
 };
 
 const initCommitteeConfig = (): void => {
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
-    const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
+    const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>(COMMITTEECONFIG_PRIMARY_KEY)[0];
     if (!committeeCfg) {
         const cc = new CommitteeConfig();
-        cc.pk = 'CC';
-        cc.blockIterval = 2000;//TODO:JFB read from config
-        cc.maxGroupNumber = GENESIS.totalGroups;//TODO:JFB use total instead of max
-        cc.maxAccHeight = GENESIS.totalGroups * 100;//TODO:JFB read from config, use total instead of max
-        cc.minToken = 10000;//TODO:JFB read from config
-        cc.withdrawReserveBlocks = 0;//TODO:JFB read from config
+        cc.primaryKey = COMMITTEECONFIG_PRIMARY_KEY;
+        cc.blockIterval = BLOCK_INTERVAL;
+        cc.totalGroupNumber = GENESIS.totalGroups;
+        cc.totalAccHeight = GENESIS.totalGroups * TOTAL_ACCUMULATE_ROUNDS;
+        cc.minToken = MIN_TOKEN;
+        cc.withdrawReserveBlocks = WITHDRAW_RESERVE_BLOCKS;
 
-        committeeCfgBkt.put('CC', cc);
+        committeeCfgBkt.put(cc.primaryKey, cc);
     }
 };
 
-const initPreConfiguredForgers = (): void => {    
+const initPreConfiguredForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+    // check if ForgerCommittee is initialized
     const forgerCommittee = forgerCommitteeBkt.get<number, [ForgerCommittee]>(0)[0];
     if (!forgerCommittee) {
         const preConfiguredForgers = GENESIS.forgers;
@@ -380,12 +385,13 @@ const initPreConfiguredForgers = (): void => {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
-            f.addHeight = 0;//FIXME:JFB magic number
-            f.pubKey = preConfiguredForgers[i].pubKey;//FIXME:JFB use random pubkey
+            // initial miners are start at height 0
+            f.addHeight = 0;
+            f.pubKey = preConfiguredForgers[i].pubKey;// FIXME:JFB use random pubkey
             f.stake = preConfiguredForgers[i].stake;
-            //TODO:JFB neet verify the forger
-            //TODO:JFB put forger into slot
-            //FIXME: delete prikey from config
+            // TODO:JFB neet verify the forger
+            // TODO:JFB put forger into slot
+            // FIXME: delete prikey from config
             // forgers.push(f);
         }
 

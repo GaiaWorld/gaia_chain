@@ -8,7 +8,7 @@ import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
 export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
     const header = new Header();
-    header.forger = miner.beneficiary;
+    header.forger = miner.address;
     header.pubkey = miner.pubKey;
     header.forgerPubkey = miner.blsPubKey;
     header.height = chainHead.height + 1;
@@ -24,7 +24,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
     header.groupNumber = forger.groupNumber;
     header.bhHash = calcHeaderHash(header);
     // sign the whole block
-    header.signature = buf2Hex(sign(hex2Buf(miner.privateKey), hex2Buf(header.bhHash)));
+    header.signature = buf2Hex(sign(hex2Buf(miner.privKey), hex2Buf(header.bhHash)));
 
     const body = new Body();
     body.bhHash = header.bhHash;
