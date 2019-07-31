@@ -1,5 +1,6 @@
 import { memoryBucket } from '../../util/db';
 import { getOwnNetAddr } from '../client/launch';
+import { INV_MSG_TYPE } from '../msg';
 import { broadcastInv } from './rpc.p';
 import { clientRequest } from './rpc.r';
 import { Inv, InvNet, SubTable } from './rpc.s';
@@ -20,17 +21,22 @@ const notifyNewInv = (key:string, invMsg:Inv): void => {
     const invNet = new InvNet();
     invNet.net = getOwnNetAddr();
     invNet.r = invMsg;
+
+    if (key === 'tx') {
+        invNet.r.MsgType = INV_MSG_TYPE.MSG_TX;
+        console.log('\n\n notify peer a new tx: \n\n', invMsg);
+    } else if (key === 'block') {
+        invNet.r.MsgType = INV_MSG_TYPE.MSG_BLOCK;
+        console.log('\n\n notify peer a new block: \n\n', invMsg);
+    }
+
     const bkt = memoryBucket(SubTable._$info.name);
     const column = bkt.get<string, [SubTable]>(key)[0];
     if (column !== undefined && column.value !== undefined && column.value.length > 0) {
         column.value.forEach((netAddr: string) => {
             console.log(`netAddr is : ${netAddr}, invNet is : ${JSON.stringify(invNet)}`);
             clientRequest(netAddr,broadcastInv, invNet, () => {
-                if (key === 'tx') {
-                    console.log('\n\n notify peer a new tx: \n\n', invMsg);
-                } else if (key === 'block') {
-                    console.log('\n\n notify peer a new block: \n\n', invMsg);
-                }
+                console.log('notify new Inv');
             });
         });
     }

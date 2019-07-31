@@ -1,7 +1,7 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipTotalWeight, getTx, newBlocksReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
+import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipTotalWeight, getTx, newBlockBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { Height2Hash } from '../../chain/schema.s';
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
@@ -162,11 +162,12 @@ export const subscribeBlock = (netAddr:string):boolean => {
  */
 // #[rpc=rpcServer]
 export const broadcastInv = (invNet:InvNet):boolean => {
-    console.log(`new ${invNet.r.MsgType} reach from ${invNet.net}'s client!!!!`);
+    console.log(`new ${invNet.r.MsgType} reach from ${invNet.net}'s client!!!! ${JSON.stringify(invNet)}`);
 
     // example
     if (invNet.r.MsgType === INV_MSG_TYPE.MSG_BLOCK) {
         // TODO: core判断是否需要该block,如果需要则首先调用getHeaders
+        console.log('(getHeader(invNet.r): ', getHeader(invNet.r));
         if (getHeader(invNet.r) !== undefined) {
             return;
         }
@@ -185,7 +186,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
                 return;
             }
             // 更新节点信息
-            const peerBkt =  persistBucket(Peer._$info.name);
+            const peerBkt =  memoryBucket(Peer._$info.name);
             const peer = peerBkt.get<string,[Peer]>(pHeaderNetAddr)[0];
             peer.nCurrentHeight = headerArray.arr[0].height; 
             peer.nCurrentTotalWeight = headerArray.arr[0].totalWeight; 
@@ -205,7 +206,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             newHeadersReach(headerArray.arr);
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
-                newBlocksReach(bodyArray.arr);
+                newBlockBodiesReach(bodyArray.arr);
             });
         });
     }
