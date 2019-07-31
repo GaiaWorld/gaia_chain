@@ -30,19 +30,19 @@ struct ForgerWaitExit {
     forgers: [Forger],
 }
 
-#[db=file,primary=pk]
+#[db=file,primary=primaryKey]
 struct CommitteeConfig {
-    pk: String,
+    primaryKey: String,
     // minium tokens to become a forger
     minToken: usize,
     // the default time for create a new block. For the main chain it is 3000 millisecond.
     blockIterval: usize,
     // maximum height for one forger to accumulate weight priority
-    maxAccHeight: usize,
+    totalAccHeight: usize,
     // stake can withdraw after a certain blocks
     withdrawReserveBlocks: usize,
     // how many groups
-    maxGroupNumber: usize,
+    totalGroupNumber: usize,
 }
 
 // peer
@@ -181,9 +181,9 @@ struct Body {
 }
 
 // blockchain head info
-#[db=file,primary=pk]
+#[db=file,primary=primaryKey]
 struct ChainHead {
-    pk: String,
+    primaryKey: String,
     headHash: String,
     height: usize,
     genesisHash: String,
@@ -207,10 +207,10 @@ struct TxPool {
     tx: Transaction,
 }
 
-#[db=file,primary=beneficiary]
+#[db=file,primary=address]
 struct Miner {
-    beneficiary: String,
-    privateKey: String,
+    address: String,
+    privKey: String,
     pubKey: String,
     blsPubKey: String,
     blsPrivKey: String,
