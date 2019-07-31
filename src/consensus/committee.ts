@@ -2,70 +2,48 @@
  * forge committee
  */
 
-import { generateBlock, writeBlockToDB } from '../chain/block';
-import { getCommitteeConfig, getMiningConfig, getTipHeight } from '../chain/blockchain';
-import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, MiningConfig } from '../chain/schema.s';
+import { generateBlock, writeBlockToDB, writeHeaderToDB } from '../chain/block';
+import { getCommitteeConfig, getMiner, getTipHeight } from '../chain/blockchain';
+import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
+import { myForgers } from '../params/config';
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
+import { buf2Hex, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { setTimer } from '../util/task';
 
 export const startMining = (): void => {
-    // setup mining config
-    const pubKey = '0fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';
-    const privKey = '61bd92548e50464c94da8c33a076b7956bda74ca1957ec43a7095e92b5a011b80fff49afad54c8290b0c838d41ee35dcb8b7aa0856f2e5a16f14f4f53b3ecd83';
-    const blockRandom = 'cc6c85a369f741fd6f409627a0f73fd166f7dba6ba1b5be6c55703bb5243e013';
-    const heigt = getTipHeight();
-    setMiningCfg(pubKey, privKey, blockRandom, heigt, 2);
-    console.log('mining config: ', getMiningConfig());
-
     const commitCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const commitCfg = commitCfgBkt.get<string, [CommitteeConfig]>('CC')[0];
     console.log('commitCfg: ', commitCfg);
-    const chainHeadBkt = persistBucket(ChainHead._$info.name);
 
     setTimer(() => {
-        runMining(getMiningConfig(), commitCfg);
-
-        const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
-        chainHead.height += 1;
-        console.log('chainHead: ', chainHead);
-        chainHeadBkt.put('CH', chainHead);
+        runMining(commitCfg);
     }, null, 2000);
 
 };
 
-export const runMining = (miningCfg: MiningConfig, committeeCfg: CommitteeConfig): void => {
+export const runMining = (committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
-    if (currentHeight % committeeCfg.maxGroupNumber === miningCfg.groupNumber) {
-        const maxWeightForger = selectMostWeightForger(miningCfg.groupNumber, currentHeight, committeeCfg);
-        console.log('maxWeightForger: ', maxWeightForger);
-        console.log('miningCfg: ', miningCfg);
-        // if we are the mosted weight forger
-        if (maxWeightForger.address === miningCfg.beneficiary) {
-            const chainHeadBkt = persistBucket(ChainHead._$info.name);
-            const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
-            const headerBkt = persistBucket(Header._$info.name);
-            const txs = getTxsFromPool();
-            const block = generateBlock(maxWeightForger, chainHead, miningCfg, committeeCfg, txs);
-            console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
-            console.log(block);
-            console.log('\n\n');
-            // store generated header and body
-            headerBkt.put(block.header.bhHash, block.header);
-            writeBlockToDB(block);
-            writeHeigh2HashIndex(block.header.height, block.header.bhHash);
-            updateChainHead(block.header);
-            broadcastNewBlock(block.header);
-            adjustGroup(block.header);
-        }
-    }
+    const [maxWeightMiner, maxWeightForger] = selectMostWeightMiner(currentHeight, committeeCfg);
+    if (maxWeightForger) {
+        const chainHeadBkt = persistBucket(ChainHead._$info.name);
+        const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
+        const txs = getTxsFromPool();
+        const block = generateBlock(maxWeightForger, chainHead, maxWeightMiner, committeeCfg, txs);
+        console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
+        console.log(block);
+        console.log('\n\n');
 
-    // update forger committee every round
-    updateForgerCommittee(currentHeight, committeeCfg);
+        writeHeaderToDB(block.header);
+        writeBlockToDB(block);
+        writeHeigh2HashIndex(block.header.height, block.header.bhHash);
+        updateChainHead(block.header);
+        broadcastNewBlock(block.header);
+        adjustGroup(block.header);
+    }
 };
 
 // handle forgers wait for add and exit
@@ -111,15 +89,17 @@ const returnStake = (forger: Forger): void => {
     accountBkt.put(forger.address, forger);
 };
 
-export const selectMostWeightForger = (groupNumber: number, height: number, committeeCfg: CommitteeConfig): Forger => {
+export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeConfig): [Miner, Forger] => {
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
-    const forgers = forgersBkt.get<number, [ForgerCommittee]>(groupNumber)[0].forgers;
+    const minersBkt = persistBucket(Miner._$info.name);
+    const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.maxGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcWeightAtHeight(b, height, committeeCfg) - calcWeightAtHeight(a, height, committeeCfg));
-    // store sorted forgers by weight
-    // forgersBkt.put(groupNumber, forgers);
-    console.log('sorted forgers: ', forgers);
 
-    return forgers[0];
+    for (const forger of myForgers.forgers) {
+        if (forger.address === forgers[0].address) {
+            return [minersBkt.get<string, [Miner]>(forger.address)[0], forgers[0]];
+        }
+    }
 };
 
 // calculate forger's weight at a specific height
@@ -155,29 +135,14 @@ export const deriveInitWeight = (address: string, blockRandom: string, height: n
 
     const data = buf2Hex(sha256(bon.getBuffer()));
 
-    return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 4), 16) % 4 + 1));
-};
-
-export const setMiningCfg = (pubKey: string, privKey: string, blockRandm: string, height: number, maxGroupNumber: number): void => {
-    const miningCfg = new MiningConfig();
-    const miningCfgBkt = persistBucket(MiningConfig._$info.name);
-    miningCfg.beneficiary = pubKeyToAddress(hex2Buf(pubKey));
-    miningCfg.pubKey = pubKey;
-    miningCfg.privateKey = privKey;
-    miningCfg.groupNumber = deriveNextGroupNumber(miningCfg.beneficiary, blockRandm, height, maxGroupNumber);
-    miningCfg.blsPubKey = pubKey;
-    miningCfg.blsPrivKey = privKey;
-
-    miningCfgBkt.put('MC', miningCfg);
-
-    return;
+    return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 2), 16) % 4 + 1));
 };
 
 export const getForgerWeight = (height: number, address: string): number => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const config = getCommitteeConfig();
 
-    const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(height % config.maxGroupNumber)[0].forgers;
+    const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>((height - 1) % config.maxGroupNumber)[0].forgers;
     for (const forger of forgers) {
         if (forger.address === address) {
             return calcWeightAtHeight(forger, height, config);
@@ -197,15 +162,23 @@ const writeHeigh2HashIndex = (height: number, blockHash: string): void => {
 };
 
 // update chain head
-const updateChainHead = (header: Header): void => {
+export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>('CH')[0];
-    chainHead.prevHash = chainHead.headHash;
-    chainHead.headHash = header.bhHash;
-    chainHead.height = header.height;
-    chainHead.totalWeight = header.totalWeight;
 
-    chBkt.put(chainHead.pk, chainHead);
+    console.log('before update chain head: ', chainHead);
+
+    if (chainHead.headHash === header.prevHash && chainHead.height + 1 === header.height) {
+        chainHead.prevHash = chainHead.headHash;
+        chainHead.headHash = header.bhHash;
+        chainHead.height = header.height;
+        chainHead.totalWeight = header.totalWeight;
+
+        chBkt.put(chainHead.pk, chainHead);
+    } else {
+        console.log('out of order header -------------------------------------------', header);
+        // TODO: add to Orphans pool
+    }
 };
 
 // broad cast new block to peers
@@ -221,20 +194,20 @@ const broadcastNewBlock = (header: Header): void => {
 const adjustGroup = (header: Header): void => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const forgerBkt = persistBucket(Forger._$info.name);
-    const miningCfgBkt = persistBucket(MiningConfig._$info.name);
-    const miningCfg = getMiningConfig();
+    const minerBkt = persistBucket(Miner._$info.name);
+    const miner = getMiner(header.forger);
 
-    const oldForgerCommitteeGroup = forgerCommitteeBkt.get<number, [ForgerCommittee]>(miningCfg.groupNumber)[0];
-    const newGroupNumber = deriveNextGroupNumber(miningCfg.beneficiary, header.blockRandom, header.height, 2);
+    const oldForgerCommitteeGroup = forgerCommitteeBkt.get<number, [ForgerCommittee]>(miner.groupNumber)[0];
+    const newGroupNumber = deriveNextGroupNumber(miner.beneficiary, header.blockRandom, header.height, 2);
 
-    const forger = forgerBkt.get<string, [Forger]>(miningCfg.beneficiary)[0];
+    const forger = forgerBkt.get<string, [Forger]>(miner.beneficiary)[0];
     const index = oldForgerCommitteeGroup.forgers.indexOf(forger);
 
     // derive new weight
     forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, header.height, forger.stake);
 
     // new group is not the same as old group and old forger group length greater than 1
-    if (miningCfg.groupNumber !== newGroupNumber && oldForgerCommitteeGroup.forgers.length > 1) {
+    if (miner.groupNumber !== newGroupNumber && oldForgerCommitteeGroup.forgers.length > 1) {
         console.log('change group: ', forger.groupNumber, ' ====>', newGroupNumber);
         console.log('oldForgerCommitteeGroup length: ', oldForgerCommitteeGroup.forgers.length);
         forger.groupNumber = newGroupNumber; // assign new group number
@@ -242,10 +215,10 @@ const adjustGroup = (header: Header): void => {
         forgerCommittee.forgers.push(forger); // add to new group
         oldForgerCommitteeGroup.forgers.splice(index, 1); // delete from old group
         forgerCommitteeBkt.put(newGroupNumber, forgerCommittee);
-        forgerCommitteeBkt.put(miningCfg.groupNumber, oldForgerCommitteeGroup);
-        miningCfg.groupNumber = newGroupNumber;
-        miningCfgBkt.put('MC', miningCfg);
+        forgerCommitteeBkt.put(miner.groupNumber, oldForgerCommitteeGroup);
+        miner.groupNumber = newGroupNumber;
+        minerBkt.put(header.forger, miner);
     }
 
-    forgerBkt.put(miningCfg.beneficiary, forger); // update forger info
+    forgerBkt.put(miner.beneficiary, forger); // update forger info
 };

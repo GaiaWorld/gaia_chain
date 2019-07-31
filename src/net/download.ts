@@ -1,4 +1,4 @@
-import { getTipHeight, getTipTotalWeight, newBlocksReach, newHeadersReach } from '../chain/blockchain';
+import { getTipHeight, getTipTotalWeight, newBlockBodiesReach, newHeadersReach } from '../chain/blockchain';
 import { Header, Height2Hash } from '../chain/schema.s';
 import { startMining } from '../consensus/committee';
 import { memoryBucket, persistBucket } from '../util/db';
@@ -35,7 +35,7 @@ export const download = (peer:Peer):boolean => {
     if (syncState !== undefined && syncState.value ===  SYNC_STATE.SYNCING) {
         const currentDownloadPeerNetAddr = bkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0];
         if (currentDownloadPeerNetAddr !== undefined) {
-            const currentDownloadPeer = memoryBucket(Peer._$info.name).get<string,Peer>(currentDownloadPeerNetAddr.value)[0];
+            const currentDownloadPeer = memoryBucket(Peer._$info.name).get<string,[Peer]>(currentDownloadPeerNetAddr.value)[0];
             if (currentDownloadPeer !== undefined) {
                 if (currentDownloadPeer.nCurrentTotalWeight > peer.nCurrentTotalWeight) {
                     // 正在同步的链权重更高不需要更改同步链
@@ -123,7 +123,7 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
         
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
-        if (headers.arr.length > 0) {
+        if (headers.arr && headers.arr.length > 0) {
             const currentInfo = new CurrentInfo();
             currentInfo.key = CURRENT_SKELETON_HEIGHT;
             currentInfo.value = `${headers.arr[headers.arr.length - 1].height}`;
@@ -167,7 +167,7 @@ const getFilledHeader = (fromHeight:number, toHeight:number, pNetAddr:string):vo
         // TODO:此处没有考虑skeleton节点作恶的情况，默认两次取到的值是一样的
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
-        if (headers.arr.length > 0) {
+        if (headers.arr && headers.arr.length > 0) {
             const currentInfo = new CurrentInfo();
             currentInfo.key = CURRENT_FILLED_HEIGHT;
             currentInfo.value = `${headers.arr[headers.arr.length - 1].height}`;
@@ -217,9 +217,9 @@ const downloadBlocks = ():void => {
     console.log('block download syncing');
     clientRequest(downloadPeer, getBlocks, invArray, (bodys:BodyArray, pNetAddr:string) => {
         // TODO:此处需要对body和TX进行验证，验证成功之后如果已经超过了主链长度则应该更换为主链
-        newBlocksReach(bodys.arr);
+        newBlockBodiesReach(bodys.arr);
 
-        if (bodys.arr.length > 0) {
+        if (bodys.arr && bodys.arr.length > 0) {
             const currentInfo = new CurrentInfo();
             currentInfo.key = CURRENT_DOWNLOAD_HEIGHT;
             currentInfo.value = `${persistBucket(Header._$info.name).get(bodys.arr[bodys.arr.length - 1].bhHash)[0].height}`;

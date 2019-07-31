@@ -82,7 +82,7 @@ export const launch = () => {
                             }
                             existBlockPeer.subBlock = true;
                             peerBkt.put(pBlockNetAddr, existBlockPeer);
-                            console.log(`success to sub tx from ${pBlockNetAddr}, launch.ts`);
+                            console.log(`success to sub block from ${pBlockNetAddr}, launch.ts`);
                         });                      
                     }
                     console.log(`success shakehands with ${pNetAddr}`);

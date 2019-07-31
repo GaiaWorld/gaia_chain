@@ -207,9 +207,8 @@ struct TxPool {
     tx: Transaction,
 }
 
-#[db=file,primary=pk]
-struct MiningConfig {
-    pk: String,
+#[db=file,primary=beneficiary]
+struct Miner {
     beneficiary: String,
     privateKey: String,
     pubKey: String,
