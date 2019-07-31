@@ -296,27 +296,24 @@ export const newBlockChain = (): void => {
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chainHeadBkt.get<string, [ChainHead]>('CH')[0];
 
-    if (chainHead) {
-        return;
-    }
-
     if (!chainHead) {
-        const ch = new ChainHead();
+        const ch = new ChainHead();//FIXME:only one element
         ch.genesisHash = GENESIS.hash;
         ch.headHash = GENESIS.hash;
         // genesis parent hash is empty string
-        ch.prevHash = '';
+        ch.prevHash = '';//FIXME:JFB use contant
         ch.height = 0;
         ch.totalWeight = 0;
-        ch.pk = 'CH';
+        ch.pk = 'CH';//TODO:JFB PK->primaryKey
 
         chainHeadBkt.put(ch.pk, ch);
+        setupInitialAccounts();//TODO:JFB gensis account with balance
+        initCommitteeConfig();
+        initPreConfiguredForgers();
+        setupMiners();
     }
 
-    setupInitialAccounts();
-    initCommitteeConfig();
-    initPreConfiguredForgers();
-    setupMiners();
+    
 
     return;
 };
@@ -335,15 +332,18 @@ const setupInitialAccounts = (): void => {
     }
 };
 
+//FIXME:JFB use forger instead of miner
 const setupMiners = (): void => {
     const minersBkt = persistBucket(Miner._$info.name);
     const miner = new Miner();
+    //TODO:JFB read forger from independent files
     for (const forger of myForgers.forgers) {
-        miner.beneficiary = forger.address;
-        miner.blsPrivKey = buf2Hex(getRand(32));
-        miner.blsPubKey = buf2Hex(getRand(32));
+        miner.beneficiary = forger.address;//FIXME:JFB use address instead of beneficiary
+        miner.blsPrivKey = buf2Hex(getRand(32));//FIXEME:JFB use sig instead of random
+        miner.blsPubKey = buf2Hex(getRand(32));//FIXEME:JFB use sig instead of random
+        //FIXME:JFB use function
         miner.groupNumber = parseInt(forger.address.slice(forger.address.length - 2), 16);
-        miner.privateKey = forger.privKey;
+        miner.privateKey = forger.privKey;////FIXME:JFB use the same name
         miner.pubKey = forger.pubKey;
 
         minersBkt.put(miner.beneficiary, miner);
@@ -357,17 +357,17 @@ const initCommitteeConfig = (): void => {
     if (!committeeCfg) {
         const cc = new CommitteeConfig();
         cc.pk = 'CC';
-        cc.blockIterval = 2000;
-        cc.maxGroupNumber = GENESIS.totalGroups;
-        cc.maxAccHeight = GENESIS.totalGroups * 100;
-        cc.minToken = 10000;
-        cc.withdrawReserveBlocks = 0;
+        cc.blockIterval = 2000;//TODO:JFB read from config
+        cc.maxGroupNumber = GENESIS.totalGroups;//TODO:JFB use total instead of max
+        cc.maxAccHeight = GENESIS.totalGroups * 100;//TODO:JFB read from config, use total instead of max
+        cc.minToken = 10000;//TODO:JFB read from config
+        cc.withdrawReserveBlocks = 0;//TODO:JFB read from config
 
         committeeCfgBkt.put('CC', cc);
     }
 };
 
-const initPreConfiguredForgers = (): void => {
+const initPreConfiguredForgers = (): void => {    
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
@@ -380,28 +380,30 @@ const initPreConfiguredForgers = (): void => {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
-            f.addHeight = 0;
-            f.pubKey = preConfiguredForgers[i].pubKey;
+            f.addHeight = 0;//FIXME:JFB magic number
+            f.pubKey = preConfiguredForgers[i].pubKey;//FIXME:JFB use random pubkey
             f.stake = preConfiguredForgers[i].stake;
-
-            forgers.push(f);
+            //TODO:JFB neet verify the forger
+            //TODO:JFB put forger into slot
+            //FIXME: delete prikey from config
+            // forgers.push(f);
         }
 
-        // populate forger committee
-        for (let i = 0; i < GENESIS.totalGroups; i++) {
-            const fc = new ForgerCommittee();
-            const groupForgers = [];
-            for (let j = 0; j < forgers.length; j++) {
-                forgers[j].groupNumber = i;
-                if (parseInt(forgers[j].address.slice(forgers[j].address.length - 2), 16) === i) {
-                    groupForgers.push(forgers[j]);
-                    // store to Forger bucket
-                    forgerBkt.put(forgers[j].address, forgers[j]);
-                }
-            }
-            fc.slot = i;
-            fc.forgers = groupForgers;
-            forgerCommitteeBkt.put(fc.slot, fc);
-        }
+        // // populate forger committee
+        // for (let i = 0; i < GENESIS.totalGroups; i++) {
+        //     const fc = new ForgerCommittee();
+        //     const groupForgers = [];
+        //     for (let j = 0; j < forgers.length; j++) {                
+        //         forgers[j].groupNumber = i;
+        //         if (parseInt(forgers[j].address.slice(forgers[j].address.length - 2), 16) === i) {
+        //             groupForgers.push(forgers[j]);
+        //             // store to Forger bucket
+        //             forgerBkt.put(forgers[j].address, forgers[j]);
+        //         }
+        //     }
+        //     fc.slot = i;
+        //     fc.forgers = groupForgers;
+        //     forgerCommitteeBkt.put(fc.slot, fc);
+        // }
     }
 };
