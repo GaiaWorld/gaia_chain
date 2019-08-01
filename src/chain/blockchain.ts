@@ -31,7 +31,7 @@ export const getGenesisHash = (): string => {
     return GENESIS.hash;
 };
 
-//FIXME:JFB read the version from the cfg 
+// FIXME:JFB read the version from the cfg 
 export const getVersion = (): string => {
     return '0.0.0.1';
 };
@@ -150,20 +150,28 @@ export const newTxsReach = (txs: Transaction[]): void => {
     }
 };
 
-export const newBlocksReach = (blocks:Block[]):void=>{
+export const newBlocksReach = (blocks: Block[]): void => {
+    const headers  = [];
+    const bodies = [];
 
-}
+    for (const block of blocks) {
+        headers.push(block.header);
+        bodies.push(block.body);
+    }
+
+    newHeadersReach(headers);
+    newBodiesReach(bodies);
+};
 
 // new blocks from peer
 export const newBodiesReach = (bodys: Body[]): void => {
     console.log('\n\nnewBlockBodiesReach: ---------------------- ', bodys);
-    const waitForAddForgers = new ForgerWaitAdd();
-    const waitForExitForgers = new ForgerWaitExit();
     const currentHeight = getTipHeight();
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
     const accountBkt = persistBucket(Account._$info.name);
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
+    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
@@ -181,24 +189,25 @@ export const newBodiesReach = (bodys: Body[]): void => {
                         forger.address = tx.forgerTx.address;
                         forger.groupNumber = calcInitialGroupNumber(forger.address);
                         forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
-                        forger.addHeight = currentHeight;
-                        //FIXME:JFB 使用applyHeight来判断是否有出块的权利
-                        forger.applyJoinHeight = 
-                        forger.applyExitHeight = 
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
-                        //TODO:JFB 直接放入委员会
-                        //TODO:JFB 需要扣除加入矿工委员会的费用
-                        // tx that forger want to add to forger committee
-                        //FIXME:JFB 删除waitForAddForgers，直接使用applyJoinHeight判断是满足出块高度
+
                         if (tx.forgerTx.AddGroup === true) {
-                            waitForAddForgers.height = currentHeight;
-                            waitForAddForgers.forgers.push(forger);
-                        //FIXME:JFB 删除waitForExitForgers，直接使用applyExitHeight判断是满足出块高度
+                            forger.applyJoinHeight = currentHeight;
                         } else if (tx.forgerTx.AddGroup === false) {
-                            waitForExitForgers.height = currentHeight;
-                            waitForExitForgers.forgers.push(forger);
+                            forger.applyExitHeight = currentHeight;
                         }
+
+                        // store forger to committee
+                        const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(forger.groupNumber)[0];
+                        forgers.forgers.push(forger);
+                        forgerCommitteeBkt.put(forger.groupNumber, forgers);
+
+                        // substract stake token
+                        const forgerAccount = accountBkt.get<string, [Account]>(forger.address)[0];
+                        forgerAccount.nonce += 1;
+                        forgerAccount.outputAmount += forger.stake;  
+
                         break;
                     case TxType.SpendTx:
                         const fromAccount = accountBkt.get<string, [Account]>(tx.from)[0];
@@ -247,22 +256,14 @@ export const newBodiesReach = (bodys: Body[]): void => {
             dbBody.bhHash = body.bhHash;
             dbBody.txs = txHashes;
             dbBodyBkt.put(body.bhHash, dbBody);
+
             updateChainHead(header);
+
+            // TODO: JFB update forgers
             updateForgerCommittee(currentHeight, committeeCfgBkt.get(COMMITTEECONFIG_PRIMARY_KEY)[0]);
         } else {
             // TODO: ban peer
         }
-    }
-
-    // update forger committee info
-    const height = getTipHeight();
-    if (waitForAddForgers.forgers && waitForAddForgers.forgers.length > 0) {
-        const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
-        forgerWaitAddBkt.put(height, waitForAddForgers);
-    }
-    if (waitForExitForgers.forgers && waitForExitForgers.forgers.length > 0) {
-        const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
-        forgerWaitExitBkt.put(height, waitForExitForgers);
     }
 
     return;
@@ -270,7 +271,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
 
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
-    //TODO:JFB 如果已经没有在同步了
+    // TODO:JFB 如果已经没有在同步了
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
     if (!headers) {
         return;
@@ -397,7 +398,7 @@ const initPreConfiguredForgers = (): void => {
             f.address = preConfiguredForgers[i].address;
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
-            f.addHeight = 0;
+            f.applyJoinHeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;
             f.stake = preConfiguredForgers[i].stake;
             f.groupNumber = calcInitialGroupNumber(f.address);

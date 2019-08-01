@@ -3,7 +3,7 @@
  */
 
 import { generateBlock, writeBlockToDB, writeHeaderToDB } from '../chain/block';
-import { getCommitteeConfig, getMiner, getTipHeight, newBlocksReach } from '../chain/blockchain';
+import { getCommitteeConfig, getMiner, getTipHeight, newBlockChain, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
@@ -36,7 +36,7 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);
         console.log('\n\n');
-        //FIXME:JFB just the same as new block reach
+        // FIXME:JFB just the same as new block reach
         broadcastNewBlock(block.header);
         newBlocksReach([block]);
         // writeHeaderToDB(block.header);
@@ -102,13 +102,13 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
             return [minersBkt.get<string, [Miner]>(forger.address)[0], forgers[0]];
         }
     }
-    //TODO:JFB in the slot, but not the max weight
+    // TODO:JFB in the slot, but not the max weight
 };
 
 // calculate forger's weight at a specific height
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
-    //TODO:JFB ensure the addHeight is changed.
-    //FIXME:JFB withdrawReserveBlocks is not needed
+    // TODO:JFB ensure the addHeight is changed.
+    // FIXME:JFB withdrawReserveBlocks is not needed
     const heightDiff = height - forger.addHeight - committeeCfg.withdrawReserveBlocks;
     if (heightDiff === 0) {
         return forger.initWeight;

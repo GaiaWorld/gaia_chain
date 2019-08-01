@@ -1,5 +1,4 @@
 import { getForgerWeight } from '../consensus/committee';
-import { GENESIS } from '../params/genesis';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';

@@ -7,9 +7,10 @@ import { launch } from '../net/client/launch';
 import { isSyncing } from '../net/download';
 import { setTimer } from '../util/task';
 
-//TODO:JFB set the gensis time
-//TODO:JFB simulate transactions 1/2/3/4/5 every 2 seconds
-//print the account info and txs info and forgers
+// TODO:JFB set the gensis time
+// TODO:JFB simulate transactions 1/2/3/4/5 every 2 seconds
+// print the account info and txs info and forgers
+// TODO: new genesis block
 const start = (): void => {
     newBlockChain();
     setTimeout(() => {

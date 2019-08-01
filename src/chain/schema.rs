@@ -4,7 +4,8 @@ struct Forger {
     address: String,
     pubKey: String,
     initWeight: usize,
-    addHeight: usize,
+    applyJoinHeight: Option<usize>,
+    applyExitHeight: Option<usize>,
     groupNumber: u8,
     stake: usize,
 }

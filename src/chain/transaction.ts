@@ -30,8 +30,8 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
             break;
 
         default:
-            break;
     }
+
     return bon.getBuffer();
 };
 
@@ -108,7 +108,7 @@ export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr
     return tx;
 };
 
-//TODO:TM REVIEW
+// TODO:TM REVIEW
 export const merkleRootHash = (txHashes: Uint8Array[]): string => {
     if (txHashes.length === 0) {
         return buf2Hex(sha256(new TextEncoder().encode('')));
