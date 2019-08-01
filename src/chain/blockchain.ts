@@ -31,6 +31,7 @@ export const getGenesisHash = (): string => {
     return GENESIS.hash;
 };
 
+//FIXME:JFB read the version from the cfg
 export const getVersion = (): string => {
     return '0.0.0.1';
 };

@@ -20,18 +20,19 @@ export const serializeTx = (tx: Transaction): Uint8Array => {
 
     switch (tx.txType) {
         case TxType.SpendTx:
-            return bon.getBuffer();
+            break;
+            
         case TxType.ForgerGroupTx:
             bon.writeBin(serializeForgerCommitteeTx(tx.forgerTx));
-
-            return bon.getBuffer();
+            break;
         case TxType.PenaltyTx:
             bon.writeBin(serializePenaltyTx(tx.penaltyTx));
-
-            return bon.getBuffer();
+            break;
 
         default:
+            break;
     }
+    return bon.getBuffer();
 };
 
 export const serializeForgerCommitteeTx = (tx: ForgerCommitteeTx): Uint8Array => {
@@ -107,6 +108,7 @@ export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr
     return tx;
 };
 
+//TODO:TM REVIEW
 export const merkleRootHash = (txHashes: Uint8Array[]): string => {
     if (txHashes.length === 0) {
         return buf2Hex(sha256(new TextEncoder().encode('')));

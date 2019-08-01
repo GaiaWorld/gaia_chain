@@ -20,7 +20,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
     header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
-    header.blockRandom = buf2Hex(getRand(32));
+    header.blockRandom = buf2Hex(getRand(32));// TODO
     header.groupNumber = forger.groupNumber;
     header.bhHash = calcHeaderHash(header);
     // sign the whole block

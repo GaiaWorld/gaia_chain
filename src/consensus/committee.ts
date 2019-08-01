@@ -101,10 +101,13 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
             return [minersBkt.get<string, [Miner]>(forger.address)[0], forgers[0]];
         }
     }
+    //TODO:JFB in the slot, but not the max weight
 };
 
 // calculate forger's weight at a specific height
 export const calcWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
+    //TODO:JFB ensure the addHeight is changed.
+    //FIXME:JFB withdrawReserveBlocks is not needed
     const heightDiff = height - forger.addHeight - committeeCfg.withdrawReserveBlocks;
     if (heightDiff === 0) {
         return forger.initWeight;
