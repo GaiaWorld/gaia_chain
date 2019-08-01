@@ -3,7 +3,7 @@
  */
 
 import { generateBlock, writeBlockToDB, writeHeaderToDB } from '../chain/block';
-import { getCommitteeConfig, getMiner, getTipHeight } from '../chain/blockchain';
+import { getCommitteeConfig, getMiner, getTipHeight, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
@@ -36,13 +36,15 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);
         console.log('\n\n');
-
-        writeHeaderToDB(block.header);
-        writeBlockToDB(block);
-        writeHeigh2HashIndex(block.header.height, block.header.bhHash);
-        updateChainHead(block.header);
+        //FIXME:JFB just the same as new block reach
         broadcastNewBlock(block.header);
-        adjustGroup(block.header);
+        newBlocksReach([block]);
+        // writeHeaderToDB(block.header);
+        // writeBlockToDB(block);
+        // writeHeigh2HashIndex(block.header.height, block.header.bhHash);
+        // updateChainHead(block.header);
+        // broadcastNewBlock(block.header);
+        // adjustGroup(block.header);
     }
 };
 

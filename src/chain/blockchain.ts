@@ -31,7 +31,7 @@ export const getGenesisHash = (): string => {
     return GENESIS.hash;
 };
 
-//FIXME:JFB read the version from the cfg
+//FIXME:JFB read the version from the cfg 
 export const getVersion = (): string => {
     return '0.0.0.1';
 };
@@ -150,8 +150,12 @@ export const newTxsReach = (txs: Transaction[]): void => {
     }
 };
 
+export const newBlocksReach = (blocks:Block[]):void=>{
+
+}
+
 // new blocks from peer
-export const newBlockBodiesReach = (bodys: Body[]): void => {
+export const newBodiesReach = (bodys: Body[]): void => {
     console.log('\n\nnewBlockBodiesReach: ---------------------- ', bodys);
     const waitForAddForgers = new ForgerWaitAdd();
     const waitForExitForgers = new ForgerWaitExit();
@@ -175,17 +179,22 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
                     case TxType.ForgerGroupTx:
                         const forger = new Forger();
                         forger.address = tx.forgerTx.address;
-                        forger.groupNumber = currentHeight % getCommitteeConfig().totalGroupNumber;
+                        forger.groupNumber = calcInitialGroupNumber(forger.address);
                         forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
                         forger.addHeight = currentHeight;
+                        //FIXME:JFB 使用applyHeight来判断是否有出块的权利
+                        forger.applyJoinHeight = 
+                        forger.applyExitHeight = 
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
-
+                        //TODO:JFB 直接放入委员会
+                        //TODO:JFB 需要扣除加入矿工委员会的费用
                         // tx that forger want to add to forger committee
+                        //FIXME:JFB 删除waitForAddForgers，直接使用applyJoinHeight判断是满足出块高度
                         if (tx.forgerTx.AddGroup === true) {
                             waitForAddForgers.height = currentHeight;
                             waitForAddForgers.forgers.push(forger);
-                        // tx that forger want to leave forger committee
+                        //FIXME:JFB 删除waitForExitForgers，直接使用applyExitHeight判断是满足出块高度
                         } else if (tx.forgerTx.AddGroup === false) {
                             waitForExitForgers.height = currentHeight;
                             waitForExitForgers.forgers.push(forger);
@@ -261,6 +270,7 @@ export const newBlockBodiesReach = (bodys: Body[]): void => {
 
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
+    //TODO:JFB 如果已经没有在同步了
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
     if (!headers) {
         return;

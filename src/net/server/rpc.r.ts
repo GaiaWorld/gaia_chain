@@ -176,8 +176,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         invArrayNet.r = new InvArray();
         invArrayNet.r.arr = [invNet.r];
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pHeaderNetAddr:string) => {
-
-            // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
+            
             if (headerArray.arr === undefined || headerArray.arr[0] === undefined) {
                 return;
             }
@@ -193,6 +192,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             peerBkt.put(pHeaderNetAddr, peer);
             // 和同步节点进行对比
             const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
+            //TODO:JFB 正在同步
             if (downloadPeer !== undefined) {
                 if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nStartingTotalWeigth) {
                     return;
@@ -202,8 +202,12 @@ export const broadcastInv = (invNet:InvNet):boolean => {
                 }
                 // TODO:如果走到了这里说明出现了一条链比我正在同步的链条更长，我需要更换到该链重新进行同步
                 console.log(`need change the download chain`);
+                return;
             }
+            //TODO:JFB 如果此头的高度超过本地高度+2，则需要重新启动同步
+            if(headerArray.arr[0].height > getTipHeight() + 1)
             newHeadersReach(headerArray.arr);
+            // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
                 newBlockBodiesReach(bodyArray.arr);

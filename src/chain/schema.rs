@@ -180,6 +180,7 @@ struct Body {
     txs: [Transaction],
 }
 
+//FIXME:JFB use currentHeight instead of chainHead
 // blockchain head info
 #[db=file,primary=primaryKey]
 struct ChainHead {
