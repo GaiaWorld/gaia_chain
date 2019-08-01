@@ -406,9 +406,9 @@ const initPreConfiguredForgers = (): void => {
             forgers.push(f);
             forgerBkt.put(f.address, f);
 
-            let groupForgers = forgersMap.get(f.groupNumber);
+            const groupForgers = forgersMap.get(f.groupNumber);
             if (!groupForgers) {
-                groupForgers = [f];
+                forgersMap.set(f.groupNumber, [f]);
             } else {
                 groupForgers.push(f);
                 forgersMap.set(f.groupNumber, groupForgers);
@@ -420,7 +420,7 @@ const initPreConfiguredForgers = (): void => {
             const fc = new ForgerCommittee();
             fc.slot = key;
             fc.forgers = value;
-
+            console.log(`Add forgers: ${JSON.stringify(fc.forgers)} to slot: ${fc.slot}`);
             forgerCommitteeBkt.put(fc.slot, fc);
         });
     }
