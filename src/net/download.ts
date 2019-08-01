@@ -227,20 +227,16 @@ const downloadBlocks = ():void => {
         }
         // tslint:disable-next-line:radix
         const currentDownloadHeight = parseInt(currentInfoBkt.get(CURRENT_DOWNLOAD_HEIGHT)[0].value);
-        // TODO:JFB use SYNC STATE to judge the state
-        // FIEME:JFB notice the change between download and forger
         
-        // if (currentDownloadHeight < lastDownloadHeight) {
-        //     downloadBlocks();
-        // } else {
-        //     const currentInfo = new CurrentInfo();
-        //     currentInfo.key = SYNC;
-        //     currentInfo.value = SYNC_STATE.SUCCESS;
-        //     currentInfoBkt.put(SYNC, currentInfo);
-        //     console.log('block download done');
-        //     startMining();
-            
-        // }
+        if (currentDownloadHeight < lastDownloadHeight) {
+            downloadBlocks();
+        } else {
+            const currentInfo = new CurrentInfo();
+            currentInfo.key = SYNC;
+            currentInfo.value = SYNC_STATE.SUCCESS;
+            currentInfoBkt.put(SYNC, currentInfo);
+            console.log('block download done');
+        }
     });
 };
 
@@ -248,7 +244,7 @@ export const isSyncing = (): boolean => {
     const bkt = memoryBucket(CurrentInfo._$info.name);
     const syncState = bkt.get<string,[CurrentInfo]>(SYNC)[0];
 
-    if (syncState.value === SYNC_STATE.SUCCESS) {
+    if (syncState && syncState.value === SYNC_STATE.SUCCESS) {
         return false;
     }
 

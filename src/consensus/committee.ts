@@ -16,8 +16,7 @@ import { persistBucket } from '../util/db';
 import { setTimer } from '../util/task';
 
 export const startMining = (): void => {
-    const commitCfgBkt = persistBucket(CommitteeConfig._$info.name);
-    const commitCfg = commitCfgBkt.get<string, [CommitteeConfig]>(COMMITTEECONFIG_PRIMARY_KEY)[0];
+    const commitCfg = getCommitteeConfig();
     console.log('commitCfg: ', commitCfg);
 
     setTimer(() => {

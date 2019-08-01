@@ -203,7 +203,7 @@ export const validateBlock = (block:Block):boolean => {
 
         return false;
     }
-    const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>('CH')[0];
+    const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
     if (preHeaderTip.headHash !== block.header.prevHash) {
         console.log(`prevHash do not matach`);
 
