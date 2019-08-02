@@ -65,9 +65,39 @@ export const getTx = (invMsg: Inv): Transaction => {
     return dbTx2Tx(dbtx);
 };
 
+export const tx2DbTx = (tx: Transaction): DBTransaction => {
+    const dbtx = new DBTransaction();
+    const forgerCommitteeTxBkt = persistBucket(ForgerCommitteeTx._$info.name);
+    const penaltyTxBkt = persistBucket(PenaltyTx._$info.name);
+
+    dbtx.from = tx.from;
+    dbtx.gas = tx.gas;
+    dbtx.lastInputValue = tx.lastInputValue;
+    dbtx.lastOutputValue = tx.lastOutputValue;
+    dbtx.nonce = tx.nonce;
+    dbtx.payload = tx.payload;
+    dbtx.price = tx.price;
+    dbtx.pubKey = tx.pubKey;
+    dbtx.signature = tx.signature;
+    dbtx.to = tx.to;
+    dbtx.txHash = tx.txHash;
+    dbtx.txType = tx.txType;
+    dbtx.value = tx.value;
+
+    if (dbtx.txType === TxType.ForgerGroupTx) {
+        forgerCommitteeTxBkt.put(tx.forgerTx.forgeTxHash, tx.forgerTx);
+    } else if (dbtx.txType === TxType.PenaltyTx) {
+        penaltyTxBkt.put(tx.penaltyTx.penaltyTxHash, tx.penaltyTx);
+    }
+
+    return dbtx;
+};
+
 // convert DBTransaction to Transaction
-const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
-    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+export const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
+    console.log('dbtx xxxxxxxxxxxxxxxxx: ', dbtx);
+    const forgerCommitteeTxBkt = persistBucket(ForgerCommitteeTx._$info.name);
+    const penaltyTxBkt = persistBucket(PenaltyTx._$info.name);
     const tx = new Transaction();
     
     tx.from = dbtx.from;
@@ -85,10 +115,10 @@ const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
     tx.value = dbtx.value;
 
     if (dbtx.txType === TxType.ForgerGroupTx) {
-        const forgerTx = forgerCommitteeBkt.get<string, [ForgerCommitteeTx]>(dbtx.forgerTx)[0];
+        const forgerTx = forgerCommitteeTxBkt.get<string, [ForgerCommitteeTx]>(dbtx.forgerTx)[0];
         tx.forgerTx = forgerTx;
     } else if (dbtx.txType === TxType.PenaltyTx) {
-        const penaltyTx = forgerCommitteeBkt.get<string, [PenaltyTx]>(dbtx.penaltyTx)[0];
+        const penaltyTx = penaltyTxBkt.get<string, [PenaltyTx]>(dbtx.penaltyTx)[0];
         tx.penaltyTx = penaltyTx;
     }
 

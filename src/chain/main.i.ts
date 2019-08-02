@@ -1,13 +1,13 @@
 /**
  * main function
  */
-import { getCommitteeConfig, newBlockChain } from '../chain/blockchain';
+import { getCommitteeConfig, newBlockChain, tx2DbTx } from '../chain/blockchain';
 import { broadcastNewTx, runMining } from '../consensus/committee';
 import { launch } from '../net/client/launch';
 import { isSyncing } from '../net/download';
 import { persistBucket } from '../util/db';
 import { setTimer } from '../util/task';
-import { Account } from './schema.s';
+import { Account, DBTransaction } from './schema.s';
 import { buildSignedSpendTx } from './transaction';
 import { addTx2Pool } from './validation';
 
@@ -49,6 +49,10 @@ const simulateTxs = (value: number): void => {
     if (fromAccount) {
         const tx = buildSignedSpendTx(privKey, pubKey, fromAccount, toAddr, value, 20, 10, '');
         addTx2Pool(tx);
+
+        const dbTxbkt = persistBucket(DBTransaction._$info.name);
+        dbTxbkt.put(tx.txHash, tx2DbTx(tx));
+    
         broadcastNewTx(tx);
         console.log(`=============> build tx: ${JSON.stringify(tx)}`);
     } else {
