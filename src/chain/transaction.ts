@@ -2,6 +2,7 @@ import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Account, ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
+import { GOD_ADDRESS } from './validation';
 
 // don't serialize tx.hash, tx.signature
 export const serializeTx = (tx: Transaction): Uint8Array => {
@@ -61,7 +62,7 @@ export const signTx = (privKey: Uint8Array, tx: Transaction): void => {
     tx.signature = buf2Hex(sign(privKey, hex2Buf(tx.txHash)));
 };
 
-export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Account, toAddr: Account, value: number, gas: number, gasPrice: number, payload: string): Transaction => {
+export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Account, toAddr: string, value: number, gas: number, gasPrice: number, payload: string): Transaction => {
     const tx = new Transaction();
     tx.from = fromAddr.address;
     tx.gas = gas;
@@ -71,7 +72,7 @@ export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Ac
     tx.payload = payload;
     tx.price = gasPrice;
     tx.pubKey = pubKey;
-    tx.to = toAddr.address;
+    tx.to = toAddr;
     tx.txType = TxType.SpendTx;
     tx.value = value;
 
@@ -80,7 +81,7 @@ export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Ac
     return tx;
 };
 
-export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr: Account, stake: number, addGroup: boolean, gas: number, gasPrice: number, payload: string): Transaction => {
+export const buildSignedCommitteeTx = (privKey: string, pubKey: string, blsPubKey: string, fromAddr: Account, stake: number, addGroup: boolean, gas: number, gasPrice: number, payload: string): Transaction => {
     const tx = new Transaction();
     tx.from = fromAddr.address;
     tx.gas = gas;
@@ -90,8 +91,7 @@ export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr
     tx.payload = payload;
     tx.price = gasPrice;
     tx.pubKey = pubKey;
-    // to aadress is empty
-    tx.to = '';
+    tx.to = GOD_ADDRESS;
     tx.txType = TxType.ForgerGroupTx;
     tx.value = stake;
 
@@ -99,6 +99,7 @@ export const buildSignedCommitteeTx = (privKey: string, pubKey: string, fromAddr
     fct.AddGroup = addGroup;
     fct.address = fromAddr.address;
     fct.stake = stake;
+    fct.blsPubKey = blsPubKey;
     fct.forgeTxHash = buf2Hex(sha256(serializeForgerCommitteeTx(fct)));
 
     tx.forgerTx = fct;
