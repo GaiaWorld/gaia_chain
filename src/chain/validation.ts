@@ -1,4 +1,5 @@
 import { getForgerWeight } from '../consensus/committee';
+import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';

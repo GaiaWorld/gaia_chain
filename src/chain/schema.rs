@@ -18,20 +18,6 @@ struct ForgerCommittee  {
     forgers: [Forger],
 }
 
-// forger wait to add to committee
-#[db=file,primary=height]
-struct ForgerWaitAdd {
-    height: usize,
-    forgers: [Forger],
-}
-
-// forger wait to exit committee
-#[db=file,primary=height]
-struct ForgerWaitExit {
-    height: usize,
-    forgers: [Forger],
-}
-
 #[db=file,primary=primaryKey]
 struct CommitteeConfig {
     primaryKey: String,
