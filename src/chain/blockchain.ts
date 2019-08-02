@@ -2,12 +2,12 @@
  * block chain
  */
 
-import { deriveInitWeight, updateChainHead, updateForgerCommittee } from '../consensus/committee';
+import { adjustGroup, deriveInitWeight, updateChainHead, updateForgerCommittee } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { myForgers } from '../params/config';
-import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
@@ -31,9 +31,8 @@ export const getGenesisHash = (): string => {
     return GENESIS.hash;
 };
 
-// FIXME:JFB read the version from the cfg 
 export const getVersion = (): string => {
-    return '0.0.0.1';
+    return VERSION;
 };
 
 export const getTipHeight = (): number => {
@@ -169,7 +168,6 @@ export const newBodiesReach = (bodys: Body[]): void => {
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
     const accountBkt = persistBucket(Account._$info.name);
-    const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
 
     for (const body of bodys) {
@@ -190,8 +188,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
                         forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
-                        // TODO: JFB
-                        forger.nextGroupStartHeight = currentHeight + 1000;
+                        forger.nextGroupStartHeight = currentHeight + CAN_FORGE_AFTER_BLOCKS;
 
                         if (tx.forgerTx.AddGroup === true) {
                             forger.applyJoinHeight = currentHeight;
@@ -259,9 +256,8 @@ export const newBodiesReach = (bodys: Body[]): void => {
             dbBodyBkt.put(body.bhHash, dbBody);
 
             updateChainHead(header);
-
-            // TODO: JFB update forgers
             updateForgerCommittee(currentHeight);
+            adjustGroup(header);
         } else {
             // TODO: ban peer
         }
@@ -406,7 +402,6 @@ const initPreConfiguredForgers = (): void => {
             f.stake = preConfiguredForgers[i].stake;
             f.groupNumber = calcInitialGroupNumber(f.address);
             console.log(`initPreConfiguredForgers: add ${f.address} to group number ${f.groupNumber}`);
-            // TODO:JFB neet verify the forger
             forgers.push(f);
             forgerBkt.put(f.address, f);
 

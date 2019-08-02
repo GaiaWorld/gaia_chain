@@ -3,13 +3,13 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getMiner, getTipHeight, newBlockChain, newBlocksReach } from '../chain/blockchain';
+import { getCommitteeConfig, getTipHeight, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock } from '../net/server/subscribe';
 import { myForgers } from '../params/config';
-import { CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY } from '../params/constants';
+import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
@@ -36,11 +36,10 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);
         console.log('\n\n');
-        // FIXME:JFB just the same as new block reach
         broadcastNewBlock(block.header);
-        newBlocksReach([block]);
+        // didn't need to call this
+        // newBlocksReach([block]);
         // updateChainHead(block.header);
-        // adjustGroup(block.header);
     }
 };
 
@@ -176,7 +175,7 @@ const broadcastNewBlock = (header: Header): void => {
     notifyNewBlock(inv);
 };
 
-const adjustGroup = (header: Header): void => {
+export const adjustGroup = (header: Header): void => {
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
     const forgersBkt = persistBucket(Forger._$info.name);
     const forger = forgersBkt.get<string, [Forger]>(header.forger)[0];

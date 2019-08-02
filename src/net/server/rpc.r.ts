@@ -1,7 +1,7 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipTotalWeight, getTx, newBlockBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
+import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { Height2Hash } from '../../chain/schema.s';
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
@@ -9,7 +9,7 @@ import { RpcClient } from '../../pi_pt/net/rpc_client';
 import { memoryBucket, persistBucket } from '../../util/db';
 import { getOwnNetAddr, makeShakeHandsInfo } from '../client/launch';
 import { DEFAULT_STR_ERR } from '../const';
-import { CURRENT_DOWNLOAD_PEER_NET_ADDR, MAX_HEADER_NUMBER } from '../download';
+import { CURRENT_DOWNLOAD_PEER_NET_ADDR, download, isSyncing, MAX_HEADER_NUMBER } from '../download';
 import { CurrentInfo } from '../memory.s';
 import { INV_MSG_TYPE } from '../msg';
 import { Peer } from '../pNode.s';
@@ -192,8 +192,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             peerBkt.put(pHeaderNetAddr, peer);
             // 和同步节点进行对比
             const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
-            //TODO:JFB 正在同步
-            if (downloadPeer !== undefined) {
+            if (downloadPeer && isSyncing()) {
                 if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nStartingTotalWeigth) {
                     return;
                 }
@@ -202,15 +201,21 @@ export const broadcastInv = (invNet:InvNet):boolean => {
                 }
                 // TODO:如果走到了这里说明出现了一条链比我正在同步的链条更长，我需要更换到该链重新进行同步
                 console.log(`need change the download chain`);
+
                 return;
             }
-            //TODO:JFB 如果此头的高度超过本地高度+2，则需要重新启动同步
-            if(headerArray.arr[0].height > getTipHeight() + 1)
-            newHeadersReach(headerArray.arr);
+            const tipHeight = getTipHeight();
+            // TODO:JFB 如果此头的高度超过本地高度+2，则需要重新启动同步
+            if (headerArray.arr[0].height >= tipHeight + 2) {
+                download(memoryBucket(Peer._$info.name).get<string,[Peer]>(invNet.net)[0]);
+            } else if (headerArray.arr[0].height === tipHeight + 1) {
+                newHeadersReach(headerArray.arr);
+            }
+
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
-                newBlockBodiesReach(bodyArray.arr);
+                newBodiesReach(bodyArray.arr);
             });
         });
     }

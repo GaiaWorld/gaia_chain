@@ -1,4 +1,5 @@
-import { calcWeightAtHeight } from '../consensus/committee';
+import { calcForgerWeightAtHeight } from '../consensus/committee';
+import { EMPTY_RECEIPT_ROOT_HASH } from '../params/constants';
 import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
@@ -14,9 +15,9 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
     header.height = chainHead.height + 1;
     header.prevHash = chainHead.headHash;
     // not used right now
-    header.receiptRoot = '0';
+    header.receiptRoot = EMPTY_RECEIPT_ROOT_HASH;
     header.timestamp = Date.now();
-    header.weight = calcWeightAtHeight(forger, header.height, committeeCfg);
+    header.weight = calcForgerWeightAtHeight(forger, header.height, committeeCfg);
     header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
