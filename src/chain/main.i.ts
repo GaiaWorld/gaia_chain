@@ -11,7 +11,6 @@ import { Account } from './schema.s';
 import { buildSignedSpendTx } from './transaction';
 import { addTx2Pool } from './validation';
 
-// TODO:JFB set the gensis time
 // print the account info and txs info and forgers
 const start = (): void => {
     newBlockChain();
