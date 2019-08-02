@@ -7,11 +7,11 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { myForgers } from '../params/config';
-import { BLOCK_INTERVAL, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
 import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
@@ -106,8 +106,7 @@ export const getHeader = (invMsg: Inv): Header => {
 export const getHeaderByHeight = (height:number):Header|undefined => {
     const bkt = persistBucket(Height2Hash._$info.name);
     const height2Hash = bkt.get<number,[Height2Hash]>(height)[0];
-    if (height2Hash === undefined) {
-
+    if (!height2Hash) {
         return;
     }
     const invMsg = new Inv();
@@ -191,6 +190,8 @@ export const newBodiesReach = (bodys: Body[]): void => {
                         forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
+                        // TODO: JFB
+                        forger.nextGroupStartHeight = currentHeight + 1000;
 
                         if (tx.forgerTx.AddGroup === true) {
                             forger.applyJoinHeight = currentHeight;
@@ -260,7 +261,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             updateChainHead(header);
 
             // TODO: JFB update forgers
-            updateForgerCommittee(currentHeight, committeeCfgBkt.get(COMMITTEECONFIG_PRIMARY_KEY)[0]);
+            updateForgerCommittee(currentHeight);
         } else {
             // TODO: ban peer
         }
@@ -377,6 +378,8 @@ const initCommitteeConfig = (): void => {
         cc.totalAccHeight = GENESIS.totalGroups * TOTAL_ACCUMULATE_ROUNDS;
         cc.minToken = MIN_TOKEN;
         cc.withdrawReserveBlocks = WITHDRAW_RESERVE_BLOCKS;
+        cc.maxAccRounds = MAX_ACC_ROUNDS;
+        cc.canForgeAfterBlocks = CAN_FORGE_AFTER_BLOCKS;
 
         committeeCfgBkt.put(cc.primaryKey, cc);
     }
@@ -392,7 +395,7 @@ const initPreConfiguredForgers = (): void => {
     if (!forgerCommittee) {
         const preConfiguredForgers = GENESIS.forgers;
         const forgers = [];
-        const forgersMap = new Map<number, any[]>();
+        const forgersMap = new Map<number, Forger[]>();
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
@@ -417,7 +420,7 @@ const initPreConfiguredForgers = (): void => {
         }
 
         // populate forger committee
-        forgersMap.forEach((value: any[], key: number) => {
+        forgersMap.forEach((value: Forger[], key: number) => {
             const fc = new ForgerCommittee();
             fc.slot = key;
             fc.forgers = value;
