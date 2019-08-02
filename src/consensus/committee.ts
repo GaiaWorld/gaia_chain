@@ -4,10 +4,10 @@
 
 import { generateBlock } from '../chain/block';
 import { getCommitteeConfig, getTipHeight, newBlocksReach } from '../chain/blockchain';
-import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner } from '../chain/schema.s';
+import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
-import { notifyNewBlock } from '../net/server/subscribe';
+import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { myForgers } from '../params/config';
 import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { BonBuffer } from '../pi/util/bon';
@@ -173,6 +173,15 @@ const broadcastNewBlock = (header: Header): void => {
 
     // notify peers new block
     notifyNewBlock(inv);
+};
+
+export const broadcastNewTx = (tx: Transaction): void => {
+    const inv = new Inv();
+    inv.hash = tx.txHash;
+    // we cannot determine which block this tx would include in
+    inv.height = 0;
+    
+    notifyNewTx(inv);
 };
 
 export const adjustGroup = (header: Header): void => {

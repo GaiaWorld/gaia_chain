@@ -340,6 +340,9 @@ const setupInitialAccounts = (): void => {
     }
 };
 
+const setupMyAccounts = (): void => {
+};
+
 const setupMiners = (): void => {
     const minersBkt = persistBucket(Miner._$info.name);
     const miner = new Miner();
