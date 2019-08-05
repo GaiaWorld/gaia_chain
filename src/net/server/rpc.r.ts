@@ -3,6 +3,7 @@
  */
 import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { checkVersion } from '../../chain/validation';
+import { EMPTY_BLOCK_HEAD_HASH } from '../../params/constants';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
 import { memoryBucket } from '../../util/db';
@@ -45,7 +46,7 @@ export const getBlocks = (invArray:InvArrayNet):BodyArray => {
     bodyArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
         const block = getBlock(inv);
-        if (block) {
+        if (block && block.header.bhHash !== EMPTY_BLOCK_HEAD_HASH) {
             bodyArray.arr.push(block.body);
         }
     });
@@ -214,7 +215,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
-                if (bodyArray) {
+                if (bodyArray && bodyArray.arr.length > 0) {
                     newBodiesReach(bodyArray.arr);
                 }
             });

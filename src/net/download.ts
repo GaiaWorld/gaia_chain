@@ -216,7 +216,9 @@ const downloadBlocks = ():void => {
     console.log('block download syncing');
     clientRequest(downloadPeer, getBlocks, invArray, (bodys:BodyArray, pNetAddr:string) => {
         // TODO:此处需要对body和TX进行验证，验证成功之后如果已经超过了主链长度则应该更换为主链
-        newBodiesReach(bodys.arr);
+        if (bodys.arr && bodys.arr.length > 0) {
+            newBodiesReach(bodys.arr);
+        }
 
         if (bodys.arr && bodys.arr.length > 0) {
             const currentInfo = new CurrentInfo();
