@@ -13,7 +13,7 @@ import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
-import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
+import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -95,7 +95,9 @@ export const tx2DbTx = (tx: Transaction): DBTransaction => {
 
 // convert DBTransaction to Transaction
 export const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
-    console.log('dbtx xxxxxxxxxxxxxxxxx: ', dbtx);
+    if (!dbtx) {
+        return;
+    }
     const forgerCommitteeTxBkt = persistBucket(ForgerCommitteeTx._$info.name);
     const penaltyTxBkt = persistBucket(PenaltyTx._$info.name);
     const tx = new Transaction();
@@ -193,7 +195,7 @@ export const newBlocksReach = (blocks: Block[]): void => {
 
 // new blocks from peer
 export const newBodiesReach = (bodys: Body[]): void => {
-    console.log('\n\nnewBlockBodiesReach: ---------------------- ', bodys);
+    console.log('\n\nnewBodiesReach: ---------------------- ', bodys);
     const currentHeight = getTipHeight();
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
@@ -209,7 +211,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             for (const tx of body.txs) {
                 // all tx is fixed fee at present
                 minerFee += MIN_GAS * tx.price;
-                txHashes.push(calcTxHash(serializeTx(tx)));
+                txHashes.push(tx.txHash);
                 switch (tx.txType) {
                     case TxType.ForgerGroupTx:
                         const forger = new Forger();
@@ -288,6 +290,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             updateChainHead(header);
             updateForgerCommittee(currentHeight);
             adjustGroup(header);
+            removeMinedTxFromPool(body.txs);
         } else {
             // TODO: ban peer
         }
@@ -368,9 +371,6 @@ const setupInitialAccounts = (): void => {
         account.nonce = 0;
         accountBkt.put(account.address, account);
     }
-};
-
-const setupMyAccounts = (): void => {
 };
 
 const setupMiners = (): void => {

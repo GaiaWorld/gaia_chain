@@ -16,22 +16,24 @@ const start = (): void => {
     newBlockChain();
     setTimeout(() => {
         launch();
-    }, 10000);
+    }, 5000);
 
     const committeeCfg = getCommitteeConfig();
 
     setTimer(() => {
         if (!isSyncing()) {
+            console.log(`========> start run one mining round`);
             runMining(committeeCfg);
         } else {
             console.log('sync not ready');
         }
-    }, null, 1000);
+    }, null, 2000);
 
     let value = 1;
     setTimer(() => {
         simulateTxs(value);
         value += 1;
+        console.log('simulate new tx');
     }, null, 2000);
 };
 

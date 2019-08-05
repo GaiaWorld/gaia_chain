@@ -303,7 +303,10 @@ export const validateTx = (tx:Transaction):boolean => {
 };
 
 export const addTx2Pool = (tx:Transaction):boolean => {
-    memoryBucket(TxPool._$info.name).put(tx.txHash, tx);
+    const txPool = new TxPool();
+    txPool.txHash = tx.txHash;
+    txPool.tx = tx;
+    memoryBucket(TxPool._$info.name).put(tx.txHash, txPool);
 
     return true;
 };
@@ -315,12 +318,20 @@ export const getTxsFromPool = ():Transaction[] => {
     const iter = memoryBucket(TxPool._$info.name).iter(null);
     let el = iter.next();
     while (el) {
-        list.push(<Transaction>el[1].value);
+        list.push((<TxPool>el)[1].tx);
         el = iter.next();
     }
 
     return list;
 };
+
+export const removeMinedTxFromPool = (txs: Transaction[]): void => {
+    const txPoolBkt = memoryBucket(TxPool._$info.name);
+    for (const tx of txs) {
+        txPoolBkt.delete(tx.txHash);
+    }
+};
+
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差
 const MAX_BLOCK_TX_NUMBER = 1000;// 一个区块最多包含1000个交易
 export const MIN_GAS = 1000;

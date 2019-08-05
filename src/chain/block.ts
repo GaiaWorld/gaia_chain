@@ -35,9 +35,9 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
 };
 
 export const calcTxRootHash = (txs: Transaction[]): string => {
-    const txHashes = [];
+    const txHashes: Uint8Array[] = [];
     for (const tx of txs) {
-        txHashes.push(calcTxHash(serializeTx(tx)));
+        txHashes.push(hex2Buf(calcTxHash(serializeTx(tx))));
     }
 
     return merkleRootHash(txHashes);

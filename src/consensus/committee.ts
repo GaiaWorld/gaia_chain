@@ -3,9 +3,9 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getTipHeight, newBlocksReach } from '../chain/blockchain';
+import { getCommitteeConfig, getTipHeight } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
-import { getTxsFromPool } from '../chain/validation';
+import { getTxsFromPool, removeMinedTxFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { myForgers } from '../params/config';
@@ -27,19 +27,17 @@ export const startMining = (): void => {
 
 export const runMining = (committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
-    const [maxWeightMiner, maxWeightForger] = selectMostWeightMiner(currentHeight, committeeCfg);
-    if (maxWeightForger) {
+    const res = selectMostWeightMiner(currentHeight, committeeCfg);
+    if (res) {
         const chainHeadBkt = persistBucket(ChainHead._$info.name);
         const chainHead = chainHeadBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
         const txs = getTxsFromPool();
-        const block = generateBlock(maxWeightForger, chainHead, maxWeightMiner, committeeCfg, txs);
+        console.log(`selectMostWeightMiner txs: ${txs}`);
+        const block = generateBlock(res[1], chainHead, res[0], committeeCfg, txs);
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);
         console.log('\n\n');
         broadcastNewBlock(block.header);
-        // didn't need to call this
-        // newBlocksReach([block]);
-        // updateChainHead(block.header);
     }
 };
 
@@ -147,6 +145,7 @@ export const getForgerWeight = (height: number, address: string): number => {
 
 // update chain head
 export const updateChainHead = (header: Header): void => {
+    console.log(`updateChainHead header ${header}`);
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
