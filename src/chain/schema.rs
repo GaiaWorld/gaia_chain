@@ -4,7 +4,9 @@ struct Forger {
     address: String,
     pubKey: String,
     initWeight: usize,
-    addHeight: usize,
+    nextGroupStartHeight: Option<usize>,
+    applyJoinHeight: Option<usize>,
+    applyExitHeight: Option<usize>,
     groupNumber: u8,
     stake: usize,
 }
@@ -16,31 +18,21 @@ struct ForgerCommittee  {
     forgers: [Forger],
 }
 
-// forger wait to add to committee
-#[db=file,primary=height]
-struct ForgerWaitAdd {
-    height: usize,
-    forgers: [Forger],
-}
-
-// forger wait to exit committee
-#[db=file,primary=height]
-struct ForgerWaitExit {
-    height: usize,
-    forgers: [Forger],
-}
-
 #[db=file,primary=primaryKey]
 struct CommitteeConfig {
     primaryKey: String,
     // minium tokens to become a forger
     minToken: usize,
+    // maximum accumulate rounds
+    maxAccRounds: usize,
     // the default time for create a new block. For the main chain it is 3000 millisecond.
     blockIterval: usize,
     // maximum height for one forger to accumulate weight priority
     totalAccHeight: usize,
     // stake can withdraw after a certain blocks
     withdrawReserveBlocks: usize,
+    // after how many blocks can forge
+    canForgeAfterBlocks: usize,
     // how many groups
     totalGroupNumber: usize,
 }

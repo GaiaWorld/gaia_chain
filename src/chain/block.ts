@@ -1,4 +1,5 @@
-import { calcWeightAtHeight } from '../consensus/committee';
+import { calcForgerWeightAtHeight } from '../consensus/committee';
+import { EMPTY_RECEIPT_ROOT_HASH } from '../params/constants';
 import { buf2Hex, getRand, hex2Buf, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
@@ -14,13 +15,13 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
     header.height = chainHead.height + 1;
     header.prevHash = chainHead.headHash;
     // not used right now
-    header.receiptRoot = '0';
+    header.receiptRoot = EMPTY_RECEIPT_ROOT_HASH;
     header.timestamp = Date.now();
-    header.weight = calcWeightAtHeight(forger, header.height, committeeCfg);
+    header.weight = calcForgerWeightAtHeight(forger, header.height, committeeCfg);
     header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
-    header.blockRandom = buf2Hex(getRand(32));// TODO:JFB use bls generate the random
+    header.blockRandom = buf2Hex(getRand(32));// TODO: how to get it?
     header.groupNumber = forger.groupNumber;
     header.bhHash = calcHeaderHash(header);
     // sign the whole block
@@ -34,9 +35,9 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
 };
 
 export const calcTxRootHash = (txs: Transaction[]): string => {
-    const txHashes = [];
+    const txHashes: Uint8Array[] = [];
     for (const tx of txs) {
-        txHashes.push(calcTxHash(serializeTx(tx)));
+        txHashes.push(hex2Buf(calcTxHash(serializeTx(tx))));
     }
 
     return merkleRootHash(txHashes);

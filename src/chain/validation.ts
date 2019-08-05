@@ -1,5 +1,5 @@
 import { getForgerWeight } from '../consensus/committee';
-import { GENESIS } from '../params/genesis';
+import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
@@ -303,7 +303,10 @@ export const validateTx = (tx:Transaction):boolean => {
 };
 
 export const addTx2Pool = (tx:Transaction):boolean => {
-    memoryBucket(TxPool._$info.name).put(tx.txHash, tx);
+    const txPool = new TxPool();
+    txPool.txHash = tx.txHash;
+    txPool.tx = tx;
+    memoryBucket(TxPool._$info.name).put(tx.txHash, txPool);
 
     return true;
 };
@@ -315,16 +318,24 @@ export const getTxsFromPool = ():Transaction[] => {
     const iter = memoryBucket(TxPool._$info.name).iter(null);
     let el = iter.next();
     while (el) {
-        list.push(<Transaction>el[1].value);
+        list.push((<TxPool>el)[1].tx);
         el = iter.next();
     }
 
     return list;
 };
+
+export const removeMinedTxFromPool = (txs: Transaction[]): void => {
+    const txPoolBkt = memoryBucket(TxPool._$info.name);
+    for (const tx of txs) {
+        txPoolBkt.delete(tx.txHash);
+    }
+};
+
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差
 const MAX_BLOCK_TX_NUMBER = 1000;// 一个区块最多包含1000个交易
 export const MIN_GAS = 1000;
 const MIN_PRICE = 10;
-const GOD_ADDRESS = '00000000000000000000';
+export const GOD_ADDRESS = '00000000000000000000';
 const MIN_STAKE = 100000;
 const MIN_TIME_INTERVAL = 2000;

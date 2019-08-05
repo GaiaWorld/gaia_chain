@@ -2,18 +2,18 @@
  * block chain
  */
 
-import { deriveInitWeight, updateChainHead, updateForgerCommittee } from '../consensus/committee';
+import { adjustGroup, deriveInitWeight, updateChainHead, updateForgerCommittee } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { myForgers } from '../params/config';
-import { BLOCK_INTERVAL, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, ForgerWaitAdd, ForgerWaitExit, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { calcTxHash, serializeTx } from './transaction';
-import { addTx2Pool, MIN_GAS, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
+import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
 
@@ -31,9 +31,8 @@ export const getGenesisHash = (): string => {
     return GENESIS.hash;
 };
 
-//FIXME:JFB read the version from the cfg 
 export const getVersion = (): string => {
-    return '0.0.0.1';
+    return VERSION;
 };
 
 export const getTipHeight = (): number => {
@@ -66,9 +65,41 @@ export const getTx = (invMsg: Inv): Transaction => {
     return dbTx2Tx(dbtx);
 };
 
+export const tx2DbTx = (tx: Transaction): DBTransaction => {
+    const dbtx = new DBTransaction();
+    const forgerCommitteeTxBkt = persistBucket(ForgerCommitteeTx._$info.name);
+    const penaltyTxBkt = persistBucket(PenaltyTx._$info.name);
+
+    dbtx.from = tx.from;
+    dbtx.gas = tx.gas;
+    dbtx.lastInputValue = tx.lastInputValue;
+    dbtx.lastOutputValue = tx.lastOutputValue;
+    dbtx.nonce = tx.nonce;
+    dbtx.payload = tx.payload;
+    dbtx.price = tx.price;
+    dbtx.pubKey = tx.pubKey;
+    dbtx.signature = tx.signature;
+    dbtx.to = tx.to;
+    dbtx.txHash = tx.txHash;
+    dbtx.txType = tx.txType;
+    dbtx.value = tx.value;
+
+    if (dbtx.txType === TxType.ForgerGroupTx) {
+        forgerCommitteeTxBkt.put(tx.forgerTx.forgeTxHash, tx.forgerTx);
+    } else if (dbtx.txType === TxType.PenaltyTx) {
+        penaltyTxBkt.put(tx.penaltyTx.penaltyTxHash, tx.penaltyTx);
+    }
+
+    return dbtx;
+};
+
 // convert DBTransaction to Transaction
-const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
-    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+export const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
+    if (!dbtx) {
+        return;
+    }
+    const forgerCommitteeTxBkt = persistBucket(ForgerCommitteeTx._$info.name);
+    const penaltyTxBkt = persistBucket(PenaltyTx._$info.name);
     const tx = new Transaction();
     
     tx.from = dbtx.from;
@@ -86,10 +117,10 @@ const dbTx2Tx = (dbtx: DBTransaction): Transaction => {
     tx.value = dbtx.value;
 
     if (dbtx.txType === TxType.ForgerGroupTx) {
-        const forgerTx = forgerCommitteeBkt.get<string, [ForgerCommitteeTx]>(dbtx.forgerTx)[0];
+        const forgerTx = forgerCommitteeTxBkt.get<string, [ForgerCommitteeTx]>(dbtx.forgerTx)[0];
         tx.forgerTx = forgerTx;
     } else if (dbtx.txType === TxType.PenaltyTx) {
-        const penaltyTx = forgerCommitteeBkt.get<string, [PenaltyTx]>(dbtx.penaltyTx)[0];
+        const penaltyTx = penaltyTxBkt.get<string, [PenaltyTx]>(dbtx.penaltyTx)[0];
         tx.penaltyTx = penaltyTx;
     }
 
@@ -106,8 +137,7 @@ export const getHeader = (invMsg: Inv): Header => {
 export const getHeaderByHeight = (height:number):Header|undefined => {
     const bkt = persistBucket(Height2Hash._$info.name);
     const height2Hash = bkt.get<number,[Height2Hash]>(height)[0];
-    if (height2Hash === undefined) {
-
+    if (!height2Hash) {
         return;
     }
     const invMsg = new Inv();
@@ -150,20 +180,27 @@ export const newTxsReach = (txs: Transaction[]): void => {
     }
 };
 
-export const newBlocksReach = (blocks:Block[]):void=>{
+export const newBlocksReach = (blocks: Block[]): void => {
+    const headers  = [];
+    const bodies = [];
 
-}
+    for (const block of blocks) {
+        headers.push(block.header);
+        bodies.push(block.body);
+    }
+
+    newHeadersReach(headers);
+    newBodiesReach(bodies);
+};
 
 // new blocks from peer
 export const newBodiesReach = (bodys: Body[]): void => {
-    console.log('\n\nnewBlockBodiesReach: ---------------------- ', bodys);
-    const waitForAddForgers = new ForgerWaitAdd();
-    const waitForExitForgers = new ForgerWaitExit();
+    console.log('\n\nnewBodiesReach: ---------------------- ', bodys);
     const currentHeight = getTipHeight();
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
     const accountBkt = persistBucket(Account._$info.name);
-    const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
+    const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
@@ -174,31 +211,33 @@ export const newBodiesReach = (bodys: Body[]): void => {
             for (const tx of body.txs) {
                 // all tx is fixed fee at present
                 minerFee += MIN_GAS * tx.price;
-                txHashes.push(calcTxHash(serializeTx(tx)));
+                txHashes.push(tx.txHash);
                 switch (tx.txType) {
                     case TxType.ForgerGroupTx:
                         const forger = new Forger();
                         forger.address = tx.forgerTx.address;
                         forger.groupNumber = calcInitialGroupNumber(forger.address);
                         forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, currentHeight, tx.forgerTx.stake);
-                        forger.addHeight = currentHeight;
-                        //FIXME:JFB 使用applyHeight来判断是否有出块的权利
-                        forger.applyJoinHeight = 
-                        forger.applyExitHeight = 
                         forger.pubKey = tx.pubKey;
                         forger.stake = tx.forgerTx.stake;
-                        //TODO:JFB 直接放入委员会
-                        //TODO:JFB 需要扣除加入矿工委员会的费用
-                        // tx that forger want to add to forger committee
-                        //FIXME:JFB 删除waitForAddForgers，直接使用applyJoinHeight判断是满足出块高度
+                        forger.nextGroupStartHeight = currentHeight + CAN_FORGE_AFTER_BLOCKS;
+
                         if (tx.forgerTx.AddGroup === true) {
-                            waitForAddForgers.height = currentHeight;
-                            waitForAddForgers.forgers.push(forger);
-                        //FIXME:JFB 删除waitForExitForgers，直接使用applyExitHeight判断是满足出块高度
+                            forger.applyJoinHeight = currentHeight;
                         } else if (tx.forgerTx.AddGroup === false) {
-                            waitForExitForgers.height = currentHeight;
-                            waitForExitForgers.forgers.push(forger);
+                            forger.applyExitHeight = currentHeight;
                         }
+
+                        // store forger to committee
+                        const forgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(forger.groupNumber)[0];
+                        forgers.forgers.push(forger);
+                        forgerCommitteeBkt.put(forger.groupNumber, forgers);
+
+                        // substract stake token
+                        const forgerAccount = accountBkt.get<string, [Account]>(forger.address)[0];
+                        forgerAccount.nonce += 1;
+                        forgerAccount.outputAmount += forger.stake;  
+
                         break;
                     case TxType.SpendTx:
                         const fromAccount = accountBkt.get<string, [Account]>(tx.from)[0];
@@ -247,22 +286,14 @@ export const newBodiesReach = (bodys: Body[]): void => {
             dbBody.bhHash = body.bhHash;
             dbBody.txs = txHashes;
             dbBodyBkt.put(body.bhHash, dbBody);
+
             updateChainHead(header);
-            updateForgerCommittee(currentHeight, committeeCfgBkt.get(COMMITTEECONFIG_PRIMARY_KEY)[0]);
+            updateForgerCommittee(currentHeight);
+            adjustGroup(header);
+            removeMinedTxFromPool(body.txs);
         } else {
             // TODO: ban peer
         }
-    }
-
-    // update forger committee info
-    const height = getTipHeight();
-    if (waitForAddForgers.forgers && waitForAddForgers.forgers.length > 0) {
-        const forgerWaitAddBkt = persistBucket(ForgerWaitAdd._$info.name);
-        forgerWaitAddBkt.put(height, waitForAddForgers);
-    }
-    if (waitForExitForgers.forgers && waitForExitForgers.forgers.length > 0) {
-        const forgerWaitExitBkt = persistBucket(ForgerWaitExit._$info.name);
-        forgerWaitExitBkt.put(height, waitForExitForgers);
     }
 
     return;
@@ -270,7 +301,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
 
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
-    //TODO:JFB 如果已经没有在同步了
+    // TODO:JFB 如果已经没有在同步了
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
     if (!headers) {
         return;
@@ -376,6 +407,8 @@ const initCommitteeConfig = (): void => {
         cc.totalAccHeight = GENESIS.totalGroups * TOTAL_ACCUMULATE_ROUNDS;
         cc.minToken = MIN_TOKEN;
         cc.withdrawReserveBlocks = WITHDRAW_RESERVE_BLOCKS;
+        cc.maxAccRounds = MAX_ACC_ROUNDS;
+        cc.canForgeAfterBlocks = CAN_FORGE_AFTER_BLOCKS;
 
         committeeCfgBkt.put(cc.primaryKey, cc);
     }
@@ -391,24 +424,23 @@ const initPreConfiguredForgers = (): void => {
     if (!forgerCommittee) {
         const preConfiguredForgers = GENESIS.forgers;
         const forgers = [];
-        const forgersMap = new Map<number, any[]>();
+        const forgersMap = new Map<number, Forger[]>();
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
-            f.addHeight = 0;
+            f.applyJoinHeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;
             f.stake = preConfiguredForgers[i].stake;
             f.groupNumber = calcInitialGroupNumber(f.address);
             console.log(`initPreConfiguredForgers: add ${f.address} to group number ${f.groupNumber}`);
-            // TODO:JFB neet verify the forger
             forgers.push(f);
             forgerBkt.put(f.address, f);
 
-            let groupForgers = forgersMap.get(f.groupNumber);
+            const groupForgers = forgersMap.get(f.groupNumber);
             if (!groupForgers) {
-                groupForgers = [f];
+                forgersMap.set(f.groupNumber, [f]);
             } else {
                 groupForgers.push(f);
                 forgersMap.set(f.groupNumber, groupForgers);
@@ -416,11 +448,11 @@ const initPreConfiguredForgers = (): void => {
         }
 
         // populate forger committee
-        forgersMap.forEach((value: any[], key: number) => {
+        forgersMap.forEach((value: Forger[], key: number) => {
             const fc = new ForgerCommittee();
             fc.slot = key;
             fc.forgers = value;
-
+            console.log(`Add forgers: ${JSON.stringify(fc.forgers)} to slot: ${fc.slot}`);
             forgerCommitteeBkt.put(fc.slot, fc);
         });
     }
