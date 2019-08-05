@@ -114,7 +114,7 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
     if (txHashes.length === 0) {
         return buf2Hex(sha256(new TextEncoder().encode('')));
     }
-    let hashes = [];
+    let hashes: Uint8Array[] = [];
     for (const tx of txHashes) {
         hashes.push(tx);
     }
@@ -136,7 +136,7 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
         }
     }
 
-    return hashes[0];
+    return buf2Hex(hashes[0]);
 };
 
 const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {

@@ -49,7 +49,7 @@ const simulateTxs = (value: number): void => {
     const fromAccount = accountBkt.get<string, [Account]>(address)[0];
 
     if (fromAccount) {
-        const tx = buildSignedSpendTx(privKey, pubKey, fromAccount, toAddr, value, 20, 10, '');
+        const tx = buildSignedSpendTx(privKey, pubKey, fromAccount, toAddr, value, 1000, 10, '');
         addTx2Pool(tx);
 
         const dbTxbkt = persistBucket(DBTransaction._$info.name);

@@ -3,7 +3,7 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getTipHeight } from '../chain/blockchain';
+import { getCommitteeConfig, getTipHeight, newBodiesReach, newHeadersReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
 import { getTxsFromPool, removeMinedTxFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
@@ -38,6 +38,8 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
         console.log(block);
         console.log('\n\n');
         broadcastNewBlock(block.header);
+        newHeadersReach([block.header]);
+        newBodiesReach([block.body]);
     }
 };
 
@@ -49,13 +51,13 @@ export const updateForgerCommittee = (height: number): void => {
 
     // delete outdated forgers
     for (let i = 0; i < currentSlotForgers.forgers.length; i++) {
-        if (currentSlotForgers[i].applyJoinHeight && currentSlotForgers[i].applyJoinHeight + committeeCfg.canForgeAfterBlocks >= height) {
-            if (!currentSlotForgers[i].nextGroupStartHeight) {
-                currentSlotForgers[i].nextGroupStartHeight = height;
+        if (currentSlotForgers.forgers[i].applyJoinHeight && currentSlotForgers.forgers[i].applyJoinHeight + committeeCfg.canForgeAfterBlocks >= height) {
+            if (!currentSlotForgers.forgers[i].nextGroupStartHeight) {
+                currentSlotForgers.forgers[i].nextGroupStartHeight = height;
             }
         }
 
-        if (currentSlotForgers[i].applyExitHeight && currentSlotForgers[i].applyExitHeight + committeeCfg.withdrawReserveBlocks >= height) {
+        if (currentSlotForgers.forgers[i].applyExitHeight && currentSlotForgers.forgers[i].applyExitHeight + committeeCfg.withdrawReserveBlocks >= height) {
             // return stake to forger
             returnStake(currentSlotForgers.forgers[i]);
             currentSlotForgers.forgers.splice(i, 1);
@@ -93,6 +95,7 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
 // calculate forger's weight at a specific height
 export const calcForgerWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
     const heightDiff = height - forger.nextGroupStartHeight;
+    // console.log(`calcForgerWeightAtHeight heightDiff ${JSON.stringify(heightDiff)} forger ${JSON.stringify(forger)} committeeCfg ${JSON.stringify(committeeCfg)}`);
     if (heightDiff <= 0) {
         return forger.initWeight;
     }
@@ -103,6 +106,8 @@ export const calcForgerWeightAtHeight = (forger: Forger, height: number, committ
         return forger.initWeight * (heightDiff / committeeCfg.totalGroupNumber);
     } else {
         // not a valid forger
+        console.log(`not valid forger: ${JSON.stringify(forger)}`);
+
         return 0;
     }
 };
@@ -149,8 +154,6 @@ export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
-    console.log('before update chain head: ', chainHead);
-
     if (chainHead.headHash === header.prevHash && chainHead.height + 1 === header.height) {
         chainHead.prevHash = chainHead.headHash;
         chainHead.headHash = header.bhHash;
@@ -162,6 +165,8 @@ export const updateChainHead = (header: Header): void => {
         console.log('out of order header -------------------------------------------', header);
         // TODO: add to Orphans pool
     }
+
+    console.log(`After update chain head: ${JSON.stringify(chBkt.get(CHAIN_HEAD_PRIMARY_KEY)[0])}`);
 };
 
 // broad cast new block to peers
@@ -188,7 +193,7 @@ export const adjustGroup = (header: Header): void => {
     const forgersBkt = persistBucket(Forger._$info.name);
     const forger = forgersBkt.get<string, [Forger]>(header.forger)[0];
     const prevSlotForgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(header.groupNumber)[0];
-    const index = prevSlotForgers.forgers.indexOf(forger);
+    const index = prevSlotForgers.forgers.map((f: Forger) => f.address).indexOf(forger.address);
 
     if (index < 0) {
         throw new Error(`forger: ${JSON.stringify(forger)} not in forger committee`);

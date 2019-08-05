@@ -274,10 +274,21 @@ export const newBodiesReach = (bodys: Body[]): void => {
 
                 if (minerFee > 0) {
                     const forgerAccount = accountBkt.get<string, [Account]>(header.forger)[0];
-                    forgerAccount.inputAmount += minerFee;
-                    // give miner fee to forger
-                    // TODO: delay forger reward
-                    accountBkt.put(forgerAccount.address, forgerAccount);
+                    if (forgerAccount) {
+                        forgerAccount.inputAmount += minerFee;
+                        // give miner fee to forger
+                        // TODO: delay forger reward
+                        accountBkt.put(forgerAccount.address, forgerAccount);
+                    } else {
+                        // create account
+                        const newForgerAccount = new Account();
+                        newForgerAccount.address = header.forger;
+                        newForgerAccount.nonce = 0;
+                        newForgerAccount.inputAmount = minerFee;
+                        newForgerAccount.outputAmount = 0;
+                        newForgerAccount.codeHash = EMPTY_CODE_HASH;
+                        accountBkt.put(newForgerAccount.address, newForgerAccount);
+                    }
                 }
             }
 
@@ -431,6 +442,7 @@ const initPreConfiguredForgers = (): void => {
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.applyJoinHeight = 0;
+            f.nextGroupStartHeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;
             f.stake = preConfiguredForgers[i].stake;
             f.groupNumber = calcInitialGroupNumber(f.address);
