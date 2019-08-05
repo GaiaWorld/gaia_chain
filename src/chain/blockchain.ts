@@ -12,7 +12,6 @@ import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
-import { calcTxHash, serializeTx } from './transaction';
 import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -157,8 +156,17 @@ export const getBlock = (invMsg: Inv): Block => {
     const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
     const dbBody = bodyBkt.get<string, [DBBody]>(invMsg.hash)[0];
 
+    console.log(`getBlock header ${header} body ${dbBody}`);
+
     const body = new Body();
     const txs = [];
+
+    if (!header || !dbBody) {
+        const header1 = new Header();
+        const body1 = new Body();
+
+        return new Block(header1, body1);
+    }
 
     for (const tx of dbBody.txs) {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
@@ -204,6 +212,9 @@ export const newBodiesReach = (bodys: Body[]): void => {
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
+        if (!header) {
+            return;
+        }
         const block = new Block(header, body);
         if (validateBlock(block)) {
             const txHashes = [];

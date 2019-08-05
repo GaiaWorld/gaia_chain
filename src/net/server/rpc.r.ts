@@ -168,7 +168,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         // TODO: core判断是否需要该block,如果需要则首先调用getHeaders
         console.log('(getHeader(invNet.r): ', getHeader(invNet.r));
         if (getHeader(invNet.r) !== undefined) {
-            return;
+            return false;
         }
         const invArrayNet = new InvArrayNet();
         invArrayNet.net = getOwnNetAddr();
@@ -177,11 +177,11 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pHeaderNetAddr:string) => {
             
             if (headerArray.arr === undefined || headerArray.arr[0] === undefined) {
-                return;
+                return false;
             }
             // 和当前高度进行对比
             if (headerArray.arr[0].totalWeight < getTipTotalWeight()) {
-                return;
+                return false;
             }
             // 更新节点信息
             const peerBkt =  memoryBucket(Peer._$info.name);
@@ -193,15 +193,15 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
             if (downloadPeer && isSyncing()) {
                 if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nStartingTotalWeigth) {
-                    return;
+                    return false;
                 }
                 if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nCurrentTotalWeight) {
-                    return;
+                    return false;
                 }
                 // TODO:如果走到了这里说明出现了一条链比我正在同步的链条更长，我需要更换到该链重新进行同步
                 console.log(`need change the download chain`);
 
-                return;
+                return false;
             }
             const tipHeight = getTipHeight();
             // TODO:JFB 如果此头的高度超过本地高度+2，则需要重新启动同步
@@ -214,14 +214,16 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
-                newBodiesReach(bodyArray.arr);
+                if (bodyArray) {
+                    newBodiesReach(bodyArray.arr);
+                }
             });
         });
     }
     // example
     if (invNet.r.MsgType === INV_MSG_TYPE.MSG_TX) {
         if (getTx(invNet.r) !== undefined) {
-            return;
+            return false;
         }
         const invArrayNet = new InvArrayNet();
         invArrayNet.net = getOwnNetAddr();
