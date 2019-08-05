@@ -177,7 +177,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         invArrayNet.r.arr = [invNet.r];
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pHeaderNetAddr:string) => {
             
-            if (headerArray.arr === undefined || headerArray.arr[0] === undefined) {
+            if (!headerArray.arr || headerArray.arr.length === 0) {
                 return false;
             }
             // 和当前高度进行对比

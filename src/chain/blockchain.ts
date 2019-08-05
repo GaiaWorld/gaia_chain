@@ -165,6 +165,7 @@ export const getBlock = (invMsg: Inv): Block => {
         const header1 = new Header();
         header1.bhHash = EMPTY_BLOCK_HEAD_HASH;
         const body1 = new Body();
+        body1.txs = [];
 
         return new Block(header1, body1);
     }
