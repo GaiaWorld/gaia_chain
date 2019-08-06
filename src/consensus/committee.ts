@@ -83,6 +83,7 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
     const minersBkt = persistBucket(Miner._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.totalGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcForgerWeightAtHeight(b, height, committeeCfg) - calcForgerWeightAtHeight(a, height, committeeCfg));
+    console.log(`\n\nheight ${height} Most weight forger ${JSON.stringify(myForgers.forgers[0])}`);
 
     for (const forger of myForgers.forgers) {
         if (forger.address === forgers[0].address) {

@@ -58,6 +58,7 @@ export const getNodeType = (): NODE_TYPE => {
 
 // retrive transaction to peer
 export const getTx = (invMsg: Inv): Transaction => {
+    // console.log(`getTx ${JSON.stringify(invMsg)}`);
     const dbTxbkt = persistBucket(DBTransaction._$info.name);
     const dbtx = dbTxbkt.get<string, [DBTransaction]>(invMsg.hash)[0];
 
@@ -148,15 +149,13 @@ export const getHeaderByHeight = (height:number):Header|undefined => {
 };
 
 // retrive block from local to peer
-export const getBlock = (invMsg: Inv): Block => {
+export const getBody = (invMsg: Inv): Body => {
     if (!invMsg || !invMsg.hash) {
         return;
     }
-    const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(DBBody._$info.name);
     const txBkt = persistBucket(DBTransaction._$info.name);
 
-    const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
     const dbBody = bodyBkt.get<string, [DBBody]>(invMsg.hash)[0];
 
     // console.log(`getBlock header ${JSON.stringify(header)} body ${JSON.stringify(dbBody)}`);
@@ -164,7 +163,7 @@ export const getBlock = (invMsg: Inv): Block => {
     const body = new Body();
     const txs = [];
 
-    if (!header || !dbBody) {
+    if (!dbBody) {
         return;
     }
 
@@ -177,7 +176,7 @@ export const getBlock = (invMsg: Inv): Block => {
     body.bhHash = invMsg.hash;
     body.txs = txs;
 
-    return new Block(header, body);
+    return body;
 };
 
 // new transactions from peer

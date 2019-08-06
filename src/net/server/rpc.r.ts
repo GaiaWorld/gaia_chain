@@ -1,7 +1,7 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
+import { getBlock, getBody, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
@@ -12,7 +12,7 @@ import { CURRENT_DOWNLOAD_PEER_NET_ADDR, download, isSyncing, MAX_HEADER_NUMBER 
 import { CurrentInfo } from '../memory.s';
 import { INV_MSG_TYPE } from '../msg';
 import { Peer } from '../pNode.s';
-import { getBlocks as getBlocksString, getHeaders as getHeadersString, getTxs as getTxsString } from './rpc.p';
+import { getBodies as getBlocksString, getHeaders as getHeadersString, getTxs as getTxsString } from './rpc.p';
 import { AddrArray, BodyArray, GetHeaderHeight, HeaderArray, Inv, InvArray,InvArrayNet, InvNet, ShakeHandsInfo, SubTable, TxArray } from './rpc.s';
 
 // #[rpc=rpcServer]
@@ -27,11 +27,13 @@ export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
 
 // #[rpc=rpcServer]
 export const getTxs = (invArray:InvArrayNet):TxArray => {
+    // console.log(`InvArrayNet ${JSON.stringify(invArray)}`);
     const txArray = new TxArray();
     txArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
         const tx = getTx(inv);
         if (tx) {
+            console.log(`getTxs : ${JSON.stringify(tx)}`);
             txArray.arr.push(tx);
         }
     });
@@ -40,13 +42,14 @@ export const getTxs = (invArray:InvArrayNet):TxArray => {
 };
 
 // #[rpc=rpcServer]
-export const getBlocks = (invArray:InvArrayNet):BodyArray => {
+export const getBodies = (invArray:InvArrayNet):BodyArray => {
     const bodyArray = new BodyArray();
     bodyArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
-        const block = getBlock(inv);
-        if (block && block.body) {
-            bodyArray.arr.push(block.body);
+        const body = getBody(inv);
+        if (body) {
+            console.log(`getBodies : ${JSON.stringify(body)}`);
+            bodyArray.arr.push(body);
         }
     });
 
@@ -193,12 +196,12 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             }
             
             // 和同步节点进行对比
-            const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
+            const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0];
             if (downloadPeer && isSyncing()) {
-                if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nStartingTotalWeigth) {
+                if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer.value)[0].nStartingTotalWeigth) {
                     return false;
                 }
-                if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nCurrentTotalWeight) {
+                if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer.value)[0].nCurrentTotalWeight) {
                     return false;
                 }
                 // TODO:如果走到了这里说明出现了一条链比我正在同步的链条更长，我需要更换到该链重新进行同步
@@ -216,6 +219,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
 
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
+                console.log(`broadcastInv ${JSON.stringify(bodyArray)} \n\n invArrayNet ${JSON.stringify(invArrayNet)}`);
                 // TODO: 对body进行验证
                 if (bodyArray && bodyArray.arr && bodyArray.arr.length > 0) {
                     newBodiesReach(bodyArray.arr);

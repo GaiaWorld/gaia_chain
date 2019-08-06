@@ -34,7 +34,7 @@ const start = (): void => {
         simulateTxs(value);
         value += 1;
         console.log('simulate new tx');
-    }, null, 2000);
+    }, null, 3000);
 };
 
 start();

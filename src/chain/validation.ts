@@ -240,7 +240,7 @@ export const validateBlock = (block:Block):boolean => {
     }
 
     if (calcTxRootHash(block.body.txs) !== block.header.txRootHash) {
-        console.log(`the txs do not match the headers \nexpect: ${calcTxRootHash(block.body.txs)}\ngot: ${block.header.txRootHash}\n`);
+        console.log(`\n\nthe txs do not match the headers \nexpect: ${calcTxRootHash(block.body.txs)}\ngot: ${block.header.txRootHash}\n\n`);
 
         return false;
     }
