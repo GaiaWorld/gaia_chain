@@ -3,9 +3,9 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getTipHeight, newBodiesReach, newHeadersReach } from '../chain/blockchain';
+import { getCommitteeConfig, getTipHeight, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
-import { getTxsFromPool, removeMinedTxFromPool } from '../chain/validation';
+import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { myForgers } from '../params/config';
@@ -38,8 +38,7 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
         console.log(block);
         console.log('\n\n');
         broadcastNewBlock(block.header);
-        newHeadersReach([block.header]);
-        newBodiesReach([block.body]);
+        newBlocksReach([block]);
     }
 };
 

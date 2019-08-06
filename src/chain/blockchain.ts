@@ -7,7 +7,7 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { myForgers } from '../params/config';
-import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_BLOCK_HEAD_HASH, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
@@ -149,6 +149,9 @@ export const getHeaderByHeight = (height:number):Header|undefined => {
 
 // retrive block from local to peer
 export const getBlock = (invMsg: Inv): Block => {
+    if (!invMsg || !invMsg.hash) {
+        return;
+    }
     const headerBkt = persistBucket(Header._$info.name);
     const bodyBkt = persistBucket(DBBody._$info.name);
     const txBkt = persistBucket(DBTransaction._$info.name);
@@ -156,23 +159,20 @@ export const getBlock = (invMsg: Inv): Block => {
     const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
     const dbBody = bodyBkt.get<string, [DBBody]>(invMsg.hash)[0];
 
-    console.log(`getBlock header ${header} body ${dbBody}`);
+    // console.log(`getBlock header ${JSON.stringify(header)} body ${JSON.stringify(dbBody)}`);
 
     const body = new Body();
     const txs = [];
 
     if (!header || !dbBody) {
-        const header1 = new Header();
-        header1.bhHash = EMPTY_BLOCK_HEAD_HASH;
-        const body1 = new Body();
-        body1.txs = [];
-
-        return new Block(header1, body1);
+        return;
     }
 
     for (const tx of dbBody.txs) {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
-        txs.push(dbTx2Tx(dbTx));
+        if (dbTx) {
+            txs.push(dbTx2Tx(dbTx));
+        }
     }
     body.bhHash = invMsg.hash;
     body.txs = txs;

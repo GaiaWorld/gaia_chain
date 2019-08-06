@@ -272,6 +272,9 @@ export const validateTx = (tx:Transaction):boolean => {
         account.inputAmount = 0;
         account.outputAmount = 0;
     }
+    // console.log(`account.inputAmount ${account.inputAmount} tx.lastInputValue ${tx.lastInputValue}`);
+    // console.log(`account.outputAmount ${account.outputAmount} tx.lastOutputValue ${tx.lastOutputValue}`);
+
     // if (account.inputAmount !== tx.lastInputValue || account.outputAmount !== tx.lastOutputValue) {
     //     console.log(`the account balance do not match`);
 

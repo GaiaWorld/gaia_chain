@@ -3,7 +3,6 @@
  */
 import { getBlock, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { checkVersion } from '../../chain/validation';
-import { EMPTY_BLOCK_HEAD_HASH } from '../../params/constants';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
 import { memoryBucket } from '../../util/db';
@@ -46,7 +45,7 @@ export const getBlocks = (invArray:InvArrayNet):BodyArray => {
     bodyArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
         const block = getBlock(inv);
-        if (block && block.header.bhHash !== EMPTY_BLOCK_HEAD_HASH) {
+        if (block && block.body) {
             bodyArray.arr.push(block.body);
         }
     });
@@ -167,7 +166,6 @@ export const broadcastInv = (invNet:InvNet):boolean => {
     // example
     if (invNet.r.MsgType === INV_MSG_TYPE.MSG_BLOCK) {
         // TODO: core判断是否需要该block,如果需要则首先调用getHeaders
-        console.log('(getHeader(invNet.r): ', getHeader(invNet.r));
         if (getHeader(invNet.r) !== undefined) {
             return false;
         }
@@ -187,9 +185,13 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             // 更新节点信息
             const peerBkt =  memoryBucket(Peer._$info.name);
             const peer = peerBkt.get<string,[Peer]>(pHeaderNetAddr)[0];
-            peer.nCurrentHeight = headerArray.arr[0].height; 
-            peer.nCurrentTotalWeight = headerArray.arr[0].totalWeight; 
-            peerBkt.put(pHeaderNetAddr, peer);
+
+            if (headerArray.arr[0].height && headerArray.arr[0].totalWeight) {
+                peer.nCurrentHeight = headerArray.arr[0].height; 
+                peer.nCurrentTotalWeight = headerArray.arr[0].totalWeight; 
+                peerBkt.put(pHeaderNetAddr, peer);
+            }
+            
             // 和同步节点进行对比
             const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
             if (downloadPeer && isSyncing()) {
@@ -215,7 +217,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 // TODO: 对body进行验证
-                if (bodyArray && bodyArray.arr.length > 0) {
+                if (bodyArray && bodyArray.arr && bodyArray.arr.length > 0) {
                     newBodiesReach(bodyArray.arr);
                 }
             });
