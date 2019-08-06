@@ -6,6 +6,7 @@ import { GOD_ADDRESS } from './validation';
 
 // don't serialize tx.hash, tx.signature
 export const serializeTx = (tx: Transaction): Uint8Array => {
+    // console.log(`serializeTx : ${JSON.stringify(tx)}`);
     const bon = new BonBuffer();
     bon.writeUtf8(tx.from)
         .writeBigInt(tx.gas)

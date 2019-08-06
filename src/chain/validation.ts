@@ -272,11 +272,11 @@ export const validateTx = (tx:Transaction):boolean => {
         account.inputAmount = 0;
         account.outputAmount = 0;
     }
-    if (account.inputAmount !== tx.lastInputValue || account.outputAmount !== tx.lastOutputValue) {
-        console.log(`the account balance do not match`);
+    // if (account.inputAmount !== tx.lastInputValue || account.outputAmount !== tx.lastOutputValue) {
+    //     console.log(`the account balance do not match`);
 
-        return false;
-    }
+    //     return false;
+    // }
     if (tx.txType === TxType.ForgerGroupTx) {
         if (tx.forgerTx.AddGroup === true) {
             if (persistBucket(Forger._$info.name).get<string,[Forger]>(tx.from) !== undefined) {
@@ -331,6 +331,7 @@ export const removeMinedTxFromPool = (txs: Transaction[]): void => {
     for (const tx of txs) {
         txPoolBkt.delete(tx.txHash);
     }
+    console.log(`\nMined tx removed`);
 };
 
 const MAX_TIME_STAMP = 1000;// 允许一秒以内的时间戳误差

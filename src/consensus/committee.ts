@@ -28,11 +28,11 @@ export const startMining = (): void => {
 export const runMining = (committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
     const res = selectMostWeightMiner(currentHeight, committeeCfg);
+    console.log(`\nselectMostWeightMiner ${JSON.stringify(res)}`);
     if (res) {
         const chainHeadBkt = persistBucket(ChainHead._$info.name);
         const chainHead = chainHeadBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
         const txs = getTxsFromPool();
-        console.log(`selectMostWeightMiner txs: ${txs}`);
         const block = generateBlock(res[1], chainHead, res[0], committeeCfg, txs);
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);
@@ -45,6 +45,7 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
 
 // handle forgers wait for add and exit
 export const updateForgerCommittee = (height: number): void => {
+    console.log(`\nUpdate forger committee at height: ${height}`);
     const committeeCfg = getCommitteeConfig();
     const forgerBkt = persistBucket(ForgerCommittee._$info.name);
     const currentSlotForgers = forgerBkt.get<number, [ForgerCommittee]>(height % committeeCfg.totalGroupNumber)[0];
@@ -150,7 +151,6 @@ export const getForgerWeight = (height: number, address: string): number => {
 
 // update chain head
 export const updateChainHead = (header: Header): void => {
-    console.log(`updateChainHead header ${header}`);
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
@@ -166,7 +166,7 @@ export const updateChainHead = (header: Header): void => {
         // TODO: add to Orphans pool
     }
 
-    console.log(`After update chain head: ${JSON.stringify(chBkt.get(CHAIN_HEAD_PRIMARY_KEY)[0])}`);
+    console.log(`\nAfter update chain head: ${JSON.stringify(chBkt.get(CHAIN_HEAD_PRIMARY_KEY)[0])}`);
 };
 
 // broad cast new block to peers
@@ -201,6 +201,7 @@ export const adjustGroup = (header: Header): void => {
 
     // derive new group number
     const newGroupNumber = deriveNextGroupNumber(header.forger, header.blockRandom, header.height, 2);
+    console.log(`\nForger ${header.forger} derive new group number ${newGroupNumber}`);
     const newSlotForgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
 
     // derive new weight
@@ -216,10 +217,10 @@ export const adjustGroup = (header: Header): void => {
         // insert to new slot
         newSlotForgers.forgers.push(forger);
 
-        console.log(`forger ${forger.address} changed from group: ${forger.groupNumber} to group: ${newGroupNumber}`);
+        console.log(`\nForger ${forger.address} changed from group: ${forger.groupNumber} to group: ${newGroupNumber}`);
     }
 
-    console.log(`forger ${forger.address} remain in the same group: ${forger.groupNumber}`);
+    console.log(`\nForger ${forger.address} remain in the same group: ${forger.groupNumber}`);
 
     forgerCommitteeBkt.put([header.groupNumber, newGroupNumber], [prevSlotForgers, newSlotForgers]);
     forgersBkt.put(header.forger, forger);

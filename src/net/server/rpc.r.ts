@@ -231,6 +231,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         invArrayNet.r = new InvArray();
         invArrayNet.r.arr = [invNet.r];
         clientRequest(invNet.net,getTxsString,invArrayNet, (txArray:TxArray, pNetAddr:String) => {
+            // console.log(`broadcastInv ${JSON.stringify(txArray)}`);
             // TODO: 告诉core有新的tx到达了
             newTxsReach(txArray.arr);
         });

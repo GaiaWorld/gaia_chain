@@ -182,6 +182,9 @@ export const getBlock = (invMsg: Inv): Block => {
 
 // new transactions from peer
 export const newTxsReach = (txs: Transaction[]): void => {
+    if (!txs) {
+        return;
+    }
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (simpleValidateTx(tx)) {
@@ -205,6 +208,9 @@ export const newBlocksReach = (blocks: Block[]): void => {
 
 // new blocks from peer
 export const newBodiesReach = (bodys: Body[]): void => {
+    if (!bodys) {
+        return;
+    }
     console.log('\n\nnewBodiesReach: ---------------------- ', bodys);
     const currentHeight = getTipHeight();
     const dbBodyBkt = persistBucket(DBBody._$info.name);
