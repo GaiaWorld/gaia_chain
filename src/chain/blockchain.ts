@@ -167,10 +167,14 @@ export const getBody = (invMsg: Inv): Body => {
         return;
     }
 
+    console.log(`dbBody.txs length: ${dbBody.txs.length} \n\n invMsg ${JSON.stringify(invMsg)}`);
     for (const tx of dbBody.txs) {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
         if (dbTx) {
+            console.log(`push txHash: ${tx}`);
             txs.push(dbTx2Tx(dbTx));
+        } else {
+            throw new Error(`Tx ${tx} should exist`);
         }
     }
     body.bhHash = invMsg.hash;
@@ -184,10 +188,12 @@ export const newTxsReach = (txs: Transaction[]): void => {
     if (!txs) {
         return;
     }
+    const dbTxbkt = persistBucket(DBTransaction._$info.name);
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (simpleValidateTx(tx)) {
             addTx2Pool(tx);
+            dbTxbkt.put(tx.txHash, tx2DbTx(tx));
         }
     }
 };
