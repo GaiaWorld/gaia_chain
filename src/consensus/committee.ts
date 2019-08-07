@@ -120,6 +120,7 @@ export const deriveNextGroupNumber = (address: string, blockRandom: string, heig
         .writeInt(height);
 
     const hash = buf2Hex(sha256(bon.getBuffer()));
+    console.log(`deriveNextGroupNumber address ${address} hash ${hash}`);
 
     return parseInt(hash.slice(hash.length - 2), 16) % totalGroupNumber;
 };

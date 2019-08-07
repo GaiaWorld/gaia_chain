@@ -219,6 +219,8 @@ const downloadBlocks = ():void => {
         // TODO:此处需要对body和TX进行验证，验证成功之后如果已经超过了主链长度则应该更换为主链
         if (bodys.arr && bodys.arr.length > 0) {
             newBodiesReach(bodys.arr);
+        } else {
+            console.log(`+++++++++++++++ getBoies is empty`);
         }
 
         if (bodys.arr && bodys.arr.length > 0) {

@@ -51,10 +51,6 @@ const simulateTxs = (value: number): void => {
     if (fromAccount) {
         const tx = buildSignedSpendTx(privKey, pubKey, fromAccount, toAddr, value, 1000, 10, '');
         addTx2Pool(tx);
-
-        const dbTxbkt = persistBucket(DBTransaction._$info.name);
-        dbTxbkt.put(tx.txHash, tx2DbTx(tx));
-    
         broadcastNewTx(tx);
         console.log(`=============> build tx: ${JSON.stringify(tx)}`);
     } else {

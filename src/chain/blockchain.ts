@@ -151,6 +151,8 @@ export const getHeaderByHeight = (height:number):Header|undefined => {
 // retrive block from local to peer
 export const getBody = (invMsg: Inv): Body => {
     if (!invMsg || !invMsg.hash) {
+        console.log(`tm the getBody param is wrong ,exit`);
+
         return;
     }
     const bodyBkt = persistBucket(DBBody._$info.name);
@@ -164,6 +166,8 @@ export const getBody = (invMsg: Inv): Body => {
     const txs = [];
 
     if (!dbBody) {
+        console.log(`+++++++++++++++ failed to get body: ${invMsg}`);
+        
         return;
     }
 
@@ -171,12 +175,12 @@ export const getBody = (invMsg: Inv): Body => {
     for (const tx of dbBody.txs) {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
         if (dbTx) {
-            console.log(`push txHash: ${tx}`);
             txs.push(dbTx2Tx(dbTx));
         } else {
             throw new Error(`Tx ${tx} should exist`);
         }
     }
+
     body.bhHash = invMsg.hash;
     body.txs = txs;
 
@@ -188,12 +192,10 @@ export const newTxsReach = (txs: Transaction[]): void => {
     if (!txs) {
         return;
     }
-    const dbTxbkt = persistBucket(DBTransaction._$info.name);
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (simpleValidateTx(tx)) {
             addTx2Pool(tx);
-            dbTxbkt.put(tx.txHash, tx2DbTx(tx));
         }
     }
 };
@@ -213,20 +215,19 @@ export const newBlocksReach = (blocks: Block[]): void => {
 
 // new blocks from peer
 export const newBodiesReach = (bodys: Body[]): void => {
-    if (!bodys) {
-        return;
-    }
     console.log('\n\nnewBodiesReach: ---------------------- ', bodys);
     const currentHeight = getTipHeight();
     const dbBodyBkt = persistBucket(DBBody._$info.name);
     const headerBkt = persistBucket(Header._$info.name);
     const accountBkt = persistBucket(Account._$info.name);
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+    const dbTxbkt = persistBucket(DBTransaction._$info.name);
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
         if (!header) {
-            return;
+            // TODO: if header not found, this is a bug
+            throw new Error(`Header not found ${body.bhHash}`);
         }
         const block = new Block(header, body);
         if (validateBlock(block)) {
@@ -235,6 +236,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             for (const tx of body.txs) {
                 // all tx is fixed fee at present
                 minerFee += MIN_GAS * tx.price;
+                dbTxbkt.put(tx.txHash, tx2DbTx(tx));
                 txHashes.push(tx.txHash);
                 switch (tx.txType) {
                     case TxType.ForgerGroupTx:
@@ -328,6 +330,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             removeMinedTxFromPool(body.txs);
         } else {
             // TODO: ban peer
+            throw new Error(`validateBlock failed ${JSON.stringify(block)}`);
         }
     }
 

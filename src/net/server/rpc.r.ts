@@ -1,7 +1,7 @@
 /**
  * 封装了所有客户端可以调用的RPC请求
  */
-import { getBlock, getBody, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
+import { getBody, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
@@ -50,6 +50,8 @@ export const getBodies = (invArray:InvArrayNet):BodyArray => {
         if (body) {
             console.log(`getBodies : ${JSON.stringify(body)}`);
             bodyArray.arr.push(body);
+        } else {
+            console.log(`+++++++++++++++++ get empty body: ${inv}`);
         }
     });
 
@@ -65,6 +67,8 @@ export const getHeaders = (invArray:InvArrayNet):HeaderArray => {
         const header = getHeader(inv);
         if (header) {
             headerArray.arr.push(header);
+        } else {
+            console.log(`++++++++++++++++ get empty header: ${inv}`);
         }
     });
 
@@ -169,20 +173,25 @@ export const broadcastInv = (invNet:InvNet):boolean => {
     // example
     if (invNet.r.MsgType === INV_MSG_TYPE.MSG_BLOCK) {
         // TODO: core判断是否需要该block,如果需要则首先调用getHeaders
-        if (getHeader(invNet.r) !== undefined) {
+        if (getHeader(invNet.r)) {
+            console.log(`broadcastInv requst header exist: ${invNet}`);
+
             return false;
-        }
+        }        
+        // FIXME:JFB async 
         const invArrayNet = new InvArrayNet();
         invArrayNet.net = getOwnNetAddr();
         invArrayNet.r = new InvArray();
-        invArrayNet.r.arr = [invNet.r];
+        invArrayNet.r.arr = [invNet.r];        
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pHeaderNetAddr:string) => {
-            
+            console.log(`broadcastInv get Headers: ${headerArray}`);
             if (!headerArray.arr || headerArray.arr.length === 0) {
+                console.log(`++++++++++++++ broadcastInv get empty headerArray ${JSON.stringify(headerArray)}`);
+
                 return false;
             }
             // 和当前高度进行对比
-            if (headerArray.arr[0].totalWeight < getTipTotalWeight()) {
+            if (headerArray.arr[0].totalWeight <= getTipTotalWeight()) {
                 return false;
             }
             // 更新节点信息
@@ -198,10 +207,10 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             // 和同步节点进行对比
             const downloadPeer = memoryBucket(CurrentInfo._$info.name).get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0];
             if (downloadPeer && isSyncing()) {
-                if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer.value)[0].nStartingTotalWeigth) {
+                if (headerArray.arr[0].totalWeight <= memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer.value)[0].nStartingTotalWeigth) {
                     return false;
                 }
-                if (headerArray.arr[0].totalWeight < memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer.value)[0].nCurrentTotalWeight) {
+                if (headerArray.arr[0].totalWeight <= memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer.value)[0].nCurrentTotalWeight) {
                     return false;
                 }
                 // TODO:如果走到了这里说明出现了一条链比我正在同步的链条更长，我需要更换到该链重新进行同步
@@ -212,17 +221,21 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             const tipHeight = getTipHeight();
             // TODO:JFB 如果此头的高度超过本地高度+2，则需要重新启动同步
             if (headerArray.arr[0].height >= tipHeight + 2) {
+                console.log(`broadcastInv peer's height excess 2 begin download`);
                 download(memoryBucket(Peer._$info.name).get<string,[Peer]>(invNet.net)[0]);
             } else if (headerArray.arr[0].height === tipHeight + 1) {
+                console.log(`broadcastInv download new header height : ${headerArray.arr[0].height}, the hash is : ${headerArray.arr[0].bhHash}`);
                 newHeadersReach(headerArray.arr);
             }
-
+            console.log(`broadcastInv request body height is : ${invArrayNet.r.arr[0].height}, hash is : ${invArrayNet.r.arr[0].hash}}`);
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
-                console.log(`broadcastInv ${JSON.stringify(bodyArray)} \n\n invArrayNet ${JSON.stringify(invArrayNet)}`);
+                console.log(`broadcastInv invArrayNet ${JSON.stringify(invArrayNet)}\nbodyArray is : ${JSON.stringify(bodyArray)}`);
                 // TODO: 对body进行验证
                 if (bodyArray && bodyArray.arr && bodyArray.arr.length > 0) {
                     newBodiesReach(bodyArray.arr);
+                } else {
+                    console.log(`++++++++++++++++++++ bodyArray empty`);
                 }
             });
         });
@@ -246,12 +259,13 @@ export const broadcastInv = (invNet:InvNet):boolean => {
     return true;
 };
 
+let clientIdAccount = 1;
 /**
  * 看起来像http，功能上是一个短链接
  */
 export const clientRequest = (pNetAddr:string, cmd:string, body: SerializeType, callback: (serializeType:SerializeType,pNetAddr?:string) => void):void => {
     const client = RpcClient.create(`ws://${pNetAddr}`);
-    client.connect(KEEP_ALIVE,'1', TIME_OUT, ((pConNetAddr:string):(() => void) => {
+    client.connect(KEEP_ALIVE,`${clientIdAccount++}`, TIME_OUT, ((pConNetAddr:string):(() => void) => {
         return ():void => {
 
             client.request(cmd, body, TIME_OUT, (serializeType:SerializeType) => {
