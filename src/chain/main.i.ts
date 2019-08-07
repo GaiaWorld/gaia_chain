@@ -1,13 +1,13 @@
 /**
  * main function
  */
-import { getCommitteeConfig, newBlockChain, tx2DbTx } from '../chain/blockchain';
+import { getCommitteeConfig, newBlockChain } from '../chain/blockchain';
 import { broadcastNewTx, runMining } from '../consensus/committee';
 import { launch } from '../net/client/launch';
 import { isSyncing } from '../net/download';
 import { persistBucket } from '../util/db';
 import { setTimer } from '../util/task';
-import { Account, DBTransaction } from './schema.s';
+import { Account } from './schema.s';
 import { buildSignedSpendTx } from './transaction';
 import { addTx2Pool } from './validation';
 
