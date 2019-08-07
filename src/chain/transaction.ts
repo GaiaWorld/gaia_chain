@@ -6,16 +6,17 @@ import { GOD_ADDRESS } from './validation';
 
 // don't serialize tx.hash, tx.signature
 export const serializeTx = (tx: Transaction): Uint8Array => {
+    // console.log(`serializeTx : ${JSON.stringify(tx)}`);
     const bon = new BonBuffer();
     bon.writeUtf8(tx.from)
-        .writeBigInt(tx.gas)
-        .writeBigInt(tx.lastInputValue)
-        .writeBigInt(tx.lastOutputValue)
-        .writeBigInt(tx.nonce)
+        .writeInt(tx.gas)
+        .writeInt(tx.lastInputValue)
+        .writeInt(tx.lastOutputValue)
+        .writeInt(tx.nonce)
         .writeUtf8(tx.payload)
-        .writeBigInt(tx.price)
+        .writeInt(tx.price)
         .writeUtf8(tx.to)
-        .writeBigInt(tx.value)
+        .writeInt(tx.value)
         .writeUtf8(tx.pubKey)
         .writeInt(tx.txType);
 
@@ -67,7 +68,7 @@ export const buildSignedSpendTx = (privKey: string, pubKey: string, fromAddr: Ac
     tx.from = fromAddr.address;
     tx.gas = gas;
     tx.lastInputValue = fromAddr.inputAmount;
-    tx.lastOutputValue = fromAddr.outputAmount;
+    tx.lastOutputValue = fromAddr.outputAmount + value;
     tx.nonce = fromAddr.nonce + 1;
     tx.payload = payload;
     tx.price = gasPrice;
@@ -114,7 +115,7 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
     if (txHashes.length === 0) {
         return buf2Hex(sha256(new TextEncoder().encode('')));
     }
-    let hashes = [];
+    let hashes: Uint8Array[] = [];
     for (const tx of txHashes) {
         hashes.push(tx);
     }
@@ -136,7 +137,7 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
         }
     }
 
-    return hashes[0];
+    return buf2Hex(hashes[0]);
 };
 
 const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {

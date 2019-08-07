@@ -35,9 +35,10 @@ const notifyNewInv = (key:string, invMsg:Inv): void => {
     if (column && column.value && column.value.length > 0) {
         column.value.forEach((netAddr: string) => {
             console.log(`netAddr is : ${netAddr}, invNet is : ${JSON.stringify(invNet)}`);
-            clientRequest(netAddr,broadcastInv, invNet, () => {
-                console.log('notify new Inv');
-            });
+            clientRequest(netAddr,broadcastInv, invNet, ((net:any) => {return () => {
+
+                console.log(`notify new Inv, net is :  ${JSON.stringify(net)}`);
+            };})(invNet));
         });
     }
 };

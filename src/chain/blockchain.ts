@@ -12,7 +12,6 @@ import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
-import { calcTxHash, serializeTx } from './transaction';
 import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -59,6 +58,7 @@ export const getNodeType = (): NODE_TYPE => {
 
 // retrive transaction to peer
 export const getTx = (invMsg: Inv): Transaction => {
+    // console.log(`getTx ${JSON.stringify(invMsg)}`);
     const dbTxbkt = persistBucket(DBTransaction._$info.name);
     const dbtx = dbTxbkt.get<string, [DBTransaction]>(invMsg.hash)[0];
 
@@ -149,29 +149,49 @@ export const getHeaderByHeight = (height:number):Header|undefined => {
 };
 
 // retrive block from local to peer
-export const getBlock = (invMsg: Inv): Block => {
-    const headerBkt = persistBucket(Header._$info.name);
+export const getBody = (invMsg: Inv): Body => {
+    if (!invMsg || !invMsg.hash) {
+        console.log(`tm the getBody param is wrong ,exit`);
+
+        return;
+    }
     const bodyBkt = persistBucket(DBBody._$info.name);
     const txBkt = persistBucket(DBTransaction._$info.name);
 
-    const header = headerBkt.get<string, [Header]>(invMsg.hash)[0];
     const dbBody = bodyBkt.get<string, [DBBody]>(invMsg.hash)[0];
+
+    // console.log(`getBlock header ${JSON.stringify(header)} body ${JSON.stringify(dbBody)}`);
 
     const body = new Body();
     const txs = [];
 
+    if (!dbBody) {
+        console.log(`+++++++++++++++ failed to get body: ${invMsg}`);
+        
+        return;
+    }
+
+    console.log(`dbBody.txs length: ${dbBody.txs.length} \n\n invMsg ${JSON.stringify(invMsg)}`);
     for (const tx of dbBody.txs) {
         const dbTx = txBkt.get<string, [DBTransaction]>(tx)[0];
-        txs.push(dbTx2Tx(dbTx));
+        if (dbTx) {
+            txs.push(dbTx2Tx(dbTx));
+        } else {
+            throw new Error(`Tx ${tx} should exist`);
+        }
     }
+
     body.bhHash = invMsg.hash;
     body.txs = txs;
 
-    return new Block(header, body);
+    return body;
 };
 
 // new transactions from peer
 export const newTxsReach = (txs: Transaction[]): void => {
+    if (!txs) {
+        return;
+    }
     console.log('\n\nnewTxsReach: ---------------------- ', txs);
     for (const tx of txs) {
         if (simpleValidateTx(tx)) {
@@ -201,9 +221,14 @@ export const newBodiesReach = (bodys: Body[]): void => {
     const headerBkt = persistBucket(Header._$info.name);
     const accountBkt = persistBucket(Account._$info.name);
     const forgerCommitteeBkt = persistBucket(ForgerCommittee._$info.name);
+    const dbTxbkt = persistBucket(DBTransaction._$info.name);
 
     for (const body of bodys) {
         const header = headerBkt.get<string, [Header]>(body.bhHash)[0];
+        if (!header) {
+            // TODO: if header not found, this is a bug
+            throw new Error(`Header not found ${body.bhHash}`);
+        }
         const block = new Block(header, body);
         if (validateBlock(block)) {
             const txHashes = [];
@@ -211,6 +236,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             for (const tx of body.txs) {
                 // all tx is fixed fee at present
                 minerFee += MIN_GAS * tx.price;
+                dbTxbkt.put(tx.txHash, tx2DbTx(tx));
                 txHashes.push(tx.txHash);
                 switch (tx.txType) {
                     case TxType.ForgerGroupTx:
@@ -274,10 +300,21 @@ export const newBodiesReach = (bodys: Body[]): void => {
 
                 if (minerFee > 0) {
                     const forgerAccount = accountBkt.get<string, [Account]>(header.forger)[0];
-                    forgerAccount.inputAmount += minerFee;
-                    // give miner fee to forger
-                    // TODO: delay forger reward
-                    accountBkt.put(forgerAccount.address, forgerAccount);
+                    if (forgerAccount) {
+                        forgerAccount.inputAmount += minerFee;
+                        // give miner fee to forger
+                        // TODO: delay forger reward
+                        accountBkt.put(forgerAccount.address, forgerAccount);
+                    } else {
+                        // create account
+                        const newForgerAccount = new Account();
+                        newForgerAccount.address = header.forger;
+                        newForgerAccount.nonce = 0;
+                        newForgerAccount.inputAmount = minerFee;
+                        newForgerAccount.outputAmount = 0;
+                        newForgerAccount.codeHash = EMPTY_CODE_HASH;
+                        accountBkt.put(newForgerAccount.address, newForgerAccount);
+                    }
                 }
             }
 
@@ -293,6 +330,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             removeMinedTxFromPool(body.txs);
         } else {
             // TODO: ban peer
+            throw new Error(`validateBlock failed ${JSON.stringify(block)}`);
         }
     }
 
@@ -431,6 +469,7 @@ const initPreConfiguredForgers = (): void => {
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.applyJoinHeight = 0;
+            f.nextGroupStartHeight = 0;
             f.pubKey = preConfiguredForgers[i].pubKey;
             f.stake = preConfiguredForgers[i].stake;
             f.groupNumber = calcInitialGroupNumber(f.address);

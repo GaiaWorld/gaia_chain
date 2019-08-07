@@ -34,7 +34,7 @@ const start = (): void => {
         simulateTxs(value);
         value += 1;
         console.log('simulate new tx');
-    }, null, 2000);
+    }, null, 3000);
 };
 
 start();
@@ -49,12 +49,8 @@ const simulateTxs = (value: number): void => {
     const fromAccount = accountBkt.get<string, [Account]>(address)[0];
 
     if (fromAccount) {
-        const tx = buildSignedSpendTx(privKey, pubKey, fromAccount, toAddr, value, 20, 10, '');
+        const tx = buildSignedSpendTx(privKey, pubKey, fromAccount, toAddr, value, 1000, 10, '');
         addTx2Pool(tx);
-
-        const dbTxbkt = persistBucket(DBTransaction._$info.name);
-        dbTxbkt.put(tx.txHash, tx2DbTx(tx));
-    
         broadcastNewTx(tx);
         console.log(`=============> build tx: ${JSON.stringify(tx)}`);
     } else {

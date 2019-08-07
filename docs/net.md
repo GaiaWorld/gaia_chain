@@ -17,7 +17,7 @@
    + rpc getBestHeight
    + rpc getHeaders
    + rpc getHeadersByHash
-   + rpc getBlocks
+   + rpc getBodies
 * 广播区块
    + 时机：锻造出区块
    + 时机：收到新区块
@@ -84,7 +84,7 @@ peer.rpc("getHeaders", [startHeight, endHeight], headers => {
 
 // 取块体，真正的交易数据
 // blockDatas，数组，如果没有对应的hash，对应的槽返回NULL
-peer.rpc("getBlocks", [blockHash1, blockHash2, ...], blockDatas => {
+peer.rpc("getBodies", [blockHash1, blockHash2, ...], blockDatas => {
 
 });
 
@@ -92,7 +92,7 @@ peer.rpc("getBlocks", [blockHash1, blockHash2, ...], blockDatas => {
 
 rpc还是上面那些；
 
-流程：getHeaders, getBlocks
+流程：getHeaders, getBodies
 
 ## 广播区块
 

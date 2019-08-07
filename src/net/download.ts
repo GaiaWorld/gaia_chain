@@ -5,7 +5,7 @@ import { getOwnNetAddr } from './client/launch';
 import { CurrentInfo } from './memory.s';
 import { INV_MSG_TYPE } from './msg';
 import { Peer } from './pNode.s';
-import { getBlocks, getHeadersByHeight } from './server/rpc.p';
+import { getBodies, getHeadersByHeight } from './server/rpc.p';
 import { clientRequest } from './server/rpc.r';
 import { BodyArray, GetHeaderHeight, HeaderArray, Inv, InvArray, InvArrayNet } from './server/rpc.s';
 
@@ -214,9 +214,14 @@ const downloadBlocks = ():void => {
         invArray.r.arr.push(inv);
     }
     console.log('block download syncing');
-    clientRequest(downloadPeer, getBlocks, invArray, (bodys:BodyArray, pNetAddr:string) => {
+    clientRequest(downloadPeer, getBodies, invArray, (bodys:BodyArray, pNetAddr:string) => {
+        console.log(`downloadBlocks ${JSON.stringify(bodys)}`);
         // TODO:此处需要对body和TX进行验证，验证成功之后如果已经超过了主链长度则应该更换为主链
-        newBodiesReach(bodys.arr);
+        if (bodys.arr && bodys.arr.length > 0) {
+            newBodiesReach(bodys.arr);
+        } else {
+            console.log(`+++++++++++++++ getBoies is empty`);
+        }
 
         if (bodys.arr && bodys.arr.length > 0) {
             const currentInfo = new CurrentInfo();
