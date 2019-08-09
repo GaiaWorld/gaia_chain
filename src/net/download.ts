@@ -21,11 +21,11 @@ export const download = (peer:Peer):boolean => {
     console.log('begin download ================================: ', peer, getTipTotalWeight());
 
     // 首先比较当前peer和本地peer的高度和权重，如果本地更高则不需要同步
-    if (getTipTotalWeight() > peer.nCurrentTotalWeight) {
+    if (getTipTotalWeight() >= peer.nCurrentTotalWeight) {
         // 本地权重更高不需要同步
         return false;
     }
-    if ((getTipTotalWeight() === peer.nCurrentTotalWeight) && (getTipHeight() < peer.nCurrentHeight)) {
+    if ((getTipTotalWeight() === peer.nCurrentTotalWeight) && (getTipHeight() <= peer.nCurrentHeight)) {
         // 本地主链更短不需要同步
         return false;
     }
@@ -36,11 +36,11 @@ export const download = (peer:Peer):boolean => {
         if (currentDownloadPeerNetAddr !== undefined) {
             const currentDownloadPeer = memoryBucket(Peer._$info.name).get<string,[Peer]>(currentDownloadPeerNetAddr.value)[0];
             if (currentDownloadPeer !== undefined) {
-                if (currentDownloadPeer.nCurrentTotalWeight > peer.nCurrentTotalWeight) {
+                if (currentDownloadPeer.nCurrentTotalWeight >= peer.nCurrentTotalWeight) {
                     // 正在同步的链权重更高不需要更改同步链
                     return false;
                 }
-                if ((currentDownloadPeer.nCurrentTotalWeight === peer.nCurrentTotalWeight) && (currentDownloadPeer.nCurrentTotalWeight < peer.nCurrentHeight)) {
+                if ((currentDownloadPeer.nCurrentTotalWeight === peer.nCurrentTotalWeight) && (currentDownloadPeer.nCurrentTotalWeight <= peer.nCurrentHeight)) {
                     // 正在同步的链更短不需要更改同步链
                     return false;
                 }
@@ -87,7 +87,7 @@ const verifyStartHeight = (pNetAddr:string):number => {
     // 暂时不考虑分叉的情况，所以直接返回当前高度即可
     const bkt = memoryBucket(Peer._$info.name);
     const pNode = bkt.get<string,[Peer]>(pNetAddr)[0];
-    pNode.nLocalStartingHeight = getTipHeight();
+    pNode.nLocalStartingHeight = getTipHeight() + 1;
     pNode.nlocalStartingTotalWeigth = getTipTotalWeight();
     bkt.put(pNetAddr, pNode);
 
@@ -116,7 +116,8 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
             break;
         }
     }
-    console.log('skeleton header syncing');
+    console.log(`jfb getSkeletonHeader ${JSON.stringify(heights)}`);
+    console.log(`skeleton header syncing`);
     clientRequest(pNetAddr,getHeadersByHeight,heights,(headers:HeaderArray,pNet:string) => {
         // TODO:此处需要对区块头进行验证
         
@@ -159,11 +160,12 @@ const getFilledHeader = (fromHeight:number, toHeight:number, pNetAddr:string):vo
     heights.from = fromHeight;
     heights.to = toHeight <= fromHeight + MAX_HEADER_NUMBER ? toHeight :fromHeight + MAX_HEADER_NUMBER;
     heights.heights = [];
-    console.log('filled header syncing');
+    console.log(`filled header syncing, param is :${JSON.stringify(heights)}`);
     clientRequest(pNetAddr,getHeadersByHeight,heights,(headers:HeaderArray,pNet:string) => {
         // TODO:此处需要对区块头进行验证
         // TODO:此处还会把skeletonheader再获取一遍，主要是为了防止skeleton对应的节点作恶
         // TODO:此处没有考虑skeleton节点作恶的情况，默认两次取到的值是一样的
+        console.log(`fill cb is : ${JSON.stringify(headers)}`);
         newHeadersReach(headers.arr);
         const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
         if (headers.arr && headers.arr.length > 0) {
@@ -200,7 +202,7 @@ const downloadBlocks = ():void => {
     const downloadPeer = currentInfoBkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
     const lastDownloadHeight = memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nStartingHeight;
     // tslint:disable-next-line:radix
-    const fromHeight = parseInt(bkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_HEIGHT)[0].value) + 1;
+    const fromHeight = parseInt(bkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_HEIGHT)[0].value);
     const toHeight = lastDownloadHeight < fromHeight + MAX_BLOCK_NUMBER ? lastDownloadHeight : fromHeight + MAX_BLOCK_NUMBER;
     const invArray = new InvArrayNet();
     invArray.net = getOwnNetAddr();
@@ -213,6 +215,7 @@ const downloadBlocks = ():void => {
         inv.height = i;
         invArray.r.arr.push(inv);
     }
+    console.log(`download body request is : ${JSON.stringify(invArray)}`);
     console.log('block download syncing');
     clientRequest(downloadPeer, getBodies, invArray, (bodys:BodyArray, pNetAddr:string) => {
         console.log(`downloadBlocks ${JSON.stringify(bodys)}`);
@@ -248,11 +251,11 @@ export const isSyncing = (): boolean => {
     const bkt = memoryBucket(CurrentInfo._$info.name);
     const syncState = bkt.get<string,[CurrentInfo]>(SYNC)[0];
 
-    if (syncState && syncState.value === SYNC_STATE.SUCCESS) {
-        return false;
+    if (syncState && syncState.value === SYNC_STATE.SYNCING) {
+        return true;
     }
 
-    return true;
+    return false;
 };
 
 export const CURRENT_DOWNLOAD_PEER_NET_ADDR = 'current_download_peer_net_addr';

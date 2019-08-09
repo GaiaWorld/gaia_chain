@@ -10,20 +10,10 @@ import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { myForgers } from '../params/config';
 import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
+import { GENESIS } from '../params/genesis';
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
-import { setTimer } from '../util/task';
-
-export const startMining = (): void => {
-    const commitCfg = getCommitteeConfig();
-    console.log('commitCfg: ', commitCfg);
-
-    setTimer(() => {
-        runMining(commitCfg);
-    }, null, 2000);
-
-};
 
 export const runMining = (committeeCfg: CommitteeConfig): void => {
     const currentHeight = getTipHeight();
@@ -104,7 +94,7 @@ export const calcForgerWeightAtHeight = (forger: Forger, height: number, committ
     if (heightDiff > committeeCfg.totalAccHeight) {
         return forger.initWeight * committeeCfg.maxAccRounds;
     } else if (heightDiff <= committeeCfg.totalAccHeight) {
-        return forger.initWeight * (heightDiff / committeeCfg.totalGroupNumber);
+        return Math.floor(forger.initWeight * (heightDiff / committeeCfg.totalGroupNumber));
     } else {
         // not a valid forger
         console.log(`not valid forger: ${JSON.stringify(forger)}`);
@@ -201,7 +191,7 @@ export const adjustGroup = (header: Header): void => {
     }
 
     // derive new group number
-    const newGroupNumber = deriveNextGroupNumber(header.forger, header.blockRandom, header.height, 2);
+    const newGroupNumber = deriveNextGroupNumber(header.forger, header.blockRandom, header.height, GENESIS.totalGroups);
     console.log(`\nForger ${header.forger} derive new group number ${newGroupNumber}`);
     const newSlotForgers = forgerCommitteeBkt.get<number, [ForgerCommittee]>(newGroupNumber)[0];
 

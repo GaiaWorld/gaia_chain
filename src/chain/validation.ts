@@ -1,11 +1,10 @@
 import { getForgerWeight } from '../consensus/committee';
-import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
-import { Block, getVersion } from './blockchain';
+import { Block, getHeaderByHeight, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Account, ChainHead, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
+import { Account, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
 import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
@@ -25,6 +24,11 @@ export const checkVersion = (consenseVersion:string):boolean => {
  * 时间戳是否低于当前时间戳+误差范围
  */
 export const simpleValidateHeader = (header:Header):boolean => {
+    // genesis block
+    if (header.height === 1) {
+        return true;
+    }
+
     if (!checkVersion(header.version)) {
         console.log(`the consense version do not match`);
 
@@ -162,6 +166,10 @@ export const simpleValidateTx = (tx:Transaction):boolean => {
  * 简单验证所有交易 
  */
 export const simpleValidateBlock = (block:Block):boolean => {
+    // genesis block
+    if (block.header.height === 1) {
+        return true;
+    }
     if (block.header.bhHash !== block.body.bhHash) {
         console.log(`the header and body hash do not match`);
 
@@ -198,18 +206,27 @@ export const simpleValidateBlock = (block:Block):boolean => {
  * txrootHash正确
  */
 export const validateBlock = (block:Block):boolean => {
+    // don't need to check the gensis block
+    if (block.header.height === 1) {
+        return true;
+    }
+
     if (!simpleValidateBlock(block)) {
         console.log(`simple veridate the block failed`);
 
         return false;
     }
-    const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
-    if (preHeaderTip.headHash !== block.header.prevHash) {
-        console.log(`prevHash do not matach`);
+    // const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
+    const preHeader = getHeaderByHeight(block.header.height - 1);
+    // console.log(`################ preHeaderTip ${JSON.stringify(preHeader)} currentHeader ${JSON.stringify(block.header)}`);
+
+    if (block.header.prevHash !== preHeader.bhHash) {
+        console.log(`Genesis hash not match`);
 
         return false;
     }
-    if (preHeaderTip.height + 1 !== block.header.height) {
+    
+    if (preHeader.height + 1 !== block.header.height) {
         console.log(`height is wrong`);
 
         return false;
@@ -226,7 +243,7 @@ export const validateBlock = (block:Block):boolean => {
     // }
 
     const forgerWeight = getForgerWeight(block.header.height, pubKeyToAddress(hex2Buf(block.header.pubkey)));
-    if (forgerWeight < 0 || forgerWeight !== block.header.weight || preHeaderTip.totalWeight + forgerWeight !== block.header.totalWeight) {
+    if (forgerWeight < 0 || forgerWeight !== block.header.weight || preHeader.totalWeight + forgerWeight !== block.header.totalWeight) {
         console.log(`weight is wrong`);
 
         return false;

@@ -5,6 +5,7 @@ import { getBody, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, ge
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
+import { getRand } from '../../util/crypto';
 import { memoryBucket } from '../../util/db';
 import { getOwnNetAddr, makeShakeHandsInfo } from '../client/launch';
 import { DEFAULT_STR_ERR } from '../const';
@@ -27,7 +28,7 @@ export const shakeHands = (info:ShakeHandsInfo):ShakeHandsInfo => {
 
 // #[rpc=rpcServer]
 export const getTxs = (invArray:InvArrayNet):TxArray => {
-    // console.log(`InvArrayNet ${JSON.stringify(invArray)}`);
+    console.log(`getTxs InvArrayNet ${JSON.stringify(invArray)}`);
     const txArray = new TxArray();
     txArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
@@ -35,8 +36,9 @@ export const getTxs = (invArray:InvArrayNet):TxArray => {
         if (tx) {
             console.log(`getTxs : ${JSON.stringify(tx)}`);
             txArray.arr.push(tx);
-        }
+        }        
     });
+    console.log(`getTxs txArray ${JSON.stringify(txArray)}`);
 
     return txArray;
 };
@@ -61,6 +63,7 @@ export const getBodies = (invArray:InvArrayNet):BodyArray => {
 // #[rpc=rpcServer]
 export const getHeaders = (invArray:InvArrayNet):HeaderArray => {
     // TODO:此处直接调用core的getHeader方法
+    console.log(`start getHeaders rpc from ${invArray.net}`);
     const headerArray = new HeaderArray();
     headerArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
@@ -71,6 +74,7 @@ export const getHeaders = (invArray:InvArrayNet):HeaderArray => {
             console.log(`++++++++++++++++ get empty header: ${inv}`);
         }
     });
+    console.log(`end getHeaders rpc from ${invArray.net}, headerArray is : ${JSON.stringify(headerArray)}`);
 
     return headerArray;
 };
@@ -135,8 +139,7 @@ export const getCurTime = (netAddr:string):number => {
  */
 const subscribeKeyFromMemory = (pNetAddr:string, key:string):boolean => {
     const bkt = memoryBucket(SubTable._$info.name);
-    let column = bkt.get<string, SubTable>(key)[0];
-    console.log(`rpc column is : ${column}`);
+    let column = bkt.get<string, SubTable>(key)[0];    
     if (column === undefined || column.value === undefined) {
         column = new SubTable();
         column.key = key;
@@ -148,6 +151,9 @@ const subscribeKeyFromMemory = (pNetAddr:string, key:string):boolean => {
         bkt.put(key, column);
     }
 
+    const columnTest = bkt.get<string, SubTable>(key)[0];    
+    console.log(`sub column is : ${JSON.stringify(columnTest)}`);
+    
     return true;
 };
 
@@ -183,6 +189,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         invArrayNet.net = getOwnNetAddr();
         invArrayNet.r = new InvArray();
         invArrayNet.r.arr = [invNet.r];        
+        console.log(`before getheader, the peer net is : ${invNet.net}`);
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pHeaderNetAddr:string) => {
             console.log(`broadcastInv get Headers: ${headerArray}`);
             if (!headerArray.arr || headerArray.arr.length === 0) {
@@ -191,7 +198,8 @@ export const broadcastInv = (invNet:InvNet):boolean => {
                 return false;
             }
             // 和当前高度进行对比
-            if (headerArray.arr[0].totalWeight <= getTipTotalWeight()) {
+            if (headerArray.arr[0].totalWeight <= getTipTotalWeight()) {                
+
                 return false;
             }
             // 更新节点信息
@@ -216,7 +224,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
                 // TODO:如果走到了这里说明出现了一条链比我正在同步的链条更长，我需要更换到该链重新进行同步
                 console.log(`need change the download chain`);
 
-                return false;
+                // return false;
             }
             const tipHeight = getTipHeight();
             // TODO:JFB 如果此头的高度超过本地高度+2，则需要重新启动同步
@@ -250,22 +258,21 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         invArrayNet.r = new InvArray();
         invArrayNet.r.arr = [invNet.r];
         clientRequest(invNet.net,getTxsString,invArrayNet, (txArray:TxArray, pNetAddr:String) => {
-            // console.log(`broadcastInv ${JSON.stringify(txArray)}`);
             // TODO: 告诉core有新的tx到达了
             newTxsReach(txArray.arr);
+            console.log(`fetch txs from peer ${JSON.stringify(invNet)}, got txs ${JSON.stringify(txArray)}`);
         });
     }
 
     return true;
 };
 
-let clientIdAccount = 1;
 /**
  * 看起来像http，功能上是一个短链接
  */
 export const clientRequest = (pNetAddr:string, cmd:string, body: SerializeType, callback: (serializeType:SerializeType,pNetAddr?:string) => void):void => {
     const client = RpcClient.create(`ws://${pNetAddr}`);
-    client.connect(KEEP_ALIVE,`${clientIdAccount++}`, TIME_OUT, ((pConNetAddr:string):(() => void) => {
+    client.connect(KEEP_ALIVE,`${getRand(16).toString()}`, TIME_OUT, ((pConNetAddr:string):(() => void) => {
         return ():void => {
 
             client.request(cmd, body, TIME_OUT, (serializeType:SerializeType) => {

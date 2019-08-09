@@ -16,7 +16,13 @@ const start = (): void => {
     newBlockChain();
     setTimeout(() => {
         launch();
-    }, 5000);
+        let value = 1;
+        setTimer(() => {
+            simulateTxs(value);
+            value += 1;
+            console.log('simulate new tx');
+        }, null, 3000);
+    }, 10000);
 
     const committeeCfg = getCommitteeConfig();
 
@@ -29,12 +35,6 @@ const start = (): void => {
         }
     }, null, 2000);
 
-    let value = 1;
-    setTimer(() => {
-        simulateTxs(value);
-        value += 1;
-        console.log('simulate new tx');
-    }, null, 3000);
 };
 
 start();
