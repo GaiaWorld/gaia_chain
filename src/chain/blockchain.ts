@@ -7,10 +7,12 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { myForgers } from '../params/config';
-import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, GENESIS_PREV_HASH, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
 import { persistBucket } from '../util/db';
+import { calcTxRootHash, writeBlockToDB } from './block';
+import { calcHeaderHash } from './header';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
@@ -383,18 +385,53 @@ export const newBlockChain = (): void => {
         ch.headHash = GENESIS.hash;
         // genesis parent hash is empty string
         ch.prevHash = GENESIS_PREV_HASH;
-        ch.height = 0;
+        ch.height = 1;
         ch.totalWeight = 0;
         ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
         chainHeadBkt.put(ch.primaryKey, ch);
 
         setupInitialAccounts();
+        setupGenesisBlock();
         initCommitteeConfig();
         initPreConfiguredForgers();
         setupMiners();
     }
 
     return;
+};
+
+const setupGenesisBlock = (): void => {
+    const header = new Header();
+    const body = new Body();
+
+    header.forger = GENESIS.forgers[0].address;
+    header.pubkey = GENESIS.forgers[0].address;
+    header.forgerPubkey = GENESIS.forgers[0].pubKey;
+    // genesis height is 1
+    header.height = 1;
+    header.prevHash = GENESIS_PREV_HASH;
+    // not used right now
+    header.receiptRoot = EMPTY_RECEIPT_ROOT_HASH;
+    header.timestamp = Date.now();
+    header.weight = 0;
+    header.totalWeight = 0;
+    header.txRootHash = calcTxRootHash([]);
+    header.version = getVersion();
+    header.blockRandom = buf2Hex(getRand(32));// TODO: how to get it?
+    header.groupNumber = 0;
+    header.bhHash = GENESIS.hash;
+    header.signature = GENESIS_SIGNATURE;
+
+    body.bhHash = header.bhHash;
+    body.txs = [];
+
+    const height2HashBkt = persistBucket(Height2Hash._$info.name);
+    const h2h = new Height2Hash();
+    h2h.bhHash = header.bhHash;
+    h2h.height = header.height;
+    height2HashBkt.put(h2h.height, h2h);
+
+    writeBlockToDB(new Block(header, body));
 };
 
 const setupInitialAccounts = (): void => {

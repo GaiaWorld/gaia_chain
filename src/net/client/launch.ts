@@ -22,6 +22,7 @@ import { ShakeHandsInfo } from '../server/rpc.s';
 // tslint:disable-next-line:typedef
 export const launch = () => {
     const ownNetAddr = getOwnNetAddr();
+    console.log(`before launch all peers ${getPeers()}`);
     getPeers().forEach((netAddr: string) => {
         if (netAddr !== ownNetAddr) {
             // TODO:判断PNode中是否已经有该节点了，如果有该节点了则直接退出
