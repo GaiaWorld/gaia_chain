@@ -102,7 +102,7 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
     heights.strNetAddr = getOwnNetAddr();
     heights.from = 0;
     heights.to = 0;
-    heights.heights = [];
+    heights.heights = [];    
     for (let i = fromHeight; i <= toHeight + MAX_HEADER_NUMBER; i = i + MAX_HEADER_NUMBER) {
         if (heights.heights.length < MAX_HEADER_NUMBER) {
             if (i > toHeight) {

@@ -89,7 +89,8 @@ export const getHeadersByHeight = (heights:GetHeaderHeight):HeaderArray => {
     if (heights.to - heights.from < 0 || heights.to - heights.from > MAX_HEADER_NUMBER) {
         return headerArray;
     }
-    if (heights.to - heights.from > 0) {
+
+    if ((heights.heights.length === 0) && (heights.to - heights.from >= 0)) {
         heights.heights = [];
         for (let i = heights.from; i <= heights.to; i++) {
             heights.heights.push(i);
