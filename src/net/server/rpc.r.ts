@@ -45,6 +45,7 @@ export const getTxs = (invArray:InvArrayNet):TxArray => {
 
 // #[rpc=rpcServer]
 export const getBodies = (invArray:InvArrayNet):BodyArray => {
+    console.log(`start getBodies rpc from ${JSON.stringify(invArray)}`);
     const bodyArray = new BodyArray();
     bodyArray.arr = [];
     invArray.r.arr.forEach((inv:Inv) => {
@@ -192,7 +193,7 @@ export const broadcastInv = (invNet:InvNet):boolean => {
         invArrayNet.r.arr = [invNet.r];        
         console.log(`before getheader, the peer net is : ${invNet.net}`);
         clientRequest(invNet.net,getHeadersString,invArrayNet, (headerArray:HeaderArray, pHeaderNetAddr:string) => {
-            console.log(`broadcastInv get Headers: ${headerArray}`);
+            console.log(`broadcastInv get Headers: ${JSON.stringify(headerArray)}`);
             if (!headerArray.arr || headerArray.arr.length === 0) {
                 console.log(`++++++++++++++ broadcastInv get empty headerArray ${JSON.stringify(headerArray)}`);
 
@@ -268,12 +269,14 @@ export const broadcastInv = (invNet:InvNet):boolean => {
     return true;
 };
 
+const clientId = getRand(16).toString();
+
 /**
  * 看起来像http，功能上是一个短链接
  */
 export const clientRequest = (pNetAddr:string, cmd:string, body: SerializeType, callback: (serializeType:SerializeType,pNetAddr?:string) => void):void => {
     const client = RpcClient.create(`ws://${pNetAddr}`);
-    client.connect(KEEP_ALIVE,`${getRand(16).toString()}`, TIME_OUT, ((pConNetAddr:string):(() => void) => {
+    client.connect(KEEP_ALIVE,`${clientId}`, TIME_OUT, ((pConNetAddr:string):(() => void) => {
         return ():void => {
 
             client.request(cmd, body, TIME_OUT, (serializeType:SerializeType) => {

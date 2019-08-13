@@ -145,6 +145,7 @@ export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
+    console.log(`chainHead.headHash ${chainHead.headHash}\nchainHead.height ${chainHead.height}`);
     if (chainHead.headHash === header.prevHash && chainHead.height + 1 === header.height) {
         chainHead.prevHash = chainHead.headHash;
         chainHead.headHash = header.bhHash;
