@@ -149,7 +149,7 @@ const getSkeletonHeader = (fromHeight:number, toHeight:number, pNetAddr:string):
             // TODO:理想情况下Skeleton和filled不应该从同一个节点获取，防止同一个节点作恶
             // TODO:此处暂时没有考虑作恶的情况
             console.log('skeleton header done');
-            getFilledHeader(peer.nLocalStartingHeight, peer.nStartingHeight, peer.strNetAddr);
+            getFilledHeader(peer.nLocalStartingHeight, peer.nCurrentHeight, peer.strNetAddr);
         }
     });
 };
@@ -200,7 +200,7 @@ const downloadBlocks = ():void => {
     const currentInfoBkt = memoryBucket(CurrentInfo._$info.name);
     const bkt = memoryBucket(CurrentInfo._$info.name);
     const downloadPeer = currentInfoBkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_PEER_NET_ADDR)[0].value;
-    const lastDownloadHeight = memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nStartingHeight;
+    const lastDownloadHeight = memoryBucket(Peer._$info.name).get<string,[Peer]>(downloadPeer)[0].nCurrentHeight;
     // tslint:disable-next-line:radix
     const fromHeight = parseInt(bkt.get<string,[CurrentInfo]>(CURRENT_DOWNLOAD_HEIGHT)[0].value);
     const toHeight = lastDownloadHeight < fromHeight + MAX_BLOCK_NUMBER ? lastDownloadHeight : fromHeight + MAX_BLOCK_NUMBER;

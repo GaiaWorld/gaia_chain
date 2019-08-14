@@ -5,6 +5,7 @@ import { getCommitteeConfig, newBlockChain } from '../chain/blockchain';
 import { broadcastNewTx, runMining } from '../consensus/committee';
 import { launch } from '../net/client/launch';
 import { isSyncing } from '../net/download';
+import { __gc } from '../pi_pt/vm/vm';
 import { persistBucket } from '../util/db';
 import { setTimer } from '../util/task';
 import { Account } from './schema.s';
@@ -19,21 +20,33 @@ const start = (): void => {
         
     }, 10000);
 
+    let gcCounter = 1;
+
     let value = 1;
     setTimer(() => {
         simulateTxs(value);
         value += 1;
         console.log('simulate new tx');
+
+        if (gcCounter % 20 === 0) {
+            __gc(null);
+        }
     }, null, 3000);
 
     const committeeCfg = getCommitteeConfig();
 
     setTimer(() => {
+        gcCounter += 1;
         if (!isSyncing()) {
             console.log(`========> start run one mining round`);
             runMining(committeeCfg);
         } else {
             console.log('sync not ready');
+        }
+
+        if (gcCounter % 20 === 0) {
+            __gc(null);
+            gcCounter = 1;
         }
     }, null, 2000);
 

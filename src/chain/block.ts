@@ -21,7 +21,7 @@ export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner
     header.totalWeight = chainHead.totalWeight + header.weight;
     header.txRootHash = calcTxRootHash(txs);
     header.version = getVersion();
-    header.blockRandom = buf2Hex(getRand(32));// TODO: how to get it?
+    header.blockRandom = buf2Hex(getRand(32));// BLS lib is not suitable for this purpose
     header.groupNumber = forger.groupNumber;
     header.bhHash = calcHeaderHash(header);
     // sign the whole block
