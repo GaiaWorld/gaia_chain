@@ -150,6 +150,7 @@ export const updateChainHead = (header: Header): void => {
         chainHead.prevHash = chainHead.headHash;
         chainHead.headHash = header.bhHash;
         chainHead.height = header.height;
+        chainHead.blockRandom = header.blockRandom;
         chainHead.totalWeight = header.totalWeight;
 
         chBkt.put(chainHead.primaryKey, chainHead);

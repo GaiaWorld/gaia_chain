@@ -57,6 +57,7 @@ export const getBodies = (invArray:InvArrayNet):BodyArray => {
             console.log(`+++++++++++++++++ get empty body: ${inv}`);
         }
     });
+    console.log(`end getBodies rpc from ${JSON.stringify(bodyArray)}`);
 
     return bodyArray;
 };
@@ -109,15 +110,6 @@ export const getHeadersByHeight = (heights:GetHeaderHeight):HeaderArray => {
     });
 
     return headerArray;
-};
-
-// #[rpc=rpcServer]
-export const getMemPool = (netAddr:string):InvArray => {
-    // TODO:此处直接调用core的getmemPool方法，返回所以pool中的交易的hash值
-    const invArray = new InvArray();
-    invArray.arr = [];
-
-    return invArray;
 };
 
 // #[rpc=rpcServer]
@@ -290,4 +282,4 @@ export const clientRequest = (pNetAddr:string, cmd:string, body: SerializeType, 
 };
 
 const KEEP_ALIVE = 10000;
-const TIME_OUT = 5000;
+const TIME_OUT = 10000;

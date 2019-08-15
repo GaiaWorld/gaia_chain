@@ -341,7 +341,6 @@ export const newBodiesReach = (bodys: Body[]): void => {
 
 // new Headers from peer
 export const newHeadersReach = (headers: Header[]): void => {
-    // TODO:JFB 如果已经没有在同步了
     console.log('\n\nnewHeadersReach: ---------------------- ', headers);
     if (!headers) {
         return;
@@ -386,6 +385,7 @@ export const newBlockChain = (): void => {
         // genesis parent hash is empty string
         ch.prevHash = GENESIS_PREV_HASH;
         ch.height = 1;
+        ch.blockRandom = GENESIS.blockRandom;
         ch.totalWeight = 0;
         ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
         chainHeadBkt.put(ch.primaryKey, ch);
@@ -417,7 +417,7 @@ const setupGenesisBlock = (): void => {
     header.totalWeight = 0;
     header.txRootHash = calcTxRootHash([]);
     header.version = getVersion();
-    header.blockRandom = buf2Hex(getRand(32));// TODO: how to get it?
+    header.blockRandom = GENESIS.blockRandom;
     header.groupNumber = 0;
     header.bhHash = GENESIS.hash;
     header.signature = GENESIS_SIGNATURE;
