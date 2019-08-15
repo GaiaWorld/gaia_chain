@@ -32,19 +32,19 @@ export const genKeyPairFromSeed = (seed: Uint8Array): [Uint8Array, Uint8Array] =
     return [privKey.take(), pubKey.take()];
 };
 
-export const blsRand = (prveRandom: string, height: number): string => {
+export const blsRand = (prveRandom: string, height: number, privKey: Uint8Array): string => {
+    return buf2Hex(sign(privKey, blsSignHash(prveRandom, height)));
+};
+
+export const blsSignHash = (prveRandom: string, height: number): Uint8Array => {
     const random = hex2Buf(prveRandom);
-    const [privKey, pubKey] = keypair(random);
-    const [sk, pk] = [privKey.take(), pubKey.take()];
     const heightArray = int64ToUint8Array(height);
 
-    const entrophy = new Uint8Array(random.length + sk.length + pk.length + heightArray.length);
+    const entrophy = new Uint8Array(random.length + heightArray.length);
     entrophy.set(random);
-    entrophy.set(sk, random.length);
-    entrophy.set(pk, random.length + sk.length);
-    entrophy.set(heightArray, random.length + sk.length + pk.length);
+    entrophy.set(heightArray, random.length);
 
-    return buf2Hex(sha256(entrophy));
+    return sha256(entrophy);
 };
 
 export const getRand = (len: number): Uint8Array => {

@@ -2,7 +2,7 @@
  * block chain
  */
 
-import { adjustGroup, deriveInitWeight, updateChainHead, updateForgerCommittee } from '../consensus/committee';
+import { adjustGroup, deriveInitWeight, updateChainHead, updateForgerCommittee, updateForgerInfo } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
@@ -10,9 +10,9 @@ import { localForgers } from '../params/config';
 import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
-import { persistBucket } from '../util/db';
+import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash, writeBlockToDB } from './block';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxPool, TxType } from './schema.s';
 import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -326,8 +326,7 @@ export const newBodiesReach = (bodys: Body[]): void => {
             dbBodyBkt.put(body.bhHash, dbBody);
 
             updateChainHead(header);
-            updateForgerCommittee(currentHeight);
-            adjustGroup(header);
+            updateForgerInfo(currentHeight, header);
             removeMinedTxFromPool(body.txs);
         } else {
             // TODO: ban peer

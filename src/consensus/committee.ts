@@ -3,7 +3,7 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getTipHeight, newBlocksReach } from '../chain/blockchain';
+import { getCommitteeConfig, getHeaderByHeight, getTipHeight, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
@@ -145,8 +145,9 @@ export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
+    const prveHeader = getHeaderByHeight(header.height - 1);
     console.log(`chainHead.headHash ${chainHead.headHash}\nchainHead.height ${chainHead.height}`);
-    if (chainHead.headHash === header.prevHash && chainHead.height + 1 === header.height) {
+    if (prveHeader.bhHash === header.prevHash && prveHeader.height + 1 === header.height) {
         chainHead.prevHash = chainHead.headHash;
         chainHead.headHash = header.bhHash;
         chainHead.height = header.height;
@@ -217,4 +218,9 @@ export const adjustGroup = (header: Header): void => {
 
     forgerCommitteeBkt.put([header.groupNumber, newGroupNumber], [prevSlotForgers, newSlotForgers]);
     forgersBkt.put(header.forger, forger);
+};
+
+export const updateForgerInfo = (currentHeight: number, header: Header): void => {
+    updateForgerCommittee(currentHeight);
+    adjustGroup(header);
 };
