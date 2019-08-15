@@ -1,4 +1,4 @@
-export const myForgers = {
+export const localForgers = {
     forgers: [
         {
             address:  '1e6a184455aeb927f0ffe442218bf714296beb00',

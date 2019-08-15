@@ -8,7 +8,7 @@ import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, M
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
-import { myForgers } from '../params/config';
+import { localForgers } from '../params/config';
 import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { BonBuffer } from '../pi/util/bon';
@@ -73,9 +73,9 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
     const minersBkt = persistBucket(Miner._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.totalGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcForgerWeightAtHeight(b, height, committeeCfg) - calcForgerWeightAtHeight(a, height, committeeCfg));
-    console.log(`\n\nheight ${height} Most weight forger ${JSON.stringify(myForgers.forgers[0])}`);
+    console.log(`\n\nheight ${height} Most weight forger ${JSON.stringify(localForgers.forgers[0])}`);
 
-    for (const forger of myForgers.forgers) {
+    for (const forger of localForgers.forgers) {
         if (forger.address === forgers[0].address) {
             return [minersBkt.get<string, [Miner]>(forger.address)[0], forgers[0]];
         }
