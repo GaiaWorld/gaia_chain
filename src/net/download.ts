@@ -40,7 +40,7 @@ export const download = (peer:Peer):boolean => {
                     // 正在同步的链权重更高不需要更改同步链
                     return false;
                 }
-                if ((currentDownloadPeer.nCurrentTotalWeight === peer.nCurrentTotalWeight) && (currentDownloadPeer.nCurrentTotalWeight <= peer.nCurrentHeight)) {
+                if ((currentDownloadPeer.nCurrentTotalWeight === peer.nCurrentTotalWeight) && (currentDownloadPeer.nCurrentHeight <= peer.nCurrentHeight)) {
                     // 正在同步的链更短不需要更改同步链
                     return false;
                 }

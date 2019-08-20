@@ -3,12 +3,12 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getTipHeight, newBlocksReach } from '../chain/blockchain';
+import { getCommitteeConfig, getHeaderByHeight, getTipHeight, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
 import { getTxsFromPool } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
-import { myForgers } from '../params/config';
+import { localForgers } from '../params/config';
 import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { BonBuffer } from '../pi/util/bon';
@@ -73,9 +73,9 @@ export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeCon
     const minersBkt = persistBucket(Miner._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.totalGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcForgerWeightAtHeight(b, height, committeeCfg) - calcForgerWeightAtHeight(a, height, committeeCfg));
-    console.log(`\n\nheight ${height} Most weight forger ${JSON.stringify(myForgers.forgers[0])}`);
+    console.log(`\n\nheight ${height} Most weight forger ${JSON.stringify(localForgers.forgers[0])}`);
 
-    for (const forger of myForgers.forgers) {
+    for (const forger of localForgers.forgers) {
         if (forger.address === forgers[0].address) {
             return [minersBkt.get<string, [Miner]>(forger.address)[0], forgers[0]];
         }
@@ -145,11 +145,13 @@ export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
     const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
+    const prveHeader = getHeaderByHeight(header.height - 1);
     console.log(`chainHead.headHash ${chainHead.headHash}\nchainHead.height ${chainHead.height}`);
-    if (chainHead.headHash === header.prevHash && chainHead.height + 1 === header.height) {
+    if (prveHeader.bhHash === header.prevHash && prveHeader.height + 1 === header.height) {
         chainHead.prevHash = chainHead.headHash;
         chainHead.headHash = header.bhHash;
         chainHead.height = header.height;
+        chainHead.blockRandom = header.blockRandom;
         chainHead.totalWeight = header.totalWeight;
 
         chBkt.put(chainHead.primaryKey, chainHead);
@@ -216,4 +218,9 @@ export const adjustGroup = (header: Header): void => {
 
     forgerCommitteeBkt.put([header.groupNumber, newGroupNumber], [prevSlotForgers, newSlotForgers]);
     forgersBkt.put(header.forger, forger);
+};
+
+export const updateForgerInfo = (currentHeight: number, header: Header): void => {
+    updateForgerCommittee(currentHeight);
+    adjustGroup(header);
 };

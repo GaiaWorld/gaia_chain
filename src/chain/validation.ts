@@ -1,10 +1,10 @@
 import { getForgerWeight } from '../consensus/committee';
-import { buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
+import { blsSignHash, buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
 import { Block, getHeaderByHeight, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Account, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
+import { Account, DBTransaction, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
 import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
@@ -218,7 +218,7 @@ export const validateBlock = (block:Block):boolean => {
     }
     // const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
     const preHeader = getHeaderByHeight(block.header.height - 1);
-    // console.log(`################ preHeaderTip ${JSON.stringify(preHeader)} currentHeader ${JSON.stringify(block.header)}`);
+    console.log(`################ preHeaderTip header ${JSON.stringify(preHeader)}\npreHeaderTip body ${JSON.stringify(1)}\ncurrentTip Header ${JSON.stringify(block.header)}\ncurrentTip body ${JSON.stringify(block.body)}`);
 
     if (block.header.prevHash !== preHeader.bhHash) {
         console.log(`Genesis hash not match`);
@@ -261,8 +261,13 @@ export const validateBlock = (block:Block):boolean => {
 
         return false;
     }
-    // TODO:缺少了随机值的验证
 
+    // 随机值的验证
+    const hash = blsSignHash(preHeader.blockRandom, block.header.height);
+    if (!verify(hex2Buf(block.header.blockRandom), hex2Buf(block.header.forgerPubkey), hash)) {
+        return false;
+    }
+    
     return true; 
 };
 
@@ -290,10 +295,13 @@ export const validateTx = (tx:Transaction):boolean => {
         account.outputAmount = 0;
     }
 
-    if (account.inputAmount !== tx.lastInputValue || account.outputAmount !== tx.lastOutputValue) {
-        console.log(`the account balance do not match`);
+    if (!persistBucket(DBTransaction._$info.name).get<string, [DBTransaction]>(tx.txHash)[0]) {
+        console.log(`validateTx account: ${JSON.stringify(account)}\nTx: ${JSON.stringify(tx)}`);
+        if (account.inputAmount !== tx.lastInputValue || account.outputAmount !== tx.lastOutputValue) {
+            console.log(`the account balance do not match`);
 
-        return false;
+            return false;
+        }
     }
 
     if (tx.txType === TxType.ForgerGroupTx) {
@@ -327,6 +335,7 @@ export const addTx2Pool = (tx:Transaction):boolean => {
     txPool.txHash = tx.txHash;
     txPool.tx = tx;
     memoryBucket(TxPool._$info.name).put(tx.txHash, txPool);
+    console.log(`add tx ${JSON.stringify(tx.txHash)} to txpool`);
 
     return true;
 };

@@ -32,8 +32,19 @@ export const genKeyPairFromSeed = (seed: Uint8Array): [Uint8Array, Uint8Array] =
     return [privKey.take(), pubKey.take()];
 };
 
-export const blsRand = (): H256 => {
-    return;
+export const blsRand = (prveRandom: string, height: number, privKey: Uint8Array): string => {
+    return buf2Hex(sign(privKey, blsSignHash(prveRandom, height)));
+};
+
+export const blsSignHash = (prveRandom: string, height: number): Uint8Array => {
+    const random = hex2Buf(prveRandom);
+    const heightArray = int64ToUint8Array(height);
+
+    const entrophy = new Uint8Array(random.length + heightArray.length);
+    entrophy.set(random);
+    entrophy.set(heightArray, random.length);
+
+    return sha256(entrophy);
 };
 
 export const getRand = (len: number): Uint8Array => {
@@ -71,12 +82,10 @@ export const hex2Buf = (hex: string): Uint8Array => {
 
 // assuming 32 bit integer
 // encode number to uint8arry buffer
-export const num2Buf = (num: number): Uint8Array => {
-    const buf = new Uint8Array(4);
-    const view = new DataView(buf.buffer, 0, 4);
-    view.setUint32(0, num);
-
-    return buf;
+export const int64ToUint8Array = (x: number): Uint8Array => {
+    const y = x / 2 ** 32;
+    // tslint:disable-next-line:no-bitwise
+    return new Uint8Array([y,(y << 8),(y << 16),(y << 24), x,(x << 8),(x << 16),(x << 24)].map(z => z >>> 24));
 };
 
 const testSignVerify = (): void => {

@@ -179,6 +179,7 @@ struct ChainHead {
     primaryKey: String,
     headHash: String,
     height: usize,
+    blockRandom: String,
     genesisHash: String,
     totalWeight: usize,
     prevHash: String,
