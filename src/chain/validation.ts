@@ -238,6 +238,8 @@ export const validateBlock = (block:Block):boolean => {
     }
 
     if (!found) {
+        console.log(`wrong block proposer`);
+
         return false;
     }
 
