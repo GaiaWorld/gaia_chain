@@ -1,10 +1,11 @@
 import { getForgerWeight } from '../consensus/committee';
+import { GENESIS } from '../params/genesis';
 import { blsSignHash, buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
 import { Block, getHeaderByHeight, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Account, DBTransaction, Forger, Header, Transaction, TxPool, TxType } from './schema.s';
+import { Account, DBTransaction, Forger, ForgerCommittee, Header, Transaction, TxPool, TxType } from './schema.s';
 import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
 
 /**
@@ -233,7 +234,19 @@ export const validateBlock = (block:Block):boolean => {
         return false;
     }
 
-    // TODO: 验证该矿工是否有权力出块
+    // check if forger is valid to propose this block
+    let found = false;
+    const forgersBkt = persistBucket(ForgerCommittee._$info.name);
+    const forgers = forgersBkt.get<number, [ForgerCommittee]>((block.header.height - 1) % GENESIS.totalGroups)[0].forgers;
+    for (const forger of forgers) {
+        if (forger.address === block.header.forger) {
+            found = true;
+        }
+    }
+
+    if (!found) {
+        return false;
+    }
 
     // const preHeader = persistBucket(Header._$info.name).get<string,[Header]>(preHeaderTip.headHash)[0];
 
