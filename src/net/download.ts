@@ -17,6 +17,7 @@ import { BodyArray, GetHeaderHeight, HeaderArray, Inv, InvArray, InvArrayNet } f
  * 判断是否要向当前peer进行代码同步
  * @param peer Peer
  */
+// TODO: 应该从多个peer获取数据，防止节点欺骗，数据缺失，带宽消耗的问题问题
 export const download = (peer:Peer):boolean => {
     console.log('begin download ================================: ', peer, getTipTotalWeight());
 
@@ -25,6 +26,7 @@ export const download = (peer:Peer):boolean => {
         // 本地权重更高不需要同步
         return false;
     }
+    // TODO: 抵御长程攻击
     if ((getTipTotalWeight() === peer.nCurrentTotalWeight) && (getTipHeight() <= peer.nCurrentHeight)) {
         // 本地主链更短不需要同步
         return false;

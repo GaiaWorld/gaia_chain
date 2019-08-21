@@ -226,11 +226,14 @@ export const validateBlock = (block:Block):boolean => {
         return false;
     }
     
+    // TODO: 把这段代码裸动外部
     if (preHeader.height + 1 !== block.header.height) {
         console.log(`height is wrong`);
 
         return false;
     }
+
+    // TODO: 验证该矿工是否有权力出块
 
     // const preHeader = persistBucket(Header._$info.name).get<string,[Header]>(preHeaderTip.headHash)[0];
 

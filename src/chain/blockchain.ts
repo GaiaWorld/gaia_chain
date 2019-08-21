@@ -215,6 +215,7 @@ export const newBlocksReach = (blocks: Block[]): void => {
 };
 
 // new blocks from peer
+// TODO: 充分利用数据库的事务，检验过后马上操作，将这个函数和检验合并
 export const newBodiesReach = (bodys: Body[]): void => {
     console.log('\n\nnewBodiesReach: ---------------------- ', bodys);
     const currentHeight = getTipHeight();
@@ -388,10 +389,12 @@ export const newBlockChain = (): void => {
         ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
         chainHeadBkt.put(ch.primaryKey, ch);
 
+        // TODO: 修改命名为 Gensis_
         setupInitialAccounts();
         setupGenesisBlock();
         initCommitteeConfig();
         initPreConfiguredForgers();
+        // TODO: 改为配置读取，移动到外部
         setupMiners();
     }
 
@@ -468,6 +471,7 @@ const calcInitialGroupNumber = (address: string): number => {
     return parseInt(address.slice(address.length - 2), 16);
 };
 
+// TODO: 把初始化信息放到创世区块中
 const initCommitteeConfig = (): void => {
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
@@ -501,6 +505,7 @@ const initPreConfiguredForgers = (): void => {
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
+            // TODO: 此处无需做矿工初始化，在区块同步后如果发现有在撇脂的矿工未加入则发交易加入
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.applyJoinHeight = 0;
