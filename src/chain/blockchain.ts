@@ -389,11 +389,10 @@ export const newBlockChain = (): void => {
         ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
         chainHeadBkt.put(ch.primaryKey, ch);
 
-        // TODO: 修改命名为 Gensis_
-        setupInitialAccounts();
+        setupGenesisAccounts();
         setupGenesisBlock();
-        initCommitteeConfig();
-        initPreConfiguredForgers();
+        setupCommitteeConfig();
+        setupGenesisForgers();
         // TODO: 改为配置读取，移动到外部
         setupMiners();
     }
@@ -435,7 +434,7 @@ const setupGenesisBlock = (): void => {
     writeBlockToDB(new Block(header, body));
 };
 
-const setupInitialAccounts = (): void => {
+const setupGenesisAccounts = (): void => {
     // setup initial accounts
     const accountBkt = persistBucket(Account._$info.name);
     for (let i = 0; i < GENESIS.accounts.length; i++) {
@@ -472,7 +471,7 @@ const calcInitialGroupNumber = (address: string): number => {
 };
 
 // TODO: 把初始化信息放到创世区块中
-const initCommitteeConfig = (): void => {
+const setupCommitteeConfig = (): void => {
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>(COMMITTEECONFIG_PRIMARY_KEY)[0];
@@ -491,7 +490,7 @@ const initCommitteeConfig = (): void => {
     }
 };
 
-const initPreConfiguredForgers = (): void => {
+const setupGenesisForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
