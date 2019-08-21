@@ -221,19 +221,12 @@ export const validateBlock = (block:Block):boolean => {
     const preHeader = getHeaderByHeight(block.header.height - 1);
     console.log(`################ preHeaderTip header ${JSON.stringify(preHeader)}\npreHeaderTip body ${JSON.stringify(1)}\ncurrentTip Header ${JSON.stringify(block.header)}\ncurrentTip body ${JSON.stringify(block.body)}`);
 
-    if (block.header.prevHash !== preHeader.bhHash) {
-        console.log(`Genesis hash not match`);
+    if (block.header.prevHash !== preHeader.bhHash && (preHeader.height + 1) !== block.header.height) {
+        console.log(`preHash or height not match`);
 
         return false;
     }
     
-    // TODO: 把这段代码裸动外部
-    if (preHeader.height + 1 !== block.header.height) {
-        console.log(`height is wrong`);
-
-        return false;
-    }
-
     // check if forger is valid to propose this block
     let found = false;
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
