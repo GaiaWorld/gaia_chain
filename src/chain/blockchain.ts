@@ -393,8 +393,6 @@ export const newBlockChain = (): void => {
         setupGenesisBlock();
         setupCommitteeConfig();
         setupGenesisForgers();
-        // TODO: 改为配置读取，移动到外部
-        setupMiners();
     }
 
     return;
@@ -448,10 +446,10 @@ const setupGenesisAccounts = (): void => {
     }
 };
 
-const setupMiners = (): void => {
+export const setupLocalMiners = (): void => {
     const minersBkt = persistBucket(Miner._$info.name);
     const miner = new Miner();
-    // TODO:JFB read forger from independent files
+    // localForgers.forgers is loading from config.ts file
     for (const forger of localForgers.forgers) {
         // set my own bls private and public keys
         const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
