@@ -5,7 +5,7 @@
 import { generateBlock } from '../chain/block';
 import { getCommitteeConfig, getHeaderByHeight, getTipHeight, newBlocksReach } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
-import { getTxsFromPool } from '../chain/validation';
+import { getTxsFromPool, validateTx } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { localForgers } from '../params/config';
@@ -22,8 +22,7 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
     if (res) {
         const chainHeadBkt = persistBucket(ChainHead._$info.name);
         const chainHead = chainHeadBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
-        // TODO: 交易严格验证
-        const txs = getTxsFromPool();
+        const txs = getTxsFromPool().filter(validateTx);
         const block = generateBlock(res[1], chainHead, res[0], committeeCfg, txs);
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);

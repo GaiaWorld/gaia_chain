@@ -296,7 +296,7 @@ export const validateTx = (tx:Transaction):boolean => {
         return false;
     }
     let account = persistBucket(Account._$info.name).get<string,[Account]>(tx.from)[0];
-    if (account === undefined) {
+    if (!account) {
         account = new Account();
         account.address = tx.from;
         account.nonce = 0;
@@ -322,7 +322,7 @@ export const validateTx = (tx:Transaction):boolean => {
             }
         } else {
             const forger = persistBucket(Forger._$info.name).get<string,[Forger]>(tx.from)[0];
-            if (forger === undefined) {
+            if (!forger) {
                 console.log(`the address is not in forger, can not exit forger`);
 
                 return false;
