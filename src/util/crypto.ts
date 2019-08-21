@@ -83,6 +83,9 @@ export const hex2Buf = (hex: string): Uint8Array => {
 // assuming 32 bit integer
 // encode number to uint8arry buffer
 export const int64ToUint8Array = (x: number): Uint8Array => {
+    if (!Number.isSafeInteger(x)) {
+        throw new Error(`unsafe integer`);
+    }
     const y = x / 2 ** 32;
     // tslint:disable-next-line:no-bitwise
     return new Uint8Array([y,(y << 8),(y << 16),(y << 24), x,(x << 8),(x << 16),(x << 24)].map(z => z >>> 24));

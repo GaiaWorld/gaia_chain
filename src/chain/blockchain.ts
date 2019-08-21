@@ -2,17 +2,17 @@
  * block chain
  */
 
-import { adjustGroup, deriveInitWeight, updateChainHead, updateForgerCommittee, updateForgerInfo } from '../consensus/committee';
+import { deriveInitWeight, updateChainHead, updateForgerInfo } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { localForgers } from '../params/config';
-import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, VERSION } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
-import { memoryBucket, persistBucket } from '../util/db';
+import { persistBucket } from '../util/db';
 import { calcTxRootHash, writeBlockToDB } from './block';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxPool, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -476,13 +476,13 @@ const setupCommitteeConfig = (): void => {
     if (!committeeCfg) {
         const cc = new CommitteeConfig();
         cc.primaryKey = COMMITTEECONFIG_PRIMARY_KEY;
-        cc.blockIterval = BLOCK_INTERVAL;
+        cc.blockIterval = GENESIS.blockInterval;
         cc.totalGroupNumber = GENESIS.totalGroups;
-        cc.totalAccHeight = GENESIS.totalGroups * TOTAL_ACCUMULATE_ROUNDS;
-        cc.minToken = MIN_TOKEN;
-        cc.withdrawReserveBlocks = WITHDRAW_RESERVE_BLOCKS;
-        cc.maxAccRounds = MAX_ACC_ROUNDS;
-        cc.canForgeAfterBlocks = CAN_FORGE_AFTER_BLOCKS;
+        cc.totalAccHeight = GENESIS.totalGroups * GENESIS.totalAccumulateRounds;
+        cc.minToken = GENESIS.minToken;
+        cc.withdrawReserveBlocks = GENESIS.withdrawReservBlocks;
+        cc.maxAccRounds = GENESIS.maxAccRounds;
+        cc.canForgeAfterBlocks = GENESIS.canForgeAfterBlocks;
 
         committeeCfgBkt.put(cc.primaryKey, cc);
     }

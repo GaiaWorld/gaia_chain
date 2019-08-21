@@ -3,6 +3,12 @@ export const GENESIS = {
     timeStamp: 1564736024219,
     blockRandom: 'cc6c85a369f741fd6f409627a0f73fd166f7dba6ba1b5be6c55703bb5243e013',
     totalGroups: 3,
+    minToken: 10000,
+    withdrawReservBlocks: 1,
+    maxAccRounds: 100,
+    canForgeAfterBlocks: 1,
+    blockInterval: 2000,
+    totalAccumulateRounds: 100,
     forgers: [
         {
             address:  '1e6a184455aeb927f0ffe442218bf714296beb00',
