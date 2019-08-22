@@ -399,7 +399,6 @@ export const newBlockChain = (): void => {
         setupGenesisAccounts();
         setupGenesisBlock();
         setupCommitteeConfig();
-        setupGenesisForgers();
     }
 
     return;
@@ -495,7 +494,7 @@ const setupCommitteeConfig = (): void => {
     }
 };
 
-const setupGenesisForgers = (): void => {
+export const setupGenesisForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
@@ -509,7 +508,6 @@ const setupGenesisForgers = (): void => {
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
-            // TODO: 此处无需做矿工初始化，在区块同步后如果发现有在撇脂的矿工未加入则发交易加入
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.applyJoinHeight = 0;

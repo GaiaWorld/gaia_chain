@@ -144,7 +144,7 @@ export const checkShortIDs = (blockHash: string, ids: string[]): boolean => {
     const shortIdsBkt = memoryBucket(TransactionShortID._$info.name);
     const values = shortIdsBkt.get<string[], [TransactionShortID]>(ids.map(id => blockHash + id));
     console.log(`shortids: ${JSON.stringify(values)}`);
-    if (values.some(v => v === undefined || v === null)) {
+    if (values.length <= 0 || values.some(v => v === undefined || v === null)) {
         return false;
     }
 

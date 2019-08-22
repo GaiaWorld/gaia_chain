@@ -3,7 +3,7 @@
  */
 
 import { generateBlock } from '../chain/block';
-import { getCommitteeConfig, getHeaderByHeight, getTipHeight, newBlocksReach } from '../chain/blockchain';
+import { getCommitteeConfig, getHeaderByHeight, getTipHeight, newBlocksReach, setupGenesisForgers } from '../chain/blockchain';
 import { Account, ChainHead, CommitteeConfig, Forger, ForgerCommittee, Header, Miner, Transaction } from '../chain/schema.s';
 import { getTxsFromPool, validateTx } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
@@ -69,6 +69,9 @@ const returnStake = (forger: Forger): void => {
 
 export const selectMostWeightMiner = (height: number, committeeCfg: CommitteeConfig): [Miner, Forger] => {
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
+    if (!forgersBkt.get<number, [ForgerCommittee]>(0)[0]) {
+        setupGenesisForgers();
+    }
     const minersBkt = persistBucket(Miner._$info.name);
     const forgers = forgersBkt.get<number, [ForgerCommittee]>(height % committeeCfg.totalGroupNumber)[0].forgers;
     forgers.sort((a: Forger, b: Forger) => calcForgerWeightAtHeight(b, height, committeeCfg) - calcForgerWeightAtHeight(a, height, committeeCfg));

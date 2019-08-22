@@ -3,7 +3,7 @@ import { GENESIS } from '../params/genesis';
 import { blsSignHash, buf2Hex, hex2Buf, pubKeyToAddress, sha256, verify } from '../util/crypto';
 import { memoryBucket, persistBucket } from '../util/db';
 import { calcTxRootHash } from './block';
-import { Block, getHeaderByHeight, getVersion } from './blockchain';
+import { Block, getHeaderByHeight, getVersion, setupGenesisForgers } from './blockchain';
 import { calcHeaderHash } from './header';
 import { Account, DBTransaction, Forger, ForgerCommittee, Header, Transaction, TxPool, TxType } from './schema.s';
 import { calcTxHash, serializeForgerCommitteeTx, serializeTx } from './transaction';
@@ -226,10 +226,13 @@ export const validateBlock = (block:Block):boolean => {
 
         return false;
     }
-    
+
     // check if forger is valid to propose this block
     let found = false;
     const forgersBkt = persistBucket(ForgerCommittee._$info.name);
+    if (!forgersBkt.get<number, [ForgerCommittee]>(0)[0]) {
+        setupGenesisForgers();
+    }
     const forgers = forgersBkt.get<number, [ForgerCommittee]>((block.header.height - 1) % GENESIS.totalGroups)[0].forgers;
     for (const forger of forgers) {
         if (forger.address === block.header.forger) {
