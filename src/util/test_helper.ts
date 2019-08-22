@@ -2,13 +2,12 @@
  * test helpers
  */
 
-import { Block } from '../chain/blockchain';
-import { calcHeaderHash, serializeHeader, signHeader } from '../chain/header';
+import { calcHeaderHash, signHeader } from '../chain/header';
 import { ChainHead, DBBody, Forger, ForgerCommittee, Header, Height2Hash, Transaction } from '../chain/schema.s';
 import { signTx } from '../chain/transaction';
 import { deriveInitWeight } from '../consensus/committee';
 import { GENESIS } from '../params/genesis';
-import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress } from './crypto';
+import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, number2Uint8Array, pubKeyToAddress } from './crypto';
 import { persistBucket } from './db';
 
 export const generateTxs = (len: number): Transaction[] => {
@@ -82,7 +81,7 @@ export const generateMiners = (len: number): void => {
                 forger.address = address;
                 forger.groupNumber = i;
                 forger.initWeight = deriveInitWeight(address, GENESIS.blockRandom, 0, stake);
-                forger.addHeight = 0;
+                forger.applyJoinHeight = 0;
                 forger.pubKey = buf2Hex(pubKey);
                 forger.stake = stake;
 
@@ -146,11 +145,11 @@ export const generateMockChain = (len: number): void => {
         chainHead.genesisHash = '';
         chainHead.headHash = header.bhHash;
         chainHead.height = i;
-        chainHead.pk = CHAIN_HEAD_PRIMARY_KEY;
+        chainHead.primaryKey = buf2Hex(number2Uint8Array(chainHead.height)) + chainHead.headHash;
         chainHead.prevHash = '0';
         chainHead.totalWeight = header.totalWeight;
 
-        chainHeadBkt.put(chainHead.pk, chainHead);
+        chainHeadBkt.put(chainHead.primaryKey, chainHead);
     }
 
 };

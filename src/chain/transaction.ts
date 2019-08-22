@@ -1,7 +1,7 @@
 import { BonBuffer } from '../pi/util/bon';
 import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, pubKeyToAddress, sha256, sign } from '../util/crypto';
-import { persistBucket } from '../util/db';
-import { Account, ForgerCommitteeTx, PenaltyTx, Transaction, TxType } from './schema.s';
+import { memoryBucket, persistBucket } from '../util/db';
+import { Account, ForgerCommitteeTx, PenaltyTx, Transaction, TransactionShortID, TxType } from './schema.s';
 import { GOD_ADDRESS } from './validation';
 
 // don't serialize tx.hash, tx.signature
@@ -138,6 +138,29 @@ export const merkleRootHash = (txHashes: Uint8Array[]): string => {
     }
 
     return buf2Hex(hashes[0]);
+};
+
+export const checkShortIDs = (blockHash: string, ids: string[]): boolean => {
+    const shortIdsBkt = memoryBucket(TransactionShortID._$info.name);
+    const values = shortIdsBkt.get<string[], [TransactionShortID]>(ids.map(id => blockHash + id));
+    console.log(`shortids: ${JSON.stringify(values)}`);
+    if (values.length <= 0 || values.some(v => v === undefined || v === null)) {
+        return false;
+    }
+
+    return true;
+};
+
+export const saveShortIDs = (blockHash: string, ids: string[]): void => {
+    const shortIdsBkt = memoryBucket(TransactionShortID._$info.name);
+    const txShortIDs = ids.map(id => {
+        const shortid = new TransactionShortID();
+        shortid.id = blockHash + id;
+
+        return shortid;
+    });
+
+    shortIdsBkt.put(ids.map(id => blockHash + id), txShortIDs);
 };
 
 const doubleSha256 = (h1: Uint8Array, h2: Uint8Array): Uint8Array => {

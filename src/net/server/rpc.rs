@@ -23,7 +23,8 @@ struct TxArray{
 }
 
 struct HeaderArray{
-    arr:&[Header]
+    arr:&[Header],
+    shortIDs: Option<HashMap<String, Option<[String]>>>,
 }
 
 struct BodyArray{

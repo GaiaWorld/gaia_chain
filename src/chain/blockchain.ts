@@ -7,9 +7,9 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { localForgers } from '../params/config';
-import { CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, VERSION } from '../params/constants';
+import { COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, VERSION } from '../params/constants';
 import { GENESIS } from '../params/genesis';
-import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
+import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, number2Uint8Array, uint8arry2Number } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { calcTxRootHash, writeBlockToDB } from './block';
 import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
@@ -38,13 +38,19 @@ export const getVersion = (): string => {
 export const getTipHeight = (): number => {
     const bkt = persistBucket(ChainHead._$info.name);
 
-    return bkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0].height;
+    const iter = bkt.iter(undefined, true);
+    const key = iter.next()[1];
+
+    return uint8arry2Number(hex2Buf(key.primaryKey.slice(0, 16)));
 };
 
 export const getTipTotalWeight = (): number => {
     const bkt = persistBucket(ChainHead._$info.name);
 
-    return bkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0].totalWeight;
+    const iter = bkt.iter(undefined, true);
+    const key = iter.next()[1];
+
+    return key.totalWeight;
 };
 
 export const getServiceFlags = ():number => {
@@ -375,9 +381,10 @@ export const getCommitteeConfig = (): CommitteeConfig => {
 export const newBlockChain = (): void => {
     // load chain head
     const chainHeadBkt = persistBucket(ChainHead._$info.name);
-    const chainHead = chainHeadBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
 
-    if (!chainHead) {
+    const iter = chainHeadBkt.iter(undefined, true);
+
+    if (!iter.next()) {
         const ch = new ChainHead(); // FIXME:only one element
         ch.genesisHash = GENESIS.hash;
         ch.headHash = GENESIS.hash;
@@ -386,13 +393,12 @@ export const newBlockChain = (): void => {
         ch.height = 1;
         ch.blockRandom = GENESIS.blockRandom;
         ch.totalWeight = 0;
-        ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
+        ch.primaryKey = buf2Hex(number2Uint8Array(ch.height)) + ch.headHash;
         chainHeadBkt.put(ch.primaryKey, ch);
 
         setupGenesisAccounts();
         setupGenesisBlock();
         setupCommitteeConfig();
-        setupGenesisForgers();
     }
 
     return;
@@ -488,7 +494,7 @@ const setupCommitteeConfig = (): void => {
     }
 };
 
-const setupGenesisForgers = (): void => {
+export const setupGenesisForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
@@ -502,7 +508,6 @@ const setupGenesisForgers = (): void => {
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
-            // TODO: 此处无需做矿工初始化，在区块同步后如果发现有在撇脂的矿工未加入则发交易加入
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.applyJoinHeight = 0;
