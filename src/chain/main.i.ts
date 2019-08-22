@@ -1,7 +1,7 @@
 /**
  * main function
  */
-import { getCommitteeConfig, newBlockChain } from '../chain/blockchain';
+import { getCommitteeConfig, newBlockChain, setupLocalMiners } from '../chain/blockchain';
 import { broadcastNewTx, runMining } from '../consensus/committee';
 import { asyncLaunch } from '../net/client/async_lanuch.p';
 import { launch } from '../net/client/launch';
@@ -17,6 +17,7 @@ import { addTx2Pool } from './validation';
 // print the account info and txs info and forgers
 const start = (): void => {
     newBlockChain();
+    setupLocalMiners();
 
     asyncCall(asyncLaunch, [], (): void => {
         setTimeout(() => {

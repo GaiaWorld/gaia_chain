@@ -2,17 +2,17 @@
  * block chain
  */
 
-import { adjustGroup, deriveInitWeight, updateChainHead, updateForgerCommittee, updateForgerInfo } from '../consensus/committee';
+import { deriveInitWeight, updateChainHead, updateForgerInfo } from '../consensus/committee';
 import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { localForgers } from '../params/config';
-import { BLOCK_INTERVAL, CAN_FORGE_AFTER_BLOCKS, CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, MAX_ACC_ROUNDS, MIN_TOKEN, TOTAL_ACCUMULATE_ROUNDS, VERSION, WITHDRAW_RESERVE_BLOCKS } from '../params/constants';
+import { CHAIN_HEAD_PRIMARY_KEY, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, VERSION } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand } from '../util/crypto';
-import { memoryBucket, persistBucket } from '../util/db';
+import { persistBucket } from '../util/db';
 import { calcTxRootHash, writeBlockToDB } from './block';
-import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxPool, TxType } from './schema.s';
+import { Account, Body, ChainHead, CommitteeConfig, DBBody, DBTransaction, Forger, ForgerCommittee, ForgerCommitteeTx, Header, Height2Hash, Miner, PenaltyTx, Transaction, TxType } from './schema.s';
 import { addTx2Pool, MIN_GAS, removeMinedTxFromPool, simpleValidateHeader, simpleValidateTx, validateBlock } from './validation';
 
 export const MAX_BLOCK_SIZE = 10 * 1024 * 1024;
@@ -215,6 +215,7 @@ export const newBlocksReach = (blocks: Block[]): void => {
 };
 
 // new blocks from peer
+// TODO: 充分利用数据库的事务，检验过后马上操作，将这个函数和检验合并
 export const newBodiesReach = (bodys: Body[]): void => {
     console.log('\n\nnewBodiesReach: ---------------------- ', bodys);
     const currentHeight = getTipHeight();
@@ -388,11 +389,10 @@ export const newBlockChain = (): void => {
         ch.primaryKey = CHAIN_HEAD_PRIMARY_KEY;
         chainHeadBkt.put(ch.primaryKey, ch);
 
-        setupInitialAccounts();
+        setupGenesisAccounts();
         setupGenesisBlock();
-        initCommitteeConfig();
-        initPreConfiguredForgers();
-        setupMiners();
+        setupCommitteeConfig();
+        setupGenesisForgers();
     }
 
     return;
@@ -432,7 +432,7 @@ const setupGenesisBlock = (): void => {
     writeBlockToDB(new Block(header, body));
 };
 
-const setupInitialAccounts = (): void => {
+const setupGenesisAccounts = (): void => {
     // setup initial accounts
     const accountBkt = persistBucket(Account._$info.name);
     for (let i = 0; i < GENESIS.accounts.length; i++) {
@@ -446,10 +446,10 @@ const setupInitialAccounts = (): void => {
     }
 };
 
-const setupMiners = (): void => {
+export const setupLocalMiners = (): void => {
     const minersBkt = persistBucket(Miner._$info.name);
     const miner = new Miner();
-    // TODO:JFB read forger from independent files
+    // localForgers.forgers is loading from config.ts file
     for (const forger of localForgers.forgers) {
         // set my own bls private and public keys
         const [privKey, pubKey] = genKeyPairFromSeed(getRand(32));
@@ -468,26 +468,27 @@ const calcInitialGroupNumber = (address: string): number => {
     return parseInt(address.slice(address.length - 2), 16);
 };
 
-const initCommitteeConfig = (): void => {
+// TODO: 把初始化信息放到创世区块中
+const setupCommitteeConfig = (): void => {
     // initialize committee config
     const committeeCfgBkt = persistBucket(CommitteeConfig._$info.name);
     const committeeCfg = committeeCfgBkt.get<string, [CommitteeConfig]>(COMMITTEECONFIG_PRIMARY_KEY)[0];
     if (!committeeCfg) {
         const cc = new CommitteeConfig();
         cc.primaryKey = COMMITTEECONFIG_PRIMARY_KEY;
-        cc.blockIterval = BLOCK_INTERVAL;
+        cc.blockIterval = GENESIS.blockInterval;
         cc.totalGroupNumber = GENESIS.totalGroups;
-        cc.totalAccHeight = GENESIS.totalGroups * TOTAL_ACCUMULATE_ROUNDS;
-        cc.minToken = MIN_TOKEN;
-        cc.withdrawReserveBlocks = WITHDRAW_RESERVE_BLOCKS;
-        cc.maxAccRounds = MAX_ACC_ROUNDS;
-        cc.canForgeAfterBlocks = CAN_FORGE_AFTER_BLOCKS;
+        cc.totalAccHeight = GENESIS.totalGroups * GENESIS.totalAccumulateRounds;
+        cc.minToken = GENESIS.minToken;
+        cc.withdrawReserveBlocks = GENESIS.withdrawReservBlocks;
+        cc.maxAccRounds = GENESIS.maxAccRounds;
+        cc.canForgeAfterBlocks = GENESIS.canForgeAfterBlocks;
 
         committeeCfgBkt.put(cc.primaryKey, cc);
     }
 };
 
-const initPreConfiguredForgers = (): void => {
+const setupGenesisForgers = (): void => {
     // initialize all pre configured forgers
     const forgerBkt = persistBucket(Forger._$info.name);
     // load pre configured miners from genesis file
@@ -501,6 +502,7 @@ const initPreConfiguredForgers = (): void => {
         for (let i = 0; i < preConfiguredForgers.length; i++) {
             const f = new Forger();
             f.address = preConfiguredForgers[i].address;
+            // TODO: 此处无需做矿工初始化，在区块同步后如果发现有在撇脂的矿工未加入则发交易加入
             f.initWeight = deriveInitWeight(f.address, GENESIS.blockRandom, 0, preConfiguredForgers[i].stake);
             // initial miners are start at height 0
             f.applyJoinHeight = 0;

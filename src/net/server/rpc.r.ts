@@ -230,7 +230,8 @@ export const broadcastInv = (invNet:InvNet):boolean => {
                 newHeadersReach(headerArray.arr);
             }
             console.log(`broadcastInv request body height is : ${invArrayNet.r.arr[0].height}, hash is : ${invArrayNet.r.arr[0].hash}}`);
-            // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取
+            // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取，对区块头做严格检验，检验通过才下载区块体
+            // TODO: 获取区块头的时候，附带区块体里交易的短哈希(4字节)集合
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 console.log(`broadcastInv invArrayNet ${JSON.stringify(invArrayNet)}\nbodyArray is : ${JSON.stringify(bodyArray)}`);
                 // TODO: 对body进行验证
