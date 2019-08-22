@@ -2,6 +2,7 @@
  * 封装了所有客户端可以调用的RPC请求
  */
 import { getBody, getGenesisHash, getHeader, getHeaderByHeight, getTipHeight, getTipTotalWeight, getTx, newBodiesReach, newHeadersReach, newTxsReach } from '../../chain/blockchain';
+import { checkShortIDs, saveShortIDs } from '../../chain/transaction';
 import { checkVersion } from '../../chain/validation';
 import { SerializeType } from '../../pi/util/bon';
 import { RpcClient } from '../../pi_pt/net/rpc_client';
@@ -68,12 +69,23 @@ export const getHeaders = (invArray:InvArrayNet):HeaderArray => {
     console.log(`start getHeaders rpc from ${invArray.net}`);
     const headerArray = new HeaderArray();
     headerArray.arr = [];
+    headerArray.shortIDs = new Map();
     invArray.r.arr.forEach((inv:Inv) => {
         const header = getHeader(inv);
         if (header) {
             headerArray.arr.push(header);
         } else {
             console.log(`++++++++++++++++ get empty header: ${inv}`);
+        }
+
+        const body = getBody(inv);
+        if (body) {
+            const ids = [];
+            for (const tx of body.txs) {
+                ids.push(tx.txHash.slice(0, 8));
+            }
+            headerArray.shortIDs.set(header.bhHash, ids);
+            console.log(`shortIDs header hash: ${header.bhHash}\nids: ${ids}`);
         }
     });
     console.log(`end getHeaders rpc from ${invArray.net}, headerArray is : ${JSON.stringify(headerArray)}`);
@@ -231,11 +243,17 @@ export const broadcastInv = (invNet:InvNet):boolean => {
             }
             console.log(`broadcastInv request body height is : ${invArrayNet.r.arr[0].height}, hash is : ${invArrayNet.r.arr[0].hash}}`);
             // TODO: core判断是否需要对应的body，如果需要则通过getBlocks获取，对区块头做严格检验，检验通过才下载区块体
-            // TODO: 获取区块头的时候，附带区块体里交易的短哈希(4字节)集合
+            // check if we have all the short ids
+            if (checkShortIDs(invNet.r.hash, headerArray.shortIDs.get(invNet.r.hash))) {
+                return false;
+            }
+
             clientRequest(invNet.net, getBlocksString, invArrayNet, (bodyArray:BodyArray, pBlockNetAddr:String) => {
                 console.log(`broadcastInv invArrayNet ${JSON.stringify(invArrayNet)}\nbodyArray is : ${JSON.stringify(bodyArray)}`);
                 // TODO: 对body进行验证
                 if (bodyArray && bodyArray.arr && bodyArray.arr.length > 0) {
+                    // write short ids
+                    saveShortIDs(invNet.r.hash, headerArray.shortIDs.get(invNet.r.hash));
                     newBodiesReach(bodyArray.arr);
                 } else {
                     console.log(`++++++++++++++++++++ bodyArray empty`);

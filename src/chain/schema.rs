@@ -220,3 +220,9 @@ struct Orphans {
     header: Header,
     body: Body,
 }
+
+// id = blockhash + shortid
+#[db=memory,primary=id]
+struct TransactionShortID {
+    id: String,
+}
