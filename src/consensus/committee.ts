@@ -9,10 +9,9 @@ import { getTxsFromPool, validateTx } from '../chain/validation';
 import { Inv } from '../net/server/rpc.s';
 import { notifyNewBlock, notifyNewTx } from '../net/server/subscribe';
 import { localForgers } from '../params/config';
-import { CHAIN_HEAD_PRIMARY_KEY } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { BonBuffer } from '../pi/util/bon';
-import { buf2Hex, sha256 } from '../util/crypto';
+import { buf2Hex, number2Uint8Array, sha256 } from '../util/crypto';
 import { persistBucket } from '../util/db';
 
 export const runMining = (committeeCfg: CommitteeConfig): void => {
@@ -21,9 +20,9 @@ export const runMining = (committeeCfg: CommitteeConfig): void => {
     console.log(`\nselectMostWeightMiner ${JSON.stringify(res)}`);
     if (res) {
         const chainHeadBkt = persistBucket(ChainHead._$info.name);
-        const chainHead = chainHeadBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
+        const iter = chainHeadBkt.iter(undefined, true);
         const txs = getTxsFromPool().filter(validateTx);
-        const block = generateBlock(res[1], chainHead, res[0], committeeCfg, txs);
+        const block = generateBlock(res[1], iter.next()[1], res[0], committeeCfg, txs);
         console.log('\n============================= generate new block at tip height ============================            ', currentHeight);
         console.log(block);
         console.log('\n\n');
@@ -143,16 +142,17 @@ export const getForgerWeight = (height: number, address: string): number => {
 // update chain head
 export const updateChainHead = (header: Header): void => {
     const chBkt = persistBucket(ChainHead._$info.name);
-    const chainHead = chBkt.get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
-
+    const chainHead = new ChainHead();
     const prveHeader = getHeaderByHeight(header.height - 1);
     console.log(`chainHead.headHash ${chainHead.headHash}\nchainHead.height ${chainHead.height}`);
     if (prveHeader.bhHash === header.prevHash && prveHeader.height + 1 === header.height) {
         chainHead.prevHash = chainHead.headHash;
+        chainHead.genesisHash = GENESIS.hash;
         chainHead.headHash = header.bhHash;
         chainHead.height = header.height;
         chainHead.blockRandom = header.blockRandom;
         chainHead.totalWeight = header.totalWeight;
+        chainHead.primaryKey = buf2Hex(number2Uint8Array(chainHead.height)) + chainHead.headHash;
 
         chBkt.put(chainHead.primaryKey, chainHead);
     } else {
@@ -160,7 +160,7 @@ export const updateChainHead = (header: Header): void => {
         // TODO: add to Orphans pool
     }
 
-    console.log(`\nAfter update chain head: ${JSON.stringify(chBkt.get(CHAIN_HEAD_PRIMARY_KEY)[0])}`);
+    console.log(`\nAfter update chain head: ${JSON.stringify(chBkt.get(chainHead.primaryKey)[0])}`);
 };
 
 // broad cast new block to peers

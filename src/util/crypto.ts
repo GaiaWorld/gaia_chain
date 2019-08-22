@@ -38,7 +38,7 @@ export const blsRand = (prveRandom: string, height: number, privKey: Uint8Array)
 
 export const blsSignHash = (prveRandom: string, height: number): Uint8Array => {
     const random = hex2Buf(prveRandom);
-    const heightArray = int64ToUint8Array(height);
+    const heightArray = number2Uint8Array(height);
 
     const entrophy = new Uint8Array(random.length + heightArray.length);
     entrophy.set(random);
@@ -82,13 +82,17 @@ export const hex2Buf = (hex: string): Uint8Array => {
 
 // assuming 32 bit integer
 // encode number to uint8arry buffer
-export const int64ToUint8Array = (x: number): Uint8Array => {
+export const number2Uint8Array = (x: number): Uint8Array => {
     if (!Number.isSafeInteger(x)) {
         throw new Error(`unsafe integer`);
     }
     const y = x / 2 ** 32;
     // tslint:disable-next-line:no-bitwise
     return new Uint8Array([y,(y << 8),(y << 16),(y << 24), x,(x << 8),(x << 16),(x << 24)].map(z => z >>> 24));
+};
+
+export const uint8arry2Number = (u8array: Uint8Array): number => {
+    return u8array.reduce((a,c,i) => a + c * 2 ** (56 - i * 8),0);
 };
 
 const testSignVerify = (): void => {

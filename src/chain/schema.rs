@@ -172,8 +172,6 @@ struct Body {
     txs: [Transaction],
 }
 
-// TODO: 主键是高度+headHeash, 通过迭代找到最高高度
-//FIXME:JFB use currentHeight instead of chainHead
 // blockchain head info
 #[db=file,primary=primaryKey]
 struct ChainHead {

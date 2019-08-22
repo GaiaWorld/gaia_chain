@@ -217,7 +217,7 @@ export const validateBlock = (block:Block):boolean => {
 
         return false;
     }
-    // const preHeaderTip = persistBucket(ChainHead._$info.name).get<string, [ChainHead]>(CHAIN_HEAD_PRIMARY_KEY)[0];
+
     const preHeader = getHeaderByHeight(block.header.height - 1);
     console.log(`################ preHeaderTip header ${JSON.stringify(preHeader)}\npreHeaderTip body ${JSON.stringify(1)}\ncurrentTip Header ${JSON.stringify(block.header)}\ncurrentTip body ${JSON.stringify(block.body)}`);
 
