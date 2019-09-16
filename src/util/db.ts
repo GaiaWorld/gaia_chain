@@ -2,6 +2,7 @@
  * wrappers for db operations (CRUD)
  */
 
+import { TransactionShortID } from '../chain/schema.s';
 import { Mgr, Tr } from '../pi/db/mgr';
 import { Env } from '../pi/lang/env';
 import { TabMeta } from '../pi/struct/sinfo';
@@ -28,6 +29,16 @@ const createBucket = (dbType: DbType, bucketName: string, bucketMetaInfo: TabMet
     }
 
     return new Bucket(dbType, bucketName);
+};
+
+export const snapshot = (dstTab: string, srcTab: string): void => {
+    const dbMgr = env.dbMgr;
+    dbMgr.write((tr: Tr) => {
+        console.log('before snapshot');
+        (<any>tr).inner.snapshot(dstTab, srcTab);
+        console.log('end snapshot');
+    });
+    console.log('snapshot end');
 };
 
 export const createPersistBucket = (bucketName: string, bucketMetaInfo: TabMeta): Bucket => {
@@ -198,3 +209,37 @@ class Bucket {
         return iter;
     }
 }
+
+// tests
+
+const testSnapshot = (): void => {
+    const dbMgr = env.dbMgr;
+
+    dbMgr.write((tr: Tr) => {
+        const tid = new TransactionShortID();
+        tid.id = '123';
+        tr.modify([{ ware: 'memory', tab: TransactionShortID._$info.name, key: tid.id, value: tid }], 1000, false);
+    });
+    snapshot('TransactionShortID1', TransactionShortID._$info.name);
+
+    dbMgr.read((tr: Tr) => {
+        const tid = new TransactionShortID();
+        tid.id = '123';
+        const q = tr.query([{ ware: 'memory', tab: 'TransactionShortID1', key: tid.id }], 1000, false);
+        console.log(`queried item: ${JSON.stringify(q)}`);
+    });
+
+    dbMgr.write((tr: Tr) => {
+        const tid = new TransactionShortID();
+        tid.id = '456';
+        tr.modify([{ ware: 'memory', tab: TransactionShortID._$info.name, key: tid.id, value: tid }], 1000, false);
+    });
+    snapshot('TransactionShortID1', TransactionShortID._$info.name);
+
+    dbMgr.read((tr: Tr) => {
+        const tid = new TransactionShortID();
+        tid.id = '456';
+        const q = tr.query([{ ware: 'memory', tab: 'TransactionShortID1', key: tid.id }], 1000, false);
+        console.log(`queried item: ${JSON.stringify(q)}`);
+    });
+};
