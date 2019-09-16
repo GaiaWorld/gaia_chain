@@ -31,11 +31,11 @@ const createBucket = (dbType: DbType, bucketName: string, bucketMetaInfo: TabMet
     return new Bucket(dbType, bucketName);
 };
 
-export const snapshot = (dstTab: string, srcTab: string): void => {
+export const snapshot = (ware: string, dstTab: string, srcTab: string): void => {
     const dbMgr = env.dbMgr;
     dbMgr.write((tr: Tr) => {
         console.log('before snapshot');
-        (<any>tr).inner.snapshot(dstTab, srcTab);
+        (<any>tr).inner.snapshot(ware, dstTab, srcTab);
         console.log('end snapshot');
     });
     console.log('snapshot end');
@@ -212,7 +212,7 @@ class Bucket {
 
 // tests
 
-const testSnapshot = (): void => {
+export const testSnapshot = (): void => {
     const dbMgr = env.dbMgr;
 
     dbMgr.write((tr: Tr) => {
@@ -220,7 +220,7 @@ const testSnapshot = (): void => {
         tid.id = '123';
         tr.modify([{ ware: 'memory', tab: TransactionShortID._$info.name, key: tid.id, value: tid }], 1000, false);
     });
-    snapshot('TransactionShortID1', TransactionShortID._$info.name);
+    snapshot('memory', 'TransactionShortID1', TransactionShortID._$info.name);
 
     dbMgr.read((tr: Tr) => {
         const tid = new TransactionShortID();
@@ -234,7 +234,7 @@ const testSnapshot = (): void => {
         tid.id = '456';
         tr.modify([{ ware: 'memory', tab: TransactionShortID._$info.name, key: tid.id, value: tid }], 1000, false);
     });
-    snapshot('TransactionShortID1', TransactionShortID._$info.name);
+    snapshot('memory', 'TransactionShortID1', TransactionShortID._$info.name);
 
     dbMgr.read((tr: Tr) => {
         const tid = new TransactionShortID();
