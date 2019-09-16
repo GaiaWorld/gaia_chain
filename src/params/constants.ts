@@ -4,3 +4,4 @@ export const GENESIS_SIGNATURE = '';
 export const EMPTY_CODE_HASH = '';
 export const EMPTY_RECEIPT_ROOT_HASH = '';
 export const COMMITTEECONFIG_PRIMARY_KEY = 'CC';
+export const CAN_FORGE_AFTER_BLOCKS = 256;

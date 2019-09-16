@@ -7,7 +7,7 @@ import { INV_MSG_TYPE } from '../net/msg';
 import { NODE_TYPE } from '../net/pNode.s';
 import { Inv } from '../net/server/rpc.s';
 import { localForgers } from '../params/config';
-import { COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, VERSION } from '../params/constants';
+import { CAN_FORGE_AFTER_BLOCKS, COMMITTEECONFIG_PRIMARY_KEY, EMPTY_CODE_HASH, EMPTY_RECEIPT_ROOT_HASH, GENESIS_PREV_HASH, GENESIS_SIGNATURE, VERSION } from '../params/constants';
 import { GENESIS } from '../params/genesis';
 import { buf2Hex, genKeyPairFromSeed, getRand, hex2Buf, number2Uint8Array, uint8arry2Number } from '../util/crypto';
 import { persistBucket } from '../util/db';
