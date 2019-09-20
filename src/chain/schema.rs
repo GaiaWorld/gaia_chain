@@ -88,6 +88,7 @@ struct DBTransaction {
     signature: String,
 }
 
+#[db=file,primary=txHash]
 struct Transaction {
     txHash: String,
     nonce: usize,
@@ -159,6 +160,34 @@ struct Height2Hash {
     bhHash: String,
 }
 
+#[db=file,primary=txHash]
+struct TxHashIndex {
+    txHash: String,
+    height: usize,
+    bhHash: String,
+}
+
+// 新到的区块应该在哪个分叉链上执行交易
+#[db=file,primary=blockId]
+struct ForkPoint {
+    // 区块哈希 || 高度
+    blockId: String,
+    forkChainId: usize,
+}
+
+// 分叉链管理
+#[db=file,primary=forkChainId]
+struct ForkChainMgr {
+    forkChainId: usize,
+    currentHeight: usize,
+    totalWeight: usize,
+}
+
+#[db=file,primary=forkChainId]
+struct BestForkChain {
+    forkChainId: usize,
+}
+
 // block body
 #[db=file,primary=bhHash]
 struct DBBody {
@@ -167,6 +196,7 @@ struct DBBody {
     txs: [String],
 }
 
+#[db=file,primary=bhHash]
 struct Body {
     bhHash: String,
     txs: [Transaction],
