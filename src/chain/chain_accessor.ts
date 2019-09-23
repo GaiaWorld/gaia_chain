@@ -1,8 +1,11 @@
 import { Tr as Txn } from '../pi/db/mgr';
 import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
+import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { Body, Header, Transaction, TxHashIndex } from './schema.s';
+
+const logger = new Logger('CHAIN_ACCESSOR', LogLevel.DEBUG);
 
 export const txLookupKey = (txHash: string): string => {
     return `l${txHash}`;
@@ -18,6 +21,7 @@ export const readTxLookupEntry = (txn: Txn, txHash: string): TxHashIndex => {
     if (item) {
         return <TxHashIndex>item[0].value;
     }
+    logger.warn(`read tx lookup entry failed: hash ${txHash}`);
 };
 
 // lookupkey => block hash
@@ -34,10 +38,12 @@ export const writeTxLookupEntries = (txn: Txn, block: Block): void => {
     if (items.length > 0) {
         txn.modify(items, 1000, false);
     }
+    logger.debug(`empty lookup entry: hash ${block.header.bhHash}, height ${block.header.height}`);
 };
 
 export const deleteTxLookupEntry = (txn: Txn, txHash: string): void => {
     txn.modify([{ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name, key: `${txLookupKey(txHash)}` }], 1000, false);
+    logger.debug(`delete look up entry: hash ${txHash}`);
 };
 
 export const headerKey = (height: number, hash: string): string => {
@@ -57,6 +63,7 @@ export const readHeader = (txn: Txn, hash: string, height: number): Header => {
     if (item) {
         return <Header>item[0].value;
     }
+    logger.debug(`read header failed: hash ${hash}, height: ${height}`);
 };
 
 export const writeHeader = (txn: Txn, header: Header): void => {
@@ -65,6 +72,7 @@ export const writeHeader = (txn: Txn, header: Header): void => {
         , 1000
         , false
     );
+    logger.debug(`write header: hash ${header.bhHash}, height: ${header.height}`);
 };
 
 export const deleteHeader = (txn: Txn, hash: string, height: number): void => {
@@ -73,6 +81,7 @@ export const deleteHeader = (txn: Txn, hash: string, height: number): void => {
         , 1000
         , false
     );
+    logger.debug(`delete header: hash ${hash}, height: ${height}`);
 };
 
 export const readBody = (txn: Txn, hash: string, height: number): Body => {
@@ -84,6 +93,7 @@ export const readBody = (txn: Txn, hash: string, height: number): Body => {
     if (item) {
         return <Body> item[0].value;
     }
+    logger.debug(`read body failed: hash ${hash}, height: ${height}`);
 };
 
 export const writeBody = (txn: Txn, height: number, body: Body): void => {
@@ -92,6 +102,7 @@ export const writeBody = (txn: Txn, height: number, body: Body): void => {
         , 1000
         , false
     );
+    logger.debug(`write body: hash ${body.bhHash}, height: ${height}`);
 };
 
 export const deleteBody = (txn: Txn, hash: string, height: number): void => {
@@ -100,6 +111,7 @@ export const deleteBody = (txn: Txn, hash: string, height: number): void => {
         , 1000
         , false
     );
+    logger.debug(`delete body: hash ${hash}, height: ${height}`);
 };
 
 export const readBlock = (txn: Txn, hash: string, height: number): Block => {
@@ -109,16 +121,19 @@ export const readBlock = (txn: Txn, hash: string, height: number): Block => {
     if (header && body) {
         return new Block(header, body);
     }
+    logger.warn(`block not found, hash: ${hash}, height: ${height}`);
 };
 
 export const writeBlock = (txn: Txn, block: Block): void => {
     writeHeader(txn, block.header);
     writeBody(txn, block.header.height, block.body);
+    logger.debug(`write block hash: ${block.header.bhHash} height: ${block.header.height}`);
 };
 
 export const deleteBlock = (txn: Txn, hash: string, height: number): void => {
     deleteHeader(txn, hash, height);
     deleteBody(txn, hash, height);
+    logger.debug(`delete block hash: ${hash}, height: ${height}`);
 };
 
 export const readTransaction = (txn: Txn, txHash: string): Transaction => {
@@ -134,4 +149,5 @@ export const readTransaction = (txn: Txn, txHash: string): Transaction => {
             }
         }
     }
+    logger.warn(`txHash not found: ${txHash}`);
 };
