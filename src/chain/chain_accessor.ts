@@ -3,7 +3,7 @@ import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { Body, Header, Transaction, TxHashIndex } from './schema.s';
+import { Account, Body, Header, Transaction, TxHashIndex } from './schema.s';
 
 const logger = new Logger('CHAIN_ACCESSOR', LogLevel.DEBUG);
 
@@ -150,4 +150,25 @@ export const readTransaction = (txn: Txn, txHash: string): Transaction => {
         }
     }
     logger.warn(`txHash not found: ${txHash}`);
+};
+
+export const readAccount = (txn: Txn, address: string, chainId: number): Account => {
+    const account = txn.query(
+        [{ ware: DEFAULT_FILE_WARE, tab: Account._$info.name, key: `${address}${buf2Hex(number2Uint8Array(chainId))}` }]
+        , 1000
+        , false
+    );
+
+    if (account) {
+        return <Account>account[0].value;
+    }
+    logger.warn(`account not found: address ${address}, chainId ${chainId}`);
+};
+
+export const writeAccount = (txn: Txn, account: Account, chainId: number): void => {
+    txn.modify(
+        [{ ware: DEFAULT_FILE_WARE, tab: Account._$info.name, key: `${account.address}${buf2Hex(number2Uint8Array(chainId))}`, value: Account }]
+        , 1000
+        , false
+    );
 };
