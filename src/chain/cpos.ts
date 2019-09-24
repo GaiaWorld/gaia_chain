@@ -25,6 +25,11 @@ export const getForgersAtHeight = (txn: Txn, height: number, chainId: number): F
     logger.warn(`Can not find forger snapshot at heigth ${height}`);
 };
 
+// snapshot forgers at specific height
+export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: number): void => {
+    return;
+};
+
 export const verifyHeader = (txn: Txn, header: Header, chainId: number): boolean => {
     if (header.version !== VERSION) {
         return false;
