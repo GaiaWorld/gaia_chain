@@ -53,3 +53,8 @@ export const getCanonicalForkChain = (txn: Txn): ForkChain => {
     }
     logger.error(`Can not get canonical chain`);
 };
+
+// TODO: purn non canonical chain for specific time
+export const purnForkChain = (txn: Txn): void => {
+    return;
+};
