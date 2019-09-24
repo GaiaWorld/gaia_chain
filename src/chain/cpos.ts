@@ -37,7 +37,7 @@ export const verifyHeader = (txn: Txn, header: Header, chainId: number): boolean
 
     // check turn
     const forgers = getForgersAtHeight(txn, header.height - 1, chainId);
-    if (forgers.map((f: Forger) => f.address).indexOf(header.pubkey) < 0) {
+    if (forgers.map((f: Forger) => f.address).indexOf(header.forger) < 0) {
         logger.warn(`wrong turn to mine block, forger pubkey ${header.pubkey}`);
     }
 
