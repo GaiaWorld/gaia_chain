@@ -18,6 +18,13 @@ struct ForgerCommittee  {
     forgers: [Forger],
 }
 
+#[db=file,primary=height]
+struct ForgerSnapshot {
+    // height || chainid
+    height: String,
+    forgers: [Forger],
+}
+
 #[db=file,primary=primaryKey]
 struct CommitteeConfig {
     primaryKey: String,
@@ -175,18 +182,25 @@ struct ForkPoint {
     forkChainId: usize,
 }
 
-// 分叉链管理
+// 所有分叉链
 #[db=file,primary=forkChainId]
-struct ForkChainMgr {
+struct ForkChain {
     forkChainId: usize,
     currentHeight: usize,
     totalWeight: usize,
+    headHash: String,
+    blockRandom: String,
+    genesisHash: String,
+    prevHash: String,
+    createTime: usize,
 }
 
 #[db=file,primary=forkChainId]
 struct BestForkChain {
     forkChainId: usize,
 }
+
+// chain id 到 chain head 的映射
 
 // block body
 #[db=file,primary=bhHash]
@@ -203,9 +217,9 @@ struct Body {
 }
 
 // blockchain head info
-#[db=file,primary=primaryKey]
+#[db=file,primary=forkChainId]
 struct ChainHead {
-    primaryKey: String,
+    forkChainId: String,
     headHash: String,
     height: usize,
     blockRandom: String,
