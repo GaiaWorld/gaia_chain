@@ -101,3 +101,13 @@ export const getBlockByHeight = (height: number): Block => {
 
     return new Block(header, body);
 };
+
+// TODO: 
+export const prepareBlock = (): Block => {
+    return;
+};
+
+// TODO:
+export const signBlock = (): Block => {
+    return;
+};
