@@ -54,7 +54,19 @@ export const getCanonicalForkChain = (txn: Txn): ForkChain => {
     logger.error(`Can not get canonical chain`);
 };
 
+// when we receive a block, we should know if it is a new fork block
+export const shouldFork = (txn: Txn, header: Header): boolean => {
+    const chainId = getForkChainId(txn, header);
+    const chain = getForkChain(txn, chainId);
+
+    if (chain.currentHeight >= header.height) {
+        return true;
+    }
+
+    return false;
+};
+
 // TODO: purn non canonical chain for specific time
-export const purnForkChain = (txn: Txn): void => {
+export const prunForkChain = (txn: Txn): void => {
     return;
 };
