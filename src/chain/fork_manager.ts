@@ -4,7 +4,7 @@ import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { assert } from '../util/assert';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
-import { BestForkChain, ForkChain, ForkPoint, Header } from './schema.s';
+import { BestForkChain, ForkChain, ForkPoint, Header, NextForkChainId } from './schema.s';
 
 const logger = new Logger('FORK_MANAGER', LogLevel.DEBUG);
 
@@ -57,8 +57,26 @@ export const getCanonicalForkChain = (txn: Txn): ForkChain => {
 
 // next fork chain id we can use
 export const getNextForkChainId = (txn: Txn): number => {
-    // TODO
-    return 1;
+    // reverse iterator
+    const iter = txn.iter_raw(DEFAULT_FILE_WARE, NextForkChainId._$info.name, undefined, false, '');
+    const nextId = iter.next();
+
+    if (nextId) {
+        const next = (<NextForkChainId>nextId[1]);
+        logger.debug(`Get next fork chain id ${(<NextForkChainId>nextId[1]).nextId}`);
+        next.nextId += 1;
+        txn.modify([{ ware: DEFAULT_FILE_WARE, tab: NextForkChainId._$info.name, key: next.nextId, value: next }], 1000, false);
+
+        return (<NextForkChainId>nextId[1]).nextId;
+    } else {
+        logger.debug(`Initialize fork chain id`);
+        // initialize for the first time
+        const next = new NextForkChainId();
+        next.nextId = 1;
+        txn.modify([{ ware: DEFAULT_FILE_WARE, tab: NextForkChainId._$info.name, key: 1, value: next }], 1000, false);
+
+        return next.nextId;
+    }
 };
 
 // when we receive a block, we should know if it is a new fork block
@@ -113,5 +131,7 @@ export const updateForkChainHead = (txn: Txn, header: Header, chainId: number): 
 
 // TODO: purn non canonical chain for specific time
 export const prunForkChain = (txn: Txn): void => {
+    // iterate and prun
+    
     return;
 };

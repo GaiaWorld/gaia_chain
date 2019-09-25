@@ -200,6 +200,11 @@ struct BestForkChain {
     forkChainId: usize,
 }
 
+#[db=file,primary=nextId]
+struct NextForkChainId {
+    nextId: usize,
+}
+
 // chain id 到 chain head 的映射
 
 // block body
