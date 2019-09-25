@@ -1,6 +1,7 @@
 // fork manager
 import { Tr as Txn } from '../pi/db/mgr';
 import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
+import { assert } from '../util/assert';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { BestForkChain, ForkChain, ForkPoint, Header } from './schema.s';
@@ -54,6 +55,12 @@ export const getCanonicalForkChain = (txn: Txn): ForkChain => {
     logger.error(`Can not get canonical chain`);
 };
 
+// next fork chain id we can use
+export const getNextForkChainId = (txn: Txn): number => {
+    // TODO
+    return 1;
+};
+
 // when we receive a block, we should know if it is a new fork block
 export const shouldFork = (txn: Txn, header: Header): boolean => {
     const chainId = getForkChainId(txn, header);
@@ -64,6 +71,44 @@ export const shouldFork = (txn: Txn, header: Header): boolean => {
     }
 
     return false;
+};
+
+export const newForkChain = (txn: Txn, header: Header): void => {
+    const forkChain = new ForkChain();
+
+    forkChain.blockRandom = header.blockRandom;
+    forkChain.createTime = Date.now();
+    forkChain.currentHeight = header.height;
+    forkChain.forkChainId = getNextForkChainId(txn);
+    forkChain.genesisHash = ''; // TODO
+    forkChain.headHash = header.bhHash;
+    forkChain.prevHash = header.prevHash;
+    forkChain.totalWeight = header.totalWeight;
+
+    // write to db
+    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForkChain._$info.name, key: forkChain.forkChainId, value: forkChain }]
+        , 1000
+        , false
+    );
+};
+
+// TODO: update fork chain when insert new block
+export const updateForkChainHead = (txn: Txn, header: Header, chainId: number): void => {
+    const forkChain = getForkChain(txn, chainId);
+
+    assert(forkChain.currentHeight + 1 === header.height);
+
+    forkChain.blockRandom = header.blockRandom;
+    forkChain.currentHeight = header.height;
+    forkChain.headHash = header.bhHash;
+    forkChain.prevHash = header.prevHash;
+    forkChain.totalWeight = header.totalWeight;
+
+    // write to db
+    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForkChain._$info.name, key: forkChain.forkChainId, value: forkChain }]
+        , 1000
+        , false
+    );
 };
 
 // TODO: purn non canonical chain for specific time
