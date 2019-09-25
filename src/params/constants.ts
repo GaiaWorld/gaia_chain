@@ -7,3 +7,6 @@ export const COMMITTEECONFIG_PRIMARY_KEY = 'CC';
 export const CAN_FORGE_AFTER_BLOCKS = 256;
 
 export const MAX_TIME_STAMP = 1000;
+
+export const PRUN_CHAIN_HEIGHT = 10000;
+export const PRUN_CHAIN_WEIGHT = 20000;

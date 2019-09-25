@@ -174,6 +174,13 @@ struct TxHashIndex {
     bhHash: String,
 }
 
+#[db=file,primary]
+struct Block2ForkChainIdIndex {
+    // 区块哈希 || 高度
+    blockId: String,
+    ids: [usize]
+}
+
 // 新到的区块应该在哪个分叉链上执行交易
 #[db=file,primary=blockId]
 struct ForkPoint {

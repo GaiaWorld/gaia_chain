@@ -165,9 +165,17 @@ export const readAccount = (txn: Txn, address: string, chainId: number): Account
     logger.warn(`account not found: address ${address}, chainId ${chainId}`);
 };
 
-export const writeAccount = (txn: Txn, account: Account, chainId: number): void => {
+export const updateAccount = (txn: Txn, account: Account, chainId: number): void => {
     txn.modify(
-        [{ ware: DEFAULT_FILE_WARE, tab: Account._$info.name, key: `${account.address}${buf2Hex(number2Uint8Array(chainId))}`, value: Account }]
+        [{ ware: DEFAULT_FILE_WARE, tab: Account._$info.name, key: `${account.address}${buf2Hex(number2Uint8Array(chainId))}`, value: account }]
+        , 1000
+        , false
+    );
+};
+
+export const deleteAccount = (txn: Txn, address: string, chainId: number): void => {
+    txn.modify(
+        [{ ware: DEFAULT_FILE_WARE, tab: Account._$info.name, key: `${address}${buf2Hex(number2Uint8Array(chainId))}` }]
         , 1000
         , false
     );

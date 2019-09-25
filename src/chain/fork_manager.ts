@@ -1,10 +1,13 @@
 // fork manager
+import { PRUN_CHAIN_HEIGHT, PRUN_CHAIN_WEIGHT } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { assert } from '../util/assert';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
-import { BestForkChain, ForkChain, ForkPoint, Header, NextForkChainId } from './schema.s';
+import { Block } from './blockchain';
+import { deleteAccount, deleteBlock, readBlock } from './chain_accessor';
+import { BestForkChain, Block2ForkChainIdIndex, ForkChain, ForkPoint, Header, NextForkChainId, Transaction } from './schema.s';
 
 const logger = new Logger('FORK_MANAGER', LogLevel.DEBUG);
 
@@ -129,9 +132,55 @@ export const updateForkChainHead = (txn: Txn, header: Header, chainId: number): 
     );
 };
 
-// TODO: purn non canonical chain for specific time
 export const prunForkChain = (txn: Txn): void => {
-    // iterate and prun
-    
-    return;
+    // iterate all fork chain
+    const bestChain = getCanonicalForkChain(txn);
+    const iter = txn.iter_raw(DEFAULT_FILE_WARE, ForkChain._$info.name, undefined, true, '');
+    // tslint:disable-next-line:no-constant-condition
+    while (true) {
+        const chainNext = iter.next();
+        if (!chainNext) break;
+        const chain = <ForkChain>chainNext[1];
+
+        if (bestChain.currentHeight > chain.currentHeight + PRUN_CHAIN_HEIGHT 
+            && bestChain.totalWeight > chain.totalWeight + PRUN_CHAIN_WEIGHT) {
+            let block = readBlock(txn, chain.headHash, chain.currentHeight);
+            // no other fork chian reference this block
+            while (blockRefCount(txn, block) === 1) {
+                for (const tx of block.body.txs) {
+                    prunAccount(txn, tx, chain.forkChainId);
+                }
+                deleteBlock(txn, block.header.bhHash, block.header.height);
+                logger.debug(`Prun block, chain id ${chain.forkChainId}, block hash ${block.header.bhHash}, height ${block.header.height}`);
+                block = readBlock(txn, block.header.prevHash, block.header.height - 1);
+            }
+
+            // delete forkchainId
+            deleteForkChainId(txn, chain.forkChainId);
+        }
+    }
+};
+
+const prunAccount = (txn: Txn, tx: Transaction, chainId: number): void => {
+    deleteAccount(txn, tx.from, chainId);
+    deleteAccount(txn, tx.to, chainId);
+};
+const deleteForkChainId = (txn: Txn, forkchainId: number): void => {
+    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForkChain._$info.name, key: forkchainId }], 1000, false);
+    logger.debug(`Delete forkchainId ${forkchainId}`);
+};
+
+// how many blocks refer to this block
+const blockRefCount = (txn: Txn, block: Block): number => {
+    const ref = txn.query(
+        [{ ware: DEFAULT_FILE_WARE, tab: Block2ForkChainIdIndex._$info.name
+            , key: `${block.header.bhHash}${block.header.height}` }]
+        , 1000
+        , false
+    );
+
+    if (ref) {
+        return (<Block2ForkChainIdIndex>ref[0].value).ids.length;
+    }
+    logger.error(`This is a orpha block ${block}`);
 };

@@ -3,7 +3,7 @@ import { EMPTY_CODE_HASH } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { readAccount, writeAccount, writeBlock } from './chain_accessor';
+import { readAccount, updateAccount, writeBlock } from './chain_accessor';
 import { verifyHeader } from './cpos';
 import { getForkChain, getForkChainId } from './fork_manager';
 import { Account, Header, Transaction } from './schema.s';
@@ -76,12 +76,12 @@ export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): bo
     fromAccount.outputAmount += tx.value;
     fromAccount.nonce += 1;
     
-    writeAccount(txn, fromAccount, chainId);
+    updateAccount(txn, fromAccount, chainId);
 
     // toAccount exist
     if (toAccount) {
         toAccount.inputAmount += tx.value;
-        writeAccount(txn, toAccount, chainId);
+        updateAccount(txn, toAccount, chainId);
     } else {
         // create new account if toAccount not found
         const newAccount = new Account();
@@ -91,6 +91,6 @@ export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): bo
         newAccount.nonce = 0;
         newAccount.outputAmount = 0;
 
-        writeAccount(txn, newAccount, chainId);
+        updateAccount(txn, newAccount, chainId);
     }
 };
