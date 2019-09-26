@@ -1,6 +1,7 @@
 // block processor
-import { EMPTY_CODE_HASH } from '../params/constants';
+import { EMPTY_CODE_HASH, MIN_GAS, MIN_PRICE } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
+import { hex2Buf, pubKeyToAddress } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { readAccount, updateAccount, writeBlock, writeTxLookupEntries } from './chain_accessor';
@@ -32,7 +33,7 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
     // 3. apply txs
     for (let i = 0; i < block.body.txs.length; i++) {
-        if (!applyTransaction(txn, block.body.txs[i], chainId)) {
+        if (!applyTransaction(txn, block.header.forger, block.body.txs[i], chainId)) {
             txn.rollback();
 
             return false;
@@ -54,12 +55,19 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 };
 
 // process a transaction
-export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): boolean => {
+export const applyTransaction = (txn: Txn, coinbase: string, tx: Transaction, chainId: number): boolean => {
     const fromAccount = readAccount(txn, tx.from, chainId);
     const toAccount = readAccount(txn, tx.to, chainId);
+    const coinbaseAccount = readAccount(txn, coinbase, chainId);
+
+    if (tx.gas < MIN_GAS || tx.price < MIN_PRICE) {
+        logger.debug(`Gas or Gas price is too low`);
+
+        return false;
+    }
 
     // not enough balance
-    if ((fromAccount.inputAmount - fromAccount.outputAmount) < tx.value) {
+    if ((fromAccount.inputAmount - fromAccount.outputAmount) < tx.value + tx.gas * tx.price) {
         logger.debug(`Not enough balance`);
 
         return false;
@@ -74,12 +82,19 @@ export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): bo
 
     // last input and output not match
     if (tx.lastInputValue !== fromAccount.inputAmount || tx.lastOutputValue !== fromAccount.outputAmount) {
-        logger.debug(`Last input and output not match`);
+        logger.debug(`Last input or output not match`);
 
         return false;
     }
 
-    fromAccount.outputAmount += tx.value;
+    // address match pubkey
+    if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.from) {
+        logger.debug(`Pubkey not match from address`);
+
+        return false;
+    }
+
+    fromAccount.outputAmount += tx.value + tx.gas + tx.price;
     fromAccount.nonce += 1;
     
     updateAccount(txn, fromAccount, chainId);
@@ -100,6 +115,7 @@ export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): bo
         updateAccount(txn, newAccount, chainId);
     }
 
-    // TODO: accumulate reward
+    coinbaseAccount.inputAmount += tx.gas + tx.price;
+    updateAccount(txn, coinbaseAccount, chainId);
     // TODO: handle forger add/remove
 };

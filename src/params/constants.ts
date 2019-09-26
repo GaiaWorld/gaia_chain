@@ -10,3 +10,6 @@ export const MAX_TIME_STAMP = 1000;
 
 export const PRUN_CHAIN_HEIGHT = 10000;
 export const PRUN_CHAIN_WEIGHT = 20000;
+
+export const MIN_GAS = 1000;
+export const MIN_PRICE = 10;
