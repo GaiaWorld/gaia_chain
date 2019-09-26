@@ -6,14 +6,14 @@ import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { buf2Hex, hex2Buf, number2Uint8Array, verify } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { calcHeaderHash } from './header';
-import { Forger, ForgerSnapshot, Header } from './schema.s';
+import { Forger, Header, Height2ForgersIndex } from './schema.s';
 
 const logger = new Logger('CPOS', LogLevel.DEBUG);
 
-// Get forgers at specific height
+// Get forgers at specific height, this is primarily used to verify block author
 export const getForgersAtHeight = (txn: Txn, height: number, chainId: number): Forger[] => {
     const forgers = txn.query(
-        [{ ware: DEFAULT_FILE_WARE, tab: ForgerSnapshot._$info.name
+        [{ ware: DEFAULT_FILE_WARE, tab: Height2ForgersIndex._$info.name
             , key: `${buf2Hex(number2Uint8Array(height))}${buf2Hex(number2Uint8Array(chainId))}` }]
         , 1000
         , false
@@ -27,6 +27,7 @@ export const getForgersAtHeight = (txn: Txn, height: number, chainId: number): F
 
 // snapshot forgers at specific height
 export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: number): void => {
+    
     return;
 };
 

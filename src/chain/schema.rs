@@ -19,7 +19,7 @@ struct ForgerCommittee  {
 }
 
 #[db=file,primary=height]
-struct ForgerSnapshot {
+struct Height2ForgersIndex {
     // height || chainid
     height: String,
     forgers: [Forger],
