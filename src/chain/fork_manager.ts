@@ -11,6 +11,7 @@ import { BestForkChain, Block2ForkChainIdIndex, ForkChain, ForkPoint, Header, Ne
 
 const logger = new Logger('FORK_MANAGER', LogLevel.DEBUG);
 
+// determine fork chain id for this block by utilize its prve hash and height
 export const getForkChainId = (txn: Txn, header: Header): number => {
     const fork = txn.query(
         [{ ware: DEFAULT_FILE_WARE
@@ -27,6 +28,7 @@ export const getForkChainId = (txn: Txn, header: Header): number => {
     logger.warn(`Not found appropriate chain id for header hash ${header.bhHash} height ${header.height}`);
 };
 
+// get chain head for chain id
 export const getForkChain = (txn: Txn, chainId: number): ForkChain => {
     const forkChain = txn.query(
         [{ ware: DEFAULT_FILE_WARE, tab: ForkChain._$info.name, key: chainId }]
@@ -94,6 +96,7 @@ export const shouldFork = (txn: Txn, header: Header): boolean => {
     return false;
 };
 
+// if this block is a fork, we should create a new fork
 export const newForkChain = (txn: Txn, header: Header): void => {
     const forkChain = new ForkChain();
 
@@ -132,7 +135,8 @@ export const updateForkChainHead = (txn: Txn, header: Header, chainId: number): 
     );
 };
 
-export const prunForkChain = (txn: Txn): void => {
+// prune fork chains according to some criteria
+export const pruneForkChain = (txn: Txn): void => {
     // iterate all fork chain
     const bestChain = getCanonicalForkChain(txn);
     const iter = txn.iter_raw(DEFAULT_FILE_WARE, ForkChain._$info.name, undefined, true, '');
@@ -142,32 +146,50 @@ export const prunForkChain = (txn: Txn): void => {
         if (!chainNext) break;
         const chain = <ForkChain>chainNext[1];
 
+        // fork chains that satisfy our prune criteria
         if (bestChain.currentHeight > chain.currentHeight + PRUN_CHAIN_HEIGHT 
             && bestChain.totalWeight > chain.totalWeight + PRUN_CHAIN_WEIGHT) {
             let block = readBlock(txn, chain.headHash, chain.currentHeight);
-            // no other fork chian reference this block
+            // iterate from chain head to where a block's ref count is 1
+            // if a block's ref count is more than 1, which means that it is share common ansestor with other fork chains
             while (blockRefCount(txn, block) === 1) {
                 for (const tx of block.body.txs) {
-                    prunAccount(txn, tx, chain.forkChainId);
+                    pruneAccount(txn, tx, chain.forkChainId);
                 }
                 deleteBlock(txn, block.header.bhHash, block.header.height);
                 logger.debug(`Prun block, chain id ${chain.forkChainId}, block hash ${block.header.bhHash}, height ${block.header.height}`);
+                // get the previous block
                 block = readBlock(txn, block.header.prevHash, block.header.height - 1);
             }
 
             // delete forkchainId
             deleteForkChainId(txn, chain.forkChainId);
+            // decrease block ref count
+            removeBlockRef(txn, block, chain.forkChainId);
         }
     }
 };
 
-const prunAccount = (txn: Txn, tx: Transaction, chainId: number): void => {
+const pruneAccount = (txn: Txn, tx: Transaction, chainId: number): void => {
     deleteAccount(txn, tx.from, chainId);
     deleteAccount(txn, tx.to, chainId);
 };
 const deleteForkChainId = (txn: Txn, forkchainId: number): void => {
     txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForkChain._$info.name, key: forkchainId }], 1000, false);
     logger.debug(`Delete forkchainId ${forkchainId}`);
+};
+
+const removeBlockRef = (txn: Txn, block: Block, chainId: number): void => {
+    const ref = new Block2ForkChainIdIndex();
+    ref.blockId = `${block.header.bhHash}${block.header.height}`;
+    ref.ids = ref.ids.filter((val: number) => val !== chainId);
+    txn.modify(
+        [{ ware: DEFAULT_FILE_WARE, tab: Block2ForkChainIdIndex._$info.name
+            , key: `${block.header.bhHash}${block.header.height}`
+            , value: ref }]
+            , 1000
+            , false
+        );
 };
 
 // how many blocks refer to this block
