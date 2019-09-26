@@ -3,31 +3,34 @@ import { EMPTY_CODE_HASH } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { readAccount, updateAccount, writeBlock } from './chain_accessor';
+import { readAccount, updateAccount, writeBlock, writeTxLookupEntries } from './chain_accessor';
 import { verifyHeader } from './cpos';
-import { getForkChain, getForkChainId } from './fork_manager';
-import { Account, Header, Transaction } from './schema.s';
+import { getForkChainId, newForkChain, shouldFork, updateCanonicalForkChain, updateForkPoint } from './fork_manager';
+import { Account, Transaction } from './schema.s';
 
 const logger = new Logger('PROCESSOR', LogLevel.DEBUG);
 
 // process block transactions
 export const processBlock = (txn: Txn, block: Block): boolean => {
-    const chainId = getForkChainId(txn, block.header);
+    let chainId = getForkChainId(txn, block.header);
     // if chian id not found, this is an orphan block
-    if (chainId) {
-        const chain = getForkChain(txn, chainId);
-        // this is a new fork
-        if (chain.currentHeight >= block.header.height) {
-            // TODO: create new fork, get next fork chain id
-        }
-    }
-
-    // TODO: verify header
-    if (!verifyHeader(txn, block.header, chainId)) {
+    if (!chainId) {
         return false;
     }
 
-    // if anyone of transaction failed, this block is invalid
+    // 1. verify header
+    if (!verifyHeader(txn, block.header, chainId)) {
+        txn.rollback();
+
+        return false;
+    }
+
+    // 2. determine if we need fork
+    if (shouldFork(txn, block.header)) {
+        chainId = newForkChain(txn, block.header);
+    }
+
+    // 3. apply txs
     for (let i = 0; i < block.body.txs.length; i++) {
         if (!applyTransaction(txn, block.body.txs[i], chainId)) {
             txn.rollback();
@@ -36,16 +39,15 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
         }
     }
 
-    // after header is verified and transaction are successfully applied
+    // 4. update indexes
+    writeTxLookupEntries(txn, block);
+    updateForkPoint(txn, block.header, chainId);
+    updateCanonicalForkChain(txn, block.header.totalWeight, chainId);
 
-    // TODO: update some indexes
-
-    // TODO: reward
-
-    // TODO: need chainId or not ?
+    // 5. insert block
     writeBlock(txn, block);
 
-    // all is ok, commit
+    // 6. persist chainges
     txn.commit();
 
     return true;
@@ -60,16 +62,22 @@ export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): bo
 
     // not enough balance
     if ((fromAccount.inputAmount - fromAccount.outputAmount) < tx.value) {
+        logger.debug(`Not enough balance`);
+
         return false;
     }
 
     // nonce not match
     if (fromAccount.nonce + 1 !== tx.nonce) {
+        logger.debug(`Nonce not match`);
+
         return false;
     }
 
     // last input and output not match
     if (tx.lastInputValue !== fromAccount.inputAmount || tx.lastOutputValue !== fromAccount.outputAmount) {
+        logger.debug(`Last input and output not match`);
+
         return false;
     }
 
@@ -93,4 +101,7 @@ export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): bo
 
         updateAccount(txn, newAccount, chainId);
     }
+
+    // TODO: accumulate reward
+    // TODO: handle forger add/remove
 };

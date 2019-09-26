@@ -28,6 +28,16 @@ export const getForkChainId = (txn: Txn, header: Header): number => {
     logger.warn(`Not found appropriate chain id for header hash ${header.bhHash} height ${header.height}`);
 };
 
+export const updateForkPoint = (txn: Txn, header: Header, chianId: number): void => {
+    txn.modify(
+        [{ ware: DEFAULT_FILE_WARE, tab: ForkPoint._$info.name
+            , key: `${header}${buf2Hex(number2Uint8Array(header.height))}`
+            , value: chianId }]
+        , 1000
+        , false
+    );
+};
+
 // get chain head for chain id
 export const getForkChain = (txn: Txn, chainId: number): ForkChain => {
     const forkChain = txn.query(
@@ -58,6 +68,16 @@ export const getCanonicalForkChain = (txn: Txn): ForkChain => {
         }
     }
     logger.error(`Can not get canonical chain`);
+};
+
+// update canonical chain after a fork chain becomes a canonical one
+export const updateCanonicalForkChain = (txn: Txn, totallWeight: number, chainId: number): void => {
+    const canonical = getCanonicalForkChain(txn);
+    if (canonical.totalWeight < totallWeight) {
+        const bestChain = new BestForkChain();
+        bestChain.forkChainId = chainId;
+        txn.modify([{ ware: DEFAULT_FILE_WARE, tab: BestForkChain._$info.name, key: chainId, value: bestChain }], 1000, false);
+    }
 };
 
 // next fork chain id we can use
@@ -97,7 +117,7 @@ export const shouldFork = (txn: Txn, header: Header): boolean => {
 };
 
 // if this block is a fork, we should create a new fork
-export const newForkChain = (txn: Txn, header: Header): void => {
+export const newForkChain = (txn: Txn, header: Header): number => {
     const forkChain = new ForkChain();
 
     forkChain.blockRandom = header.blockRandom;
@@ -114,6 +134,8 @@ export const newForkChain = (txn: Txn, header: Header): void => {
         , 1000
         , false
     );
+
+    return forkChain.forkChainId;
 };
 
 // TODO: update fork chain when insert new block

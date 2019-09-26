@@ -14,7 +14,8 @@ struct Forger {
 // forger committee
 #[db=file,primary=slot]
 struct ForgerCommittee  {
-    slot: usize,
+    // slot || chainid
+    slot: String,
     forgers: [Forger],
 }
 
