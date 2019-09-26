@@ -47,7 +47,7 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
     // 5. insert block
     writeBlock(txn, block);
 
-    // 6. persist chainges
+    // 6. persist changes
     txn.commit();
 
     return true;
@@ -55,8 +55,6 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
 // process a transaction
 export const applyTransaction = (txn: Txn, tx: Transaction, chainId: number): boolean => {
-    // check balance
-    // add / remove forger
     const fromAccount = readAccount(txn, tx.from, chainId);
     const toAccount = readAccount(txn, tx.to, chainId);
 
