@@ -6,7 +6,7 @@ import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { buf2Hex, hex2Buf, number2Uint8Array, verify } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { calcHeaderHash } from './header';
-import { Forger, Header, Height2ForgersIndex } from './schema.s';
+import { Forger, ForgerCommittee, Header, Height2ForgersIndex } from './schema.s';
 
 const logger = new Logger('CPOS', LogLevel.DEBUG);
 
@@ -27,8 +27,23 @@ export const getForgersAtHeight = (txn: Txn, height: number, chainId: number): F
 
 // snapshot forgers at specific height
 export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: number): void => {
-    
-    return;
+    // TODO: hard code 256
+    const key = `${buf2Hex(number2Uint8Array(height % 256))}${buf2Hex(number2Uint8Array(chainId))}`;
+    const forgers = txn.query(
+        [{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key }], 1000, false
+    );
+
+    // height => Forgers index
+    const key2 = `${buf2Hex(number2Uint8Array(height))}${buf2Hex(number2Uint8Array(chainId))}`;
+    if (forgers) {
+        txn.modify(
+            [{ ware: DEFAULT_FILE_WARE, tab: Height2ForgersIndex._$info.name
+                , key: key2, value: <Forger[]>forgers[0].value }]
+            , 1000
+            , false
+        );
+    }
+    logger.warn(`No forgers at height ${height}, chainId ${chainId}`);
 };
 
 export const verifyHeader = (txn: Txn, header: Header, chainId: number): boolean => {
