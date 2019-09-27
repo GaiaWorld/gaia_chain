@@ -1,13 +1,14 @@
 // block processor
-import { EMPTY_CODE_HASH, GOD_ADDRESS, MIN_GAS, MIN_PRICE, MIN_STAKE } from '../params/constants';
+import { updateForgerCommittee } from '../consensus/committee';
+import { CAN_FORGE_AFTER_BLOCKS, EMPTY_CODE_HASH, GOD_ADDRESS, MIN_GAS, MIN_PRICE, MIN_STAKE } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { readAccount, updateAccount, writeBlock, writeTxLookupEntries } from './chain_accessor';
-import { verifyHeader } from './cpos';
+import { addForger, calcInitialGroupNumber, deriveInitWeight, removeForger, updateForgerCommitteeInfo, verifyHeader } from './cpos';
 import { getForkChainId, newForkChain, shouldFork, updateCanonicalForkChain, updateForkPoint } from './fork_manager';
-import { Account, Transaction, TxType } from './schema.s';
+import { Account, Forger, Header, Transaction, TxType } from './schema.s';
 import { serializeForgerCommitteeTx } from './transaction';
 
 const logger = new Logger('PROCESSOR', LogLevel.DEBUG);
@@ -34,7 +35,7 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
     // 3. apply txs
     for (let i = 0; i < block.body.txs.length; i++) {
-        if (!applyTransaction(txn, block.header.forger, block.body.txs[i], chainId)) {
+        if (!applyTransaction(txn, block.header, block.body.txs[i], chainId)) {
             txn.rollback();
 
             return false;
@@ -56,10 +57,9 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 };
 
 // process a transaction
-export const applyTransaction = (txn: Txn, coinbase: string, tx: Transaction, chainId: number): boolean => {
+export const applyTransaction = (txn: Txn, header: Header, tx: Transaction, chainId: number): boolean => {
     const fromAccount = readAccount(txn, tx.from, chainId);
-    const toAccount = readAccount(txn, tx.to, chainId);
-    const coinbaseAccount = readAccount(txn, coinbase, chainId);
+    const coinbaseAccount = readAccount(txn, header.forger, chainId);
 
     // check gas and price
     if (tx.gas < MIN_GAS || tx.price < MIN_PRICE) {
@@ -104,7 +104,7 @@ export const applyTransaction = (txn: Txn, coinbase: string, tx: Transaction, ch
             if (verifyForgerGroupTx(tx)) {
                 return false;
             }
-            handleForgerGroupTx(txn, tx, chainId);
+            handleForgerGroupTx(txn, header, tx, chainId);
             break;
         case TxType.PenaltyTx:
             handlePenaltyTx(txn, tx, chainId);
@@ -145,17 +145,26 @@ const handleSpendTx = (txn: Txn, tx: Transaction, chainId: number): void => {
     return;
 };
 
-const handleForgerGroupTx = (txn: Txn, tx: Transaction, chainId: number): void => {
+const handleForgerGroupTx = (txn: Txn, header: Header, tx: Transaction, chainId: number): void => {
     const fromAccount = readAccount(txn, tx.from, chainId);
 
+    fromAccount.outputAmount += tx.forgerTx.stake + tx.gas * tx.price;
+    fromAccount.nonce += 1;
+
+    const forger = new Forger();
+    forger.address = tx.forgerTx.address;
+    forger.groupNumber = calcInitialGroupNumber(forger.address);
+    forger.initWeight = deriveInitWeight(forger.address, header.blockRandom, header.height, tx.forgerTx.stake);
+    forger.pubKey = tx.pubKey;
+    forger.stake = tx.forgerTx.stake;
+    forger.nextGroupStartHeight = header.height + CAN_FORGE_AFTER_BLOCKS;
+
     if (tx.forgerTx.AddGroup) { // join in
-        fromAccount.outputAmount += tx.forgerTx.stake + tx.gas * tx.price;
-        fromAccount.nonce += 1;
-        // TODO: add to committee
-
-    } else { // leave
-        // TODO: remove form committee
-
+        forger.applyJoinHeight = header.height;
+        addForger(txn, forger, chainId);
+    } else {// leave
+        forger.applyExitHeight = header.height;
+        removeForger(txn, forger, chainId);
     }
 };
 

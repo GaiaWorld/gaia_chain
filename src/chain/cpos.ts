@@ -49,6 +49,16 @@ export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: num
     logger.warn(`No forgers at height ${height}, chainId ${chainId}`);
 };
 
+export const addForger = (txn: Txn, forger: Forger, chainId: number): void => {
+    const key = `${buf2Hex(number2Uint8Array(forger.groupNumber))}${buf2Hex(number2Uint8Array(chainId))}`;
+    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key, value: forger }], 1000, false);
+};
+
+export const removeForger = (txn: Txn, forger: Forger, chainId: number): void => {
+    const key = `${buf2Hex(number2Uint8Array(forger.groupNumber))}${buf2Hex(number2Uint8Array(chainId))}`;
+    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key }], 1000, false);
+};
+
 // update forger committee info upon receiving a valid block
 export const updateForgerCommitteeInfo = (txn: Txn, block: Block, chainId: number): void => {
     // forger group change
@@ -83,6 +93,10 @@ export const deriveNextGroupNumber = (address: string, blockRandom: string, heig
     logger.debug(`deriveNextGroupNumber address ${address} hash ${hash}`);
 
     return parseInt(hash.slice(hash.length - 2), 16) % totalGroupNumber;
+};
+
+export const calcInitialGroupNumber = (address: string): number => {
+    return parseInt(address.slice(address.length - 2), 16);
 };
 
 export const deriveInitWeight = (address: string, blockRandom: string, height: number, stake: number): number => {
