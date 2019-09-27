@@ -5,6 +5,7 @@ export const EMPTY_CODE_HASH = '';
 export const EMPTY_RECEIPT_ROOT_HASH = '';
 export const COMMITTEECONFIG_PRIMARY_KEY = 'CC';
 export const CAN_FORGE_AFTER_BLOCKS = 256;
+export const WITHDRAW_AFTER_BLOCKS = 256;
 
 export const PRUN_CHAIN_HEIGHT = 10000;
 export const PRUN_CHAIN_WEIGHT = 20000;

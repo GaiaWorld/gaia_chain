@@ -1,10 +1,13 @@
 // cpos implemention
 // need snapshot every round 
-import { MAX_TIME_STAMP, VERSION } from '../params/constants';
+import { CAN_FORGE_AFTER_BLOCKS, MAX_TIME_STAMP, VERSION, WITHDRAW_AFTER_BLOCKS } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
+import { BonBuffer } from '../pi/util/bon';
 import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
-import { buf2Hex, hex2Buf, number2Uint8Array, verify } from '../util/crypto';
+import { buf2Hex, hex2Buf, number2Uint8Array, sha256, verify } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
+import { Block } from './blockchain';
+import { readAccount, updateAccount } from './chain_accessor';
 import { calcHeaderHash } from './header';
 import { Forger, ForgerCommittee, Header, Height2ForgersIndex } from './schema.s';
 
@@ -25,7 +28,7 @@ export const getForgersAtHeight = (txn: Txn, height: number, chainId: number): F
     logger.warn(`Can not find forger snapshot at heigth ${height}`);
 };
 
-// snapshot forgers at specific height
+// snapshot forgers at specific height and chainId
 export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: number): void => {
     // TODO: hard code 256
     const key = `${buf2Hex(number2Uint8Array(height % 256))}${buf2Hex(number2Uint8Array(chainId))}`;
@@ -44,6 +47,54 @@ export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: num
         );
     }
     logger.warn(`No forgers at height ${height}, chainId ${chainId}`);
+};
+
+// update forger committee info upon receiving a valid block
+export const updateForgerCommitteeInfo = (txn: Txn, block: Block, chainId: number): void => {
+    // forger group change
+    const key = `${buf2Hex(number2Uint8Array(block.header.groupNumber))}${buf2Hex(number2Uint8Array(chainId))}`;
+    const currentSlotForgers = <ForgerCommittee>txn.query([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key }], 1000, false)[0].value;
+
+    // delete outdated forgers
+    for (let i = 0; i < currentSlotForgers.forgers.length; i++) {
+        if (currentSlotForgers.forgers[i].applyJoinHeight && currentSlotForgers.forgers[i].applyJoinHeight + CAN_FORGE_AFTER_BLOCKS >= block.header.height) {
+            if (!currentSlotForgers.forgers[i].nextGroupStartHeight) {
+                currentSlotForgers.forgers[i].nextGroupStartHeight = block.header.height;
+            }
+        }
+
+        if (currentSlotForgers.forgers[i].applyExitHeight && currentSlotForgers.forgers[i].applyExitHeight + WITHDRAW_AFTER_BLOCKS >= block.header.height) {
+            // return stake
+            const account = readAccount(txn, currentSlotForgers.forgers[i].address, chainId);
+            account.inputAmount += currentSlotForgers.forgers[i].stake;
+            updateAccount(txn, account, chainId);
+            currentSlotForgers.forgers.splice(i, 1);
+        }
+    }
+};
+
+export const deriveNextGroupNumber = (address: string, blockRandom: string, height: number, totalGroupNumber: number = 256): number => {
+    const bon = new BonBuffer();
+    bon.writeUtf8(address)
+        .writeUtf8(blockRandom)
+        .writeInt(height);
+
+    const hash = buf2Hex(sha256(bon.getBuffer()));
+    logger.debug(`deriveNextGroupNumber address ${address} hash ${hash}`);
+
+    return parseInt(hash.slice(hash.length - 2), 16) % totalGroupNumber;
+};
+
+export const deriveInitWeight = (address: string, blockRandom: string, height: number, stake: number): number => {
+    const bon = new BonBuffer();
+    bon.writeUtf8(address)
+        .writeUtf8(blockRandom)
+        .writeInt(height);
+
+    const data = buf2Hex(sha256(bon.getBuffer()));
+
+    // calc weight
+    return Math.floor((Math.log(stake) / Math.log(10) - 2.0) * (parseInt(data.slice(data.length - 2), 16) % 4 + 1));
 };
 
 export const verifyHeader = (txn: Txn, header: Header, chainId: number): boolean => {
