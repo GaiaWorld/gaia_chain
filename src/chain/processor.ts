@@ -184,7 +184,7 @@ const verifyForgerGroupTx = (tx: Transaction): boolean => {
         return false;
     }
 
-    if (tx.forgerTx.AddGroup === true) {// join in
+    if (tx.forgerTx.AddGroup) {// join in
         if (tx.to !== GOD_ADDRESS || tx.from !== tx.forgerTx.address) {
             console.log(`forge address do not match`);
 
@@ -196,14 +196,14 @@ const verifyForgerGroupTx = (tx: Transaction): boolean => {
             return false;
         }
 
-    }
-    if (tx.forgerTx.AddGroup === false) {// leave 
+    } else { // leave
         if (tx.to !== tx.forgerTx.address || tx.from !== GOD_ADDRESS) {
             console.log(`forge address do not match`);
 
             return false;
         }
     }
+
     if (pubKeyToAddress(hex2Buf(tx.pubKey)) !== tx.to) {
         console.log(`the pubkey do not match the to address`);
         
