@@ -51,7 +51,13 @@ export const writeForgersIndexAtHeight = (txn: Txn, height: number, chainId: num
 
 export const addForger = (txn: Txn, forger: Forger, chainId: number): void => {
     const key = `${buf2Hex(number2Uint8Array(forger.groupNumber))}${buf2Hex(number2Uint8Array(chainId))}`;
-    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key, value: forger }], 1000, false);
+    // check if duplicate forger
+    const cmt = txn.query([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key }], 1000, false);
+    if (cmt) {
+        (<ForgerCommittee>cmt[0].value).forgers.push(forger);
+        txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key, value: cmt }], 1000, false);
+    }
+    logger.debug(`Emtpy forger group`);
 };
 
 export const removeForger = (txn: Txn, forger: Forger, chainId: number): void => {
