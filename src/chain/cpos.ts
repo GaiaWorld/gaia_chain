@@ -9,7 +9,7 @@ import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { readAccount, updateAccount } from './chain_accessor';
 import { calcHeaderHash } from './header';
-import { Forger, ForgerCommittee, Header, Height2ForgersIndex } from './schema.s';
+import { CommitteeConfig, Forger, ForgerCommittee, Header, Height2ForgersIndex } from './schema.s';
 
 const logger = new Logger('CPOS', LogLevel.DEBUG);
 
@@ -26,6 +26,26 @@ export const getForgersAtHeight = (txn: Txn, height: number, chainId: number): F
         return <Forger[]>forgers[0].value;
     }
     logger.warn(`Can not find forger snapshot at heigth ${height}`);
+};
+
+// calculate forger's weight at a specific height
+export const calcForgerWeightAtHeight = (forger: Forger, height: number, committeeCfg: CommitteeConfig): number => {
+    const heightDiff = height - forger.nextGroupStartHeight;
+    // logger.debug(`calcForgerWeightAtHeight heightDiff ${JSON.stringify(heightDiff)} forger ${JSON.stringify(forger)} committeeCfg ${JSON.stringify(committeeCfg)}`);
+    if (heightDiff <= 0) {
+        return forger.initWeight;
+    }
+
+    if (heightDiff > committeeCfg.totalAccHeight) {
+        return forger.initWeight * committeeCfg.maxAccRounds;
+    } else if (heightDiff <= committeeCfg.totalAccHeight) {
+        return Math.floor(forger.initWeight * (heightDiff / committeeCfg.totalGroupNumber));
+    } else {
+        // not a valid forger
+        logger.debug(`not valid forger: ${JSON.stringify(forger)}`);
+
+        return 0;
+    }
 };
 
 // snapshot forgers at specific height and chainId
