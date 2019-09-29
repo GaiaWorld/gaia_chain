@@ -7,13 +7,14 @@ import { Account, Body, Header, Transaction, TxHashIndex } from './schema.s';
 
 const logger = new Logger('CHAIN_ACCESSOR', LogLevel.DEBUG);
 
-export const txLookupKey = (txHash: string): string => {
+const txLookupKey = (txHash: string): string => {
     return `l${txHash}`;
 };
 
-export const readTxLookupEntry = (txn: Txn, txHash: string): TxHashIndex => {
+export const readTxLookupEntry = (txn: Txn, txHash: string, chainId: number): TxHashIndex => {
     const item = txn.query(
-        [{ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name, key: `${txLookupKey(txHash)}` }]
+        [{ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name
+            , key: `${txLookupKey(txHash)}${buf2Hex(number2Uint8Array(chainId))}` }]
         , 1000
         , false
     );
@@ -25,14 +26,16 @@ export const readTxLookupEntry = (txn: Txn, txHash: string): TxHashIndex => {
 };
 
 // lookupkey => block hash
-export const writeTxLookupEntries = (txn: Txn, block: Block): void => {
+export const writeTxLookupEntries = (txn: Txn, block: Block, chainId: number): void => {
     const items = [];
     for (const tx of block.body.txs) {
         const t2b = new TxHashIndex();
         t2b.bhHash = block.header.bhHash;
         t2b.txHash = tx.txHash;
         t2b.height = block.header.height;
-        items.push({ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name, key: `${txLookupKey(tx.txHash)}`, value: t2b });
+        items.push({ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name
+            , key: `${txLookupKey(tx.txHash)}${buf2Hex(number2Uint8Array(chainId))}`
+            , value: t2b });
     }
 
     if (items.length > 0) {
@@ -41,8 +44,9 @@ export const writeTxLookupEntries = (txn: Txn, block: Block): void => {
     logger.debug(`empty lookup entry: hash ${block.header.bhHash}, height ${block.header.height}`);
 };
 
-export const deleteTxLookupEntry = (txn: Txn, txHash: string): void => {
-    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name, key: `${txLookupKey(txHash)}` }], 1000, false);
+export const deleteTxLookupEntry = (txn: Txn, txHash: string, chainId: number): void => {
+    txn.modify([{ ware: DEFAULT_FILE_WARE, tab: TxHashIndex._$info.name
+        , key: `${txLookupKey(txHash)}${buf2Hex(number2Uint8Array(chainId))}` }], 1000, false);
     logger.debug(`delete look up entry: hash ${txHash}`);
 };
 
@@ -136,8 +140,8 @@ export const deleteBlock = (txn: Txn, hash: string, height: number): void => {
     logger.debug(`delete block hash: ${hash}, height: ${height}`);
 };
 
-export const readTransaction = (txn: Txn, txHash: string): Transaction => {
-    const entry = readTxLookupEntry(txn, txHash);
+export const readTransaction = (txn: Txn, txHash: string, chainId: number): Transaction => {
+    const entry = readTxLookupEntry(txn, txHash, chainId);
 
     if (entry) {
         const body = readBody(txn, entry.bhHash, entry.height);

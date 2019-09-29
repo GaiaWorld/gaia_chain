@@ -19,6 +19,8 @@ struct ForgerCommittee  {
     forgers: [Forger],
 }
 
+// forgers at a specific height on specific fork chain
+// this is used to validate past blocks 
 #[db=file,primary=height]
 struct Height2ForgersIndex {
     // height || chainid

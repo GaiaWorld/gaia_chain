@@ -63,6 +63,7 @@ export const addForger = (txn: Txn, forger: Forger, chainId: number): void => {
 export const removeForger = (txn: Txn, forger: Forger, chainId: number): void => {
     const key = `${buf2Hex(number2Uint8Array(forger.groupNumber))}${buf2Hex(number2Uint8Array(chainId))}`;
     txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: key }], 1000, false);
+    logger.debug(`remove forger ${forger}`);
 };
 
 // update forger committee info upon receiving a valid block

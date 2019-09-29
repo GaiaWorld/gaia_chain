@@ -6,7 +6,7 @@ import { assert } from '../util/assert';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { deleteAccount, deleteBlock, readBlock } from './chain_accessor';
+import { deleteAccount, deleteBlock, deleteTxLookupEntry, readBlock } from './chain_accessor';
 import { BestForkChain, Block2ForkChainIdIndex, ForkChain, ForkPoint, Header, NextForkChainId, Transaction } from './schema.s';
 
 const logger = new Logger('FORK_MANAGER', LogLevel.DEBUG);
@@ -176,15 +176,18 @@ export const pruneForkChain = (txn: Txn): void => {
             // if a block's ref count is more than 1, which means that it is share common ansestor with other fork chains
             while (blockRefCount(txn, block) === 1) {
                 for (const tx of block.body.txs) {
+                    // delete account associated with forkChainId
                     pruneAccount(txn, tx, chain.forkChainId);
+                    // delete tx look up entries
+                    deleteTxLookupEntry(txn, tx.txHash, chain.forkChainId);
                 }
                 deleteBlock(txn, block.header.bhHash, block.header.height);
                 logger.debug(`Prun block, chain id ${chain.forkChainId}, block hash ${block.header.bhHash}, height ${block.header.height}`);
-                // get the previous block
+                // get the previous block for next iteration
                 block = readBlock(txn, block.header.prevHash, block.header.height - 1);
             }
 
-            // delete forkchainId
+            // delete forkchainId entry
             deleteForkChainId(txn, chain.forkChainId);
             // decrease block ref count
             removeBlockRef(txn, block, chain.forkChainId);

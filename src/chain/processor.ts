@@ -1,12 +1,11 @@
 // block processor
-import { updateForgerCommittee } from '../consensus/committee';
 import { CAN_FORGE_AFTER_BLOCKS, EMPTY_CODE_HASH, GOD_ADDRESS, MIN_GAS, MIN_PRICE, MIN_STAKE } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { readAccount, updateAccount, writeBlock, writeTxLookupEntries } from './chain_accessor';
-import { addForger, calcInitialGroupNumber, deriveInitWeight, removeForger, updateForgerCommitteeInfo, verifyHeader } from './cpos';
+import { addForger, calcInitialGroupNumber, deriveInitWeight, removeForger, verifyHeader } from './cpos';
 import { getForkChainId, newForkChain, shouldFork, updateCanonicalForkChain, updateForkPoint } from './fork_manager';
 import { Account, Forger, Header, Transaction, TxType } from './schema.s';
 import { serializeForgerCommitteeTx } from './transaction';
@@ -43,7 +42,7 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
     }
 
     // 4. update indexes
-    writeTxLookupEntries(txn, block);
+    writeTxLookupEntries(txn, block, chainId);
     updateForkPoint(txn, block.header, chainId);
     updateCanonicalForkChain(txn, block.header.totalWeight, chainId);
 
