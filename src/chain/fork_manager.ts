@@ -70,6 +70,16 @@ export const getCanonicalForkChain = (txn: Txn): ForkChain => {
     logger.error(`Can not get canonical chain`);
 };
 
+export const getCanonicalChainId = (txn: Txn): number => {
+    const iter = txn.iter_raw(DEFAULT_FILE_WARE, BestForkChain._$info.name, undefined, true, '');
+    const best = iter.next();
+
+    if (best) {
+        return (<BestForkChain>best[1]).forkChainId;
+    }
+    logger.warn(`Can not get canonical chain id`);
+};
+
 // update canonical chain after a fork chain becomes a canonical one
 export const updateCanonicalForkChain = (txn: Txn, totallWeight: number, chainId: number): void => {
     const canonical = getCanonicalForkChain(txn);
@@ -89,6 +99,7 @@ export const getNextForkChainId = (txn: Txn): number => {
     if (nextId) {
         const next = (<NextForkChainId>nextId[1]);
         logger.debug(`Get next fork chain id ${(<NextForkChainId>nextId[1]).nextId}`);
+        // nextId maybe overflow
         next.nextId += 1;
         txn.modify([{ ware: DEFAULT_FILE_WARE, tab: NextForkChainId._$info.name, key: next.nextId, value: next }], 1000, false);
 
@@ -177,7 +188,8 @@ export const pruneForkChain = (txn: Txn): void => {
             while (blockRefCount(txn, block) === 1) {
                 for (const tx of block.body.txs) {
                     // delete account associated with forkChainId
-                    pruneAccount(txn, tx, chain.forkChainId);
+                    deleteAccount(txn, tx.from, chain.forkChainId);
+                    deleteAccount(txn, tx.to, chain.forkChainId);
                     // delete tx look up entries
                     deleteTxLookupEntry(txn, tx.txHash, chain.forkChainId);
                 }
@@ -195,10 +207,6 @@ export const pruneForkChain = (txn: Txn): void => {
     }
 };
 
-const pruneAccount = (txn: Txn, tx: Transaction, chainId: number): void => {
-    deleteAccount(txn, tx.from, chainId);
-    deleteAccount(txn, tx.to, chainId);
-};
 const deleteForkChainId = (txn: Txn, forkchainId: number): void => {
     txn.modify([{ ware: DEFAULT_FILE_WARE, tab: ForkChain._$info.name, key: forkchainId }], 1000, false);
     logger.debug(`Delete forkchainId ${forkchainId}`);
