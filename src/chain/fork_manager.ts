@@ -12,7 +12,7 @@ import { BestForkChain, Block2ForkChainIdIndex, ForkChain, ForkPoint, Header, Ne
 const logger = new Logger('FORK_MANAGER', LogLevel.DEBUG);
 
 // determine fork chain id for this block by utilize its prve hash and height
-export const getForkChainId = (txn: Txn, header: Header): number => {
+export const getForkChainIdOfHeader = (txn: Txn, header: Header): number => {
     const fork = txn.query(
         [{ ware: DEFAULT_FILE_WARE
             , tab: ForkPoint._$info.name
@@ -106,7 +106,7 @@ export const getNextForkChainId = (txn: Txn): number => {
 
 // when we receive a block, we should know if it is a new fork block
 export const shouldFork = (txn: Txn, header: Header): boolean => {
-    const chainId = getForkChainId(txn, header);
+    const chainId = getForkChainIdOfHeader(txn, header);
     const chain = getForkChain(txn, chainId);
 
     if (chain.currentHeight >= header.height) {

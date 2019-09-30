@@ -6,7 +6,7 @@ import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { readAccount, updateAccount, writeBlock, writeTxLookupEntries } from './chain_accessor';
 import { addForger, calcInitialGroupNumber, deriveInitWeight, removeForger, verifyHeader } from './cpos';
-import { getForkChainId, newForkChain, shouldFork, updateCanonicalForkChain, updateForkPoint } from './fork_manager';
+import { getForkChainIdOfHeader, newForkChain, shouldFork, updateCanonicalForkChain, updateForkPoint } from './fork_manager';
 import { Account, Forger, Header, Transaction, TxType } from './schema.s';
 import { serializeForgerCommitteeTx } from './transaction';
 
@@ -14,7 +14,7 @@ const logger = new Logger('PROCESSOR', LogLevel.DEBUG);
 
 // process block transactions
 export const processBlock = (txn: Txn, block: Block): boolean => {
-    let chainId = getForkChainId(txn, block.header);
+    let chainId = getForkChainIdOfHeader(txn, block.header);
     // if chian id not found, this is an orphan block
     if (!chainId) {
         return false;
