@@ -1,7 +1,7 @@
 /**
  * logger functions
  */
-enum LogLevel {
+export enum LogLevel {
     DEBUG,
     INFO,
     WARN,

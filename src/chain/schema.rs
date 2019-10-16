@@ -14,7 +14,17 @@ struct Forger {
 // forger committee
 #[db=file,primary=slot]
 struct ForgerCommittee  {
-    slot: usize,
+    // slot || chainid
+    slot: String,
+    forgers: [Forger],
+}
+
+// forgers at a specific height on specific fork chain
+// this is used to validate past blocks 
+#[db=file,primary=height]
+struct Height2ForgersIndex {
+    // height || chainid
+    height: String,
     forgers: [Forger],
 }
 
@@ -88,6 +98,7 @@ struct DBTransaction {
     signature: String,
 }
 
+#[db=file,primary=txHash]
 struct Transaction {
     txHash: String,
     nonce: usize,
@@ -159,6 +170,53 @@ struct Height2Hash {
     bhHash: String,
 }
 
+#[db=file,primary=txHash]
+struct TxHashIndex {
+    txHash: String,
+    height: usize,
+    bhHash: String,
+}
+
+#[db=file,primary]
+struct Block2ForkChainIdIndex {
+    // 区块哈希 || 高度
+    blockId: String,
+    ids: [usize]
+}
+
+// 新到的区块应该在哪个分叉链上执行交易
+#[db=file,primary=blockId]
+struct ForkPoint {
+    // 区块哈希 || 高度
+    blockId: String,
+    forkChainId: usize,
+}
+
+// 所有分叉链
+#[db=file,primary=forkChainId]
+struct ForkChain {
+    forkChainId: usize,
+    currentHeight: usize,
+    totalWeight: usize,
+    headHash: String,
+    blockRandom: String,
+    genesisHash: String,
+    prevHash: String,
+    createTime: usize,
+}
+
+#[db=file,primary=forkChainId]
+struct BestForkChain {
+    forkChainId: usize,
+}
+
+#[db=file,primary=nextId]
+struct NextForkChainId {
+    nextId: usize,
+}
+
+// chain id 到 chain head 的映射
+
 // block body
 #[db=file,primary=bhHash]
 struct DBBody {
@@ -167,15 +225,16 @@ struct DBBody {
     txs: [String],
 }
 
+#[db=file,primary=bhHash]
 struct Body {
     bhHash: String,
     txs: [Transaction],
 }
 
 // blockchain head info
-#[db=file,primary=primaryKey]
+#[db=file,primary=forkChainId]
 struct ChainHead {
-    primaryKey: String,
+    forkChainId: String,
     headHash: String,
     height: usize,
     blockRandom: String,
