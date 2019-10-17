@@ -37,16 +37,12 @@ export const removeMinedTxFromPool = (txn: Txn, txs: Transaction[]): void => {
     logger.info(`Minded tx removed`);
 };
 
-export const txPoolHasTx = (txn: Txn, txHash: string): boolean => {
-    const tx = txn.query(
+export const getSingleTx = (txn: Txn, txHash: string): Transaction => {
+    const item = txn.query(
         [{ ware: DEFAULT_WARE, tab: TxPool._$info.name, key: txHash }]
         , 1000
         , false
     );
 
-    if (tx) {
-        return true;
-    }
-
-    return false;
+    return (<TxPool>(item[0].value)).tx;
 };
