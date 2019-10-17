@@ -1,23 +1,60 @@
+import { SerializeType } from '../pi/util/bon';
+import { RpcClient } from '../pi_pt/net/rpc_client';
+import { getRand } from '../util/crypto';
+import { getBlock, getBody, getHeader, getTransaction, onReceiveBlockHash, onReceiveTxHash } from './p2p.p';
+import { GetBlockReq, GetBodyReq, GetHeaderReq, GetTxReq, GetTxResp, ReceiveBlockHashReq, ReceiveTxHashReq } from './p2p.s';
+
 /**
  * block syncronizer
  */
 
+type callback = (serializeType: SerializeType, pNetAddr?: string) => void;
+
 // sync header if we don't catch up with peer node
-export const fetchHeader = (): void => {
-    return;
+export const fetchPeerHeader = (peerAddr: string, req: GetHeaderReq, cb: callback): void => {
+    clientRequest(peerAddr, getHeader, req, cb);
+};
+
+export const fetchPeerBody = (peerAddr: string, req: GetBodyReq, cb: callback): void => {
+    clientRequest(peerAddr, getBody, req, cb);
 };
 
 // sync block if we don't catch up with peer
-export const fetchBlock = (): void => {
-    return;
+export const fetchPeerBlock = (peerAddr: string, req: GetBlockReq, cb: callback): void => {
+    clientRequest(peerAddr, getBlock, req, cb);
+};
+
+// fetch peer tx pool
+export const fetchPeerTx = (peerAddr: string, req: GetTxReq, cb: callback): void => {
+    clientRequest(peerAddr, getTransaction, req, cb);
 };
 
 // notify peer new tx
-export const notifyPeerNewTx = (): void => {
-    return;
+export const notifyPeerNewTx = (peerAddr: string, req: ReceiveTxHashReq): void => {
+    clientRequest(peerAddr, onReceiveTxHash, req, null);
 };
 
 // notify peer new block hash
-export const notifyPeerNewBlockHash = (): void => {
-    return;
+export const notifyPeerNewBlockHash = (peerAddr: string, req: ReceiveBlockHashReq): void => {
+    clientRequest(peerAddr, onReceiveBlockHash, req, null);
 };
+
+// ---------------  helper ------------------
+
+const clientId = getRand(16).toString();
+
+export const clientRequest = (pNetAddr: string, cmd: string, body: SerializeType, cb: callback): void => {
+    const client = RpcClient.create(`ws://${pNetAddr}`);
+    client.connect(KEEP_ALIVE, `${clientId}`, TIME_OUT, ((pConNetAddr: string): (() => void) => {
+        return (): void => {
+            client.request(cmd, body, TIME_OUT, (serializeType: SerializeType) => {
+                cb(serializeType, pConNetAddr);
+            });
+        };
+    })(pNetAddr), () => {
+        return;
+    });
+};
+
+const KEEP_ALIVE = 10000;
+const TIME_OUT = 10000;
