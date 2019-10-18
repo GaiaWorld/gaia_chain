@@ -5,8 +5,9 @@
 use schema.s::{Transaction, Header, Body};
 
 struct HandShakeReq {
+    peerAddr: String,
     nodeVersion: String,
-    genesis: String,
+    genesisHash: String,
     totallWeight: usize,
     height: usize,
     headHash: String,

@@ -22,8 +22,6 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
     // 1. verify header
     if (!verifyHeader(txn, block.header, chainId)) {
-        txn.rollback();
-
         return false;
     }
 
@@ -35,8 +33,6 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
     // 3. apply txs
     for (let i = 0; i < block.body.txs.length; i++) {
         if (!applyTransaction(txn, block.header, block.body.txs[i], chainId)) {
-            txn.rollback();
-
             return false;
         }
     }
@@ -48,9 +44,6 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
     // 5. insert block
     writeBlock(txn, block);
-
-    // 6. persist changes
-    txn.commit();
 
     return true;
 };
