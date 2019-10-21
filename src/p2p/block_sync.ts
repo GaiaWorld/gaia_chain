@@ -1,15 +1,18 @@
-import { SerializeType } from '../pi/util/bon';
-import { RpcClient } from '../pi_pt/net/rpc_client';
-import { getRand } from '../util/crypto';
-import { getBlock, getBody, getHeader, getTransaction, onReceiveBlockHash, onReceiveTxHash } from './p2p.p';
-import { GetBlockReq, GetBodyReq, GetHeaderReq, GetTxReq, GetTxResp, ReceiveBlockHashReq, ReceiveTxHashReq } from './p2p.s';
-
 /**
  * block syncronizer
  */
 
+import { SerializeType } from '../pi/util/bon';
+import { RpcClient } from '../pi_pt/net/rpc_client';
+import { getRand } from '../util/crypto';
+import { getBlock, getBody, getHeader, getTransaction, handShake, onReceiveBlockHash, onReceiveTxHash } from './p2p.p';
+import { GetBlockReq, GetBodyReq, GetHeaderReq, GetTxReq, HandShakeReq, ReceiveBlockHashReq, ReceiveTxHashReq } from './p2p.s';
+
 type callback = (serializeType: SerializeType, pNetAddr?: string) => void;
 
+export const makeHandShake = (peerAddr: string, req: HandShakeReq, cb: callback): void => {
+    clientRequest(peerAddr, handShake, req, cb);
+};
 // sync header if we don't catch up with peer node
 export const fetchPeerHeader = (peerAddr: string, req: GetHeaderReq, cb: callback): void => {
     clientRequest(peerAddr, getHeader, req, cb);
@@ -30,13 +33,17 @@ export const fetchPeerTx = (peerAddr: string, req: GetTxReq, cb: callback): void
 };
 
 // notify peer new tx
-export const notifyPeerNewTx = (peerAddr: string, req: ReceiveTxHashReq): void => {
+export const notifyPeerNewTxHash = (peerAddr: string, req: ReceiveTxHashReq): void => {
     clientRequest(peerAddr, onReceiveTxHash, req, null);
 };
 
 // notify peer new block hash
 export const notifyPeerNewBlockHash = (peerAddr: string, req: ReceiveBlockHashReq): void => {
     clientRequest(peerAddr, onReceiveBlockHash, req, null);
+};
+
+export const syncBlock = (start: number, end: number): void => {
+    return;
 };
 
 // ---------------  helper ------------------

@@ -3,8 +3,10 @@
  */
 import { Block } from '../chain/blockchain';
 import { readBlock, readBody, readHeader } from '../chain/chain_accessor';
+import { getLocalIp, getLocalNodeId, getLocalNodeVersion, savePeerInfo } from '../chain/common';
 import { getCanonicalForkChain } from '../chain/fork_manager';
 import { processBlock } from '../chain/processor';
+import { PeerInfo } from '../chain/schema.s';
 import { addTx2Pool, getSingleTx } from '../chain/txpool';
 import { Mgr } from '../pi/db/mgr_impl';
 import { fetchPeerBlock, fetchPeerTx } from './block_sync';
@@ -12,37 +14,6 @@ import { GetBlockReq, GetBlockResp, GetBodyReq, GetBodyResp, GetHeaderReq, GetHe
 
 // #[rpc=rpcServer]
 export const onReceiveHandShake = (req: HandShakeReq): HandShakeResp => {
-    // determine how to sync with peers
-    const txn = new Mgr().transaction(false);
-    const localBestChain = getCanonicalForkChain(txn);
-    // TODO: more criteria expected
-    if (localBestChain.genesisHash === req.genesisHash
-         && localBestChain.totalWeight < req.totallWeight) {
-        // we are behind, find common ansestor and sync to peer
-        for (let i = localBestChain.currentHeight; i < req.height; i++) {
-            let flag = false;
-            const blkReq = new GetBlockReq();
-            blkReq.height = i;
-            blkReq.hash = ''; // TODO: how to handle hash
-            fetchPeerBlock(req.peerAddr, blkReq, (blockResp: GetBlockResp) => {
-                const block = new Block(blockResp.header, blockResp.body);
-                if (!processBlock(txn, block)) {
-                    flag = true; // TODO: callback could set flag=true before next if statement?
-                    txn.rollback();
-                }
-            });
-            if (flag) {
-                // TODO: peer give us bad block, we should ban it
-                break;
-            }
-        }
-        txn.commit();
-    }
-    
-    // TODO:
-    req.peerAddr = '';
-    req.nodeVersion = '';
-
     return req;
 };
 
@@ -53,8 +24,15 @@ export const onReceivePing = (): void => {
 };
 
 // #[rpc=rpcServer]
+export const onReceivePong = (): void => {
+    // send ping
+    return;
+};
+
+// #[rpc=rpcServer]
 export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
     // check if we have this block
+    // check if we are behind this block
     const txn = new Mgr().transaction(true);
     if (readBlock(txn, req.hash, req.height)) {
         return;
@@ -64,6 +42,7 @@ export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
     blkReq.height = req.height;
     fetchPeerBlock(req.peerAddr, blkReq, (resp: GetBlockResp) => {
         const block = new Block(resp.header, resp.body);
+        // TODO: prefer not process block here, queue block only for later use
         // process new block
         if (processBlock(txn, block)) {
             txn.commit();
@@ -110,6 +89,29 @@ export const onPeerBestChainChanged = (req: PeerBestChainChangedReq): void => {
 };
 
 // ----------------------  passive to react to peer action ---------------------------
+
+// #[rpc=rpcServer]
+export const handShake = (req: HandShakeReq): HandShakeResp => {
+    const txn = new Mgr().transaction(false);
+    const peerInfo = new PeerInfo();
+    peerInfo.nodeId = req.nodeId;
+    peerInfo.ip = req.peerAddr;
+    // save peer info
+    savePeerInfo(txn, peerInfo);
+    const localBestChain = getCanonicalForkChain(txn);
+    // ack peer
+    req.nodeId = getLocalNodeId(txn);
+    req.nodeVersion = getLocalNodeVersion(txn);
+    req.peerAddr = getLocalIp();
+    req.genesisHash = localBestChain.genesisHash;
+    req.height = localBestChain.currentHeight;
+    req.headHash = localBestChain.headHash;
+    req.totallWeight = localBestChain.totalWeight;
+
+    txn.commit();
+
+    return req;
+};
 
 // #[rpc=rpcServer]
 export const getTransaction = (req: GetTxReq): GetTxResp => {

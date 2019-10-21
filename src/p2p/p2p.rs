@@ -5,6 +5,7 @@
 use schema.s::{Transaction, Header, Body};
 
 struct HandShakeReq {
+    nodeId: String,
     peerAddr: String,
     nodeVersion: String,
     genesisHash: String,

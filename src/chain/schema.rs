@@ -253,6 +253,13 @@ struct Account {
     codeHash: Option<String>,
 }
 
+#[db=file,primary=nodeId]
+struct PeerInfo {
+    // node id is node public key
+    nodeId: String,
+    ip: String,
+}
+
 #[db=memory,primary=txHash]
 struct TxPool {
     txHash: String,
