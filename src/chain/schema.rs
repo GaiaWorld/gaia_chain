@@ -170,6 +170,13 @@ struct Height2Hash {
     bhHash: String,
 }
 
+#[db=file,primary=]
+struct HeightChainId2HashIndex {
+    // height || chainid => hash
+    heightChainId: String,
+    hash: String,
+}
+
 #[db=file,primary=txHash]
 struct TxHashIndex {
     txHash: String,
