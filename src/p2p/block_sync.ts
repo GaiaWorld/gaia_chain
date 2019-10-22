@@ -5,8 +5,8 @@
 import { SerializeType } from '../pi/util/bon';
 import { RpcClient } from '../pi_pt/net/rpc_client';
 import { getRand } from '../util/crypto';
-import { getBlock, getBody, getHeader, getTransaction, handShake, onReceiveBlockHash, onReceiveTxHash } from './p2p.p';
-import { GetBlockReq, GetBodyReq, GetHeaderReq, GetTxReq, HandShakeReq, ReceiveBlockHashReq, ReceiveTxHashReq } from './p2p.s';
+import { downloadBlocks, getBlock, getBody, getHeader, getTransaction, handShake, onReceiveBlockHash, onReceiveTxHash } from './p2p.p';
+import { DownloadBlockReq, GetBlockReq, GetBodyReq, GetHeaderReq, GetTxReq, HandShakeReq, ReceiveBlockHashReq, ReceiveTxHashReq } from './p2p.s';
 
 type callback = (serializeType: SerializeType, pNetAddr?: string) => void;
 
@@ -42,8 +42,9 @@ export const notifyPeerNewBlockHash = (peerAddr: string, req: ReceiveBlockHashRe
     clientRequest(peerAddr, onReceiveBlockHash, req, null);
 };
 
-export const syncBlock = (start: number, end: number): void => {
-    return;
+// store block in memory first and then process it
+export const syncBlock = (peerAddr: string, req: DownloadBlockReq, cb: callback): void => {
+    clientRequest(peerAddr, downloadBlocks, req, cb);
 };
 
 // ---------------  helper ------------------

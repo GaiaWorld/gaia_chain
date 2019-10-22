@@ -72,3 +72,18 @@ struct GetBodyReq {
 struct GetBodyResp {
     body: Body,
 }
+
+struct DownloadBlockReq {
+    start: usize,
+    offset: usize,
+}
+
+struct Blocks {
+    header: Header,
+    body: Body,
+}
+
+struct DownloadBlockResp {
+    headers: [Header],
+    body: [Body]
+}

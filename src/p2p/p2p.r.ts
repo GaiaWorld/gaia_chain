@@ -2,7 +2,7 @@
  * rpcs
  */
 import { Block } from '../chain/blockchain';
-import { readBlock, readBody, readHeader } from '../chain/chain_accessor';
+import { readBlock, readBlockIndex, readBody, readHeader } from '../chain/chain_accessor';
 import { getLocalIp, getLocalNodeId, getLocalNodeVersion, savePeerInfo } from '../chain/common';
 import { getCanonicalForkChain } from '../chain/fork_manager';
 import { processBlock } from '../chain/processor';
@@ -10,7 +10,7 @@ import { PeerInfo } from '../chain/schema.s';
 import { addTx2Pool, getSingleTx } from '../chain/txpool';
 import { Mgr } from '../pi/db/mgr_impl';
 import { fetchPeerBlock, fetchPeerTx } from './block_sync';
-import { GetBlockReq, GetBlockResp, GetBodyReq, GetBodyResp, GetHeaderReq, GetHeaderResp, GetTxReq, GetTxResp, HandShakeReq, PeerBestChainChangedReq, ReceiveBlockHashReq, ReceiveHeaderReq, ReceiveTxHashReq } from './p2p.s';
+import { DownloadBlockReq, DownloadBlockResp, GetBlockReq, GetBlockResp, GetBodyReq, GetBodyResp, GetHeaderReq, GetHeaderResp, GetTxReq, GetTxResp, HandShakeReq, PeerBestChainChangedReq, ReceiveBlockHashReq, ReceiveHeaderReq, ReceiveTxHashReq } from './p2p.s';
 
 // #[rpc=rpcServer]
 export const onReceiveHandShake = (req: HandShakeReq): HandShakeResp => {
@@ -29,17 +29,19 @@ export const onReceivePong = (): void => {
     return;
 };
 
+// we will receive this req when peer announce a new block
 // #[rpc=rpcServer]
 export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
-    // check if we have this block
     // check if we are behind this block
     const txn = new Mgr().transaction(true);
     if (readBlock(txn, req.hash, req.height)) {
+        // we have receive this block
         return;
     }
     const blkReq = new GetBlockReq();
     blkReq.hash = req.hash;
     blkReq.height = req.height;
+    // local node doesn't have this block , fetch from peer
     fetchPeerBlock(req.peerAddr, blkReq, (resp: GetBlockResp) => {
         const block = new Block(resp.header, resp.body);
         // TODO: prefer not process block here, queue block only for later use
@@ -52,6 +54,7 @@ export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
     });
 };
 
+// we will receive this req when peer announce a new tx
 // #[rpc=rpcServer]
 export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
     // if local node does not exsit, fetch and put it to tx pool
@@ -62,7 +65,9 @@ export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
     const txReq = new GetTxReq();
     txReq.peerAddr = req.peerAddr;
     txReq.txHash = req.hash;
+    // local node doesn't have this tx , fetch from peer
     fetchPeerTx(req.peerAddr, txReq, (resp: GetTxResp) => {
+        // add it to tx pool
         addTx2Pool(txn, resp.resp);
     });
     txn.commit();
@@ -89,6 +94,23 @@ export const onPeerBestChainChanged = (req: PeerBestChainChangedReq): void => {
 };
 
 // ----------------------  passive to react to peer action ---------------------------
+
+// #[rpc=rpcServer]
+export const downloadBlocks = (req: DownloadBlockReq): DownloadBlockResp => {
+    const resp = new DownloadBlockResp();
+    const txn = new Mgr().transaction(false);
+    // fetch canonical height to hash index
+    // TODO: constrain user request frequency
+    const localBestChain = getCanonicalForkChain(txn);
+    for (let i = req.start; i < req.start + req.offset; i++) {
+        const hash = readBlockIndex(txn, i, localBestChain.forkChainId);
+        const block = readBlock(txn, hash, i);
+        resp.headers.push(block.header);
+        resp.body.push(block.body);
+    }
+    txn.commit();
+    return resp;
+};
 
 // #[rpc=rpcServer]
 export const handShake = (req: HandShakeReq): HandShakeResp => {
