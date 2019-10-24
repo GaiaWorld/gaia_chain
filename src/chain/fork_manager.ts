@@ -22,7 +22,9 @@ export const getForkChainIdOfHeader = (txn: Txn, header: Header): number => {
         );
 
     if (fork) {
-        return (<ForkPoint>fork[0].value).forkChainId;
+        const chainId = (<ForkPoint>fork[0].value).forkChainId;
+        logger.debug(`Get fork chain id for header hash: ${header.bhHash} height: ${header.height} chainId: ${chainId}`);
+        return chainId;
     }
 
     logger.warn(`Not found appropriate chain id for header hash ${header.bhHash} height ${header.height}`);
