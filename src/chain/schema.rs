@@ -200,6 +200,13 @@ struct BlocksCache {
     hash: String
 }
 
+// blocks fetching from peer and wait to be persisted 
+struct BlockChunk {
+    // 高度 || 区块哈希
+    blockId: String,
+    header: Header,
+    body: Body,
+}
 // 新到的区块应该在哪个分叉链上执行交易
 #[db=file,primary=blockId]
 struct ForkPoint {
