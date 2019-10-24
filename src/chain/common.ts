@@ -24,12 +24,23 @@ export const savePeerInfo = (txn: Txn, peerInfo: PeerInfo): void => {
 };
 
 export const getPeerInfo = (txn: Txn, nodeId: string): PeerInfo => {
-    return;
+    const item = txn.query([
+        { ware: DEFAULT_FILE_WARE, tab: PeerInfo._$info.name, key: nodeId }
+    ], 1000, false);
+
+    if (item) {
+        return <PeerInfo>item[0].value;
+    }
 };
 
 export const getAllPeerInfo = (txn: Txn): PeerInfo[] => {
     // iterate all peers
-    return;
+    const iter = txn.iter(DEFAULT_FILE_WARE, PeerInfo._$info.name, undefined, true, '');
+    const res = [];
+    for (const p of iter) {
+        res.push(p);
+    }
+    return res;
 };
 
 // check if we have this block or not
