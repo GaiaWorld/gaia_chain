@@ -3,7 +3,7 @@
  */
 import { Block } from '../chain/blockchain';
 import { readBlock, readBlockIndex, readBody, readHeader } from '../chain/chain_accessor';
-import { getLocalIp, getLocalNodeId, getLocalNodeVersion, savePeerInfo } from '../chain/common';
+import { getLocalIp, getLocalNodeId, getLocalNodeVersion, hasBlock, savePeerInfo, writeBlockCache } from '../chain/common';
 import { getCanonicalForkChain } from '../chain/fork_manager';
 import { processBlock } from '../chain/processor';
 import { PeerInfo } from '../chain/schema.s';
@@ -34,14 +34,19 @@ export const onReceivePong = (): void => {
 export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
     // check if we are behind this block
     const txn = new Mgr().transaction(true);
-    if (readBlock(txn, req.hash, req.height)) {
-        // we have receive this block
+    // read block cache
+    if (hasBlock(txn, req.hash, req.height)) {
         return;
     }
+    // read canonical block if not in cache
+    if (readBlock(txn, req.hash, req.height)) {
+        return;
+    }
+    
+    // local node doesn't have this block , fetch from peer
     const blkReq = new GetBlockReq();
     blkReq.hash = req.hash;
     blkReq.height = req.height;
-    // local node doesn't have this block , fetch from peer
     fetchPeerBlock(req.peerAddr, blkReq, (resp: GetBlockResp) => {
         const block = new Block(resp.header, resp.body);
         // TODO: prefer not process block here, queue block only for later use
@@ -51,7 +56,10 @@ export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
         } else {
             txn.rollback();
         }
+        // write block cache
+        writeBlockCache(txn, block.header.bhHash, block.header.height);
     });
+    txn.commit();
 };
 
 // we will receive this req when peer announce a new tx

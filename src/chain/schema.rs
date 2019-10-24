@@ -184,11 +184,20 @@ struct TxHashIndex {
     bhHash: String,
 }
 
-#[db=file,primary]
+#[db=file,primary=blockId]
 struct Block2ForkChainIdIndex {
     // 区块哈希 || 高度
     blockId: String,
     ids: [usize]
+}
+
+// blocks that we have received but not handled yet
+// TODO: prune cache
+#[db=memory,primary=blockId]
+struct BlocksCache {
+    // 区块哈希 || 高度
+    blockId: String,
+    hash: String
 }
 
 // 新到的区块应该在哪个分叉链上执行交易
