@@ -194,13 +194,14 @@ struct Block2ForkChainIdIndex {
 // blocks that we have received but not handled yet
 // TODO: prune cache
 #[db=memory,primary=blockId]
-struct BlocksCache {
+struct BlockHashCache {
     // 区块哈希 || 高度
     blockId: String,
     hash: String
 }
 
 // blocks fetching from peer and wait to be persisted 
+#[db=memory,primary=blockId]
 struct BlockChunk {
     // 高度 || 区块哈希
     blockId: String,
