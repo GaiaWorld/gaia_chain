@@ -3,10 +3,10 @@
  */
 import { Block } from '../chain/blockchain';
 import { readBlock, readBlockIndex, readBody, readHeader } from '../chain/chain_accessor';
-import { getLocalIp, getLocalNodeId, getLocalNodeVersion, hasBlock, savePeerInfo, writeBlockCache } from '../chain/common';
+import { addBlockChunk, getLocalIp, getLocalNodeId, getLocalNodeVersion, hasBlock, savePeerInfo, setSyncState, writeBlockCache } from '../chain/common';
 import { getCanonicalForkChain } from '../chain/fork_manager';
 import { processBlock } from '../chain/processor';
-import { PeerInfo } from '../chain/schema.s';
+import { PeerInfo, SyncState } from '../chain/schema.s';
 import { addTx2Pool, getSingleTx } from '../chain/txpool';
 import { Mgr } from '../pi/db/mgr_impl';
 import { fetchPeerBlock, fetchPeerTx } from './block_sync';
@@ -129,18 +129,31 @@ export const handShake = (req: HandShakeReq): HandShakeResp => {
     // save peer info
     savePeerInfo(txn, peerInfo);
     const localBestChain = getCanonicalForkChain(txn);
+
+    // we leave behind peer, need sync
+    if (localBestChain.currentHeight < req.height) {
+        const syncState = new SyncState();
+        syncState.id = 'syncstate';
+        syncState.peerAddr = req.peerAddr;
+        syncState.peerHeight = req.height;
+        syncState.peerWeight = req.totallWeight;
+        syncState.synced = false;
+        setSyncState(txn, syncState);
+    }
+
+    const resp = new HandShakeReq();
     // ack peer
-    req.nodeId = getLocalNodeId(txn);
-    req.nodeVersion = getLocalNodeVersion(txn);
-    req.peerAddr = getLocalIp();
-    req.genesisHash = localBestChain.genesisHash;
-    req.height = localBestChain.currentHeight;
-    req.headHash = localBestChain.headHash;
-    req.totallWeight = localBestChain.totalWeight;
+    resp.nodeId = getLocalNodeId(txn);
+    resp.nodeVersion = getLocalNodeVersion(txn);
+    resp.peerAddr = getLocalIp();
+    resp.genesisHash = localBestChain.genesisHash;
+    resp.height = localBestChain.currentHeight;
+    resp.headHash = localBestChain.headHash;
+    resp.totallWeight = localBestChain.totalWeight;
 
     txn.commit();
 
-    return req;
+    return resp;
 };
 
 // #[rpc=rpcServer]

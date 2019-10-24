@@ -208,6 +208,17 @@ struct BlockChunk {
     header: Header,
     body: Body,
 }
+
+// periodically check whether need to sync with peer
+#[db=memory,primary]
+struct SyncState {
+    id: String,
+    synced: bool,
+    peerHeight: usize,
+    peerWeight: usize,
+    peerAddr: String,
+}
+
 // 新到的区块应该在哪个分叉链上执行交易
 #[db=file,primary=blockId]
 struct ForkPoint {

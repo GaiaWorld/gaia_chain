@@ -2,7 +2,7 @@ import { Tr as Txn } from '../pi/db/mgr';
 import { DEFAULT_FILE_WARE, DEFAULT_WARE } from '../pi_pt/constant';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { BlockChunk, BlockHashCache, PeerInfo } from './schema.s';
+import { BlockChunk, BlockHashCache, PeerInfo, SyncState } from './schema.s';
 
 const logger = new Logger('COMMON', LogLevel.DEBUG);
 
@@ -90,8 +90,25 @@ export const addBlockChunk = (txn: Txn, block: Block): void => {
     ]
         , 1000, false);
 };
+
 export const removeBlockChunk = (txn: Txn, block: Block): void => {
     txn.modify([
         { ware: DEFAULT_WARE, tab: BlockChunk._$info.name, key: `${block.header.height}${block.header.bhHash}` }
+    ], 1000, false);
+};
+
+export const getSyncState = (txn: Txn): SyncState => {
+    const item = txn.query([
+        { ware: DEFAULT_WARE, tab: SyncState._$info.name, key: 'syncstate' }
+    ], 1000, false);
+
+    if (item) {
+        return <SyncState>item[1].value;
+    }
+};
+
+export const setSyncState = (txn: Txn, syncState: SyncState): void => {
+    txn.modify([
+        { ware: DEFAULT_WARE, tab: SyncState._$info.name, key: syncState.id, value: syncState }
     ], 1000, false);
 };
