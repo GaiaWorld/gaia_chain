@@ -1,5 +1,5 @@
 import { Tr as Txn } from '../pi/db/mgr';
-import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
+import { DEFAULT_FILE_WARE, DEFAULT_WARE } from '../pi_pt/constant';
 import { Logger, LogLevel } from '../util/logger';
 import { BlocksCache, PeerInfo } from './schema.s';
 
@@ -46,7 +46,7 @@ export const getAllPeerInfo = (txn: Txn): PeerInfo[] => {
 // check if we have this block or not
 export const hasBlock = (txn: Txn, hash: string, height: number): boolean => {
     const blkHash = txn.query([
-        { ware: DEFAULT_FILE_WARE, tab: BlocksCache._$info.name, key: `${hash}${height}` }
+        { ware: DEFAULT_WARE, tab: BlocksCache._$info.name, key: `${hash}${height}` }
     ], 1000, false);
 
     if (blkHash) {
@@ -55,12 +55,13 @@ export const hasBlock = (txn: Txn, hash: string, height: number): boolean => {
     return false;
 };
 
+// TODO: add cache eviction policy, prefer LRU
 export const writeBlockCache = (txn: Txn, hash: string, height: number): void => {
     const cache = new BlocksCache();
     cache.blockId = `${hash}${height}`;
     cache.hash = hash;
     txn.modify([
-        { ware: DEFAULT_FILE_WARE, tab: BlocksCache._$info.name, key: cache.blockId, value: cache }
+        { ware: DEFAULT_WARE, tab: BlocksCache._$info.name, key: cache.blockId, value: cache }
     ], 1000, false);
     logger.info(`Write block cache hash: ${hash} height: ${height}`);
 };
