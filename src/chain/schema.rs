@@ -200,15 +200,6 @@ struct BlockHashCache {
     hash: String
 }
 
-// blocks fetching from peer and wait to be persisted 
-#[db=memory,primary=blockId]
-struct BlockChunk {
-    // 高度 || 区块哈希
-    blockId: String,
-    header: Header,
-    body: Body
-}
-
 // periodically check whether need to sync with peer
 #[db=memory,primary=id]
 struct SyncState {
@@ -264,6 +255,15 @@ struct DBBody {
 struct Body {
     bhHash: String,
     txs: [Transaction],
+}
+
+// blocks fetching from peer and wait to be persisted 
+#[db=memory,primary=blockId]
+struct BlockChunk {
+    // 高度 || 区块哈希
+    blockId: String,
+    header: Header,
+    body: Body
 }
 
 // blockchain head info
