@@ -7,9 +7,11 @@ import { addBlockChunk, getLocalIp, getLocalNodeId, getLocalNodeVersion, hasBloc
 import { getCanonicalForkChain } from '../chain/fork_manager';
 import { PeerInfo, SyncState } from '../chain/schema.s';
 import { addTx2Pool, getSingleTx } from '../chain/txpool';
-import { Mgr } from '../pi/db/mgr_impl';
+import { Env } from '../pi/lang/env';
 import { fetchPeerBlock, fetchPeerTx } from './block_sync';
 import { DownloadBlockReq, DownloadBlockResp, GetBlockReq, GetBlockResp, GetBodyReq, GetBodyResp, GetHeaderReq, GetHeaderResp, GetTxReq, GetTxResp, HandShakeReq, PeerBestChainChangedReq, ReceiveBlockHashReq, ReceiveHeaderReq, ReceiveTxHashReq } from './p2p.s';
+
+declare var env: Env;
 
 // #[rpc=rpcServer]
 export const onReceiveHandShake = (req: HandShakeReq): HandShakeResp => {
@@ -32,7 +34,7 @@ export const onReceivePong = (): void => {
 // #[rpc=rpcServer]
 export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
     // check if we are behind this block
-    const txn = new Mgr().transaction(true);
+    const txn = env.dbMgr.transaction(true);
     // read block cache
     if (hasBlock(txn, req.hash, req.height)) {
         return;
@@ -52,6 +54,7 @@ export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
         writeBlockCache(txn, block.header.bhHash, block.header.height);
         // add block for later use
         addBlockChunk(txn, block);
+        txn.prepare();
         txn.commit();
     });
 };
@@ -60,7 +63,7 @@ export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
 // #[rpc=rpcServer]
 export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
     // if local node does not exsit, fetch and put it to tx pool
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     if (getSingleTx(txn, req.hash)) {
         return;
     }
@@ -71,6 +74,7 @@ export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
     fetchPeerTx(req.peerAddr, txReq, (resp: GetTxResp) => {
         // add it to tx pool
         addTx2Pool(txn, resp.resp);
+        txn.prepare();
         txn.commit();
     });
 };
@@ -87,7 +91,7 @@ export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
 // #[rpc=rpcServer]
 export const onPeerBestChainChanged = (req: PeerBestChainChangedReq): void => {
     // check if we should change head
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     const localBestChain = getCanonicalForkChain(txn);
     if (req.totallWeight > localBestChain.totalWeight) {
         // peer has more weight
@@ -100,7 +104,7 @@ export const onPeerBestChainChanged = (req: PeerBestChainChangedReq): void => {
 // #[rpc=rpcServer]
 export const downloadBlocks = (req: DownloadBlockReq): DownloadBlockResp => {
     const resp = new DownloadBlockResp();
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     // fetch canonical height to hash index
     // TODO: constrain user request frequency
     const localBestChain = getCanonicalForkChain(txn);
@@ -110,13 +114,14 @@ export const downloadBlocks = (req: DownloadBlockReq): DownloadBlockResp => {
         resp.headers.push(block.header);
         resp.body.push(block.body);
     }
+    txn.prepare();
     txn.commit();
     return resp;
 };
 
 // #[rpc=rpcServer]
 export const handShake = (req: HandShakeReq): HandShakeResp => {
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     const peerInfo = new PeerInfo();
     peerInfo.nodeId = req.nodeId;
     peerInfo.ip = req.peerAddr;
@@ -145,6 +150,7 @@ export const handShake = (req: HandShakeReq): HandShakeResp => {
     resp.headHash = localBestChain.headHash;
     resp.totallWeight = localBestChain.totalWeight;
 
+    txn.prepare();
     txn.commit();
 
     return resp;
@@ -152,9 +158,11 @@ export const handShake = (req: HandShakeReq): HandShakeResp => {
 
 // #[rpc=rpcServer]
 export const getTransaction = (req: GetTxReq): GetTxResp => {
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     const resp = new GetTxResp();
     const tx = getSingleTx(txn, req.txHash);
+    txn.prepare();
+    txn.commit();
     if (tx) {
         resp.resp = tx;
     }
@@ -164,9 +172,10 @@ export const getTransaction = (req: GetTxReq): GetTxResp => {
 
 // #[rpc=rpcServer]
 export const getBlock = (req: GetBlockReq): GetBlockResp => {
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     const resp = new GetBlockResp();
     const block = readBlock(txn, req.hash, req.height);
+    txn.prepare();
     txn.commit();
     
     if (block) {
@@ -178,9 +187,10 @@ export const getBlock = (req: GetBlockReq): GetBlockResp => {
 
 // #[rpc=rpcServer]
 export const getHeader = (req: GetHeaderReq): GetHeaderResp => {
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     const resp = new GetHeaderResp();
     const header = readHeader(txn, req.hash, req.height);
+    txn.prepare();
     txn.commit();
 
     if (header) {
@@ -191,9 +201,10 @@ export const getHeader = (req: GetHeaderReq): GetHeaderResp => {
 
 // #[rpc=rpcServer]
 export const getBody = (req: GetBodyReq): GetBodyResp => {
-    const txn = new Mgr().transaction(false);
+    const txn = env.dbMgr.transaction(true);
     const resp = new GetBodyResp();
     const body = readBody(txn, req.hash, req.height);
+    txn.prepare();
     txn.commit();
 
     if (body) {
