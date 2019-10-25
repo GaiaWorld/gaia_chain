@@ -4,15 +4,15 @@ import { blsRand, buf2Hex, hex2Buf, sign } from '../util/crypto';
 import { persistBucket } from '../util/db';
 import { Block, getVersion } from './blockchain';
 import { calcHeaderHash } from './header';
-import { Body, ChainHead, CommitteeConfig, DBBody, Forger, Header, Height2Hash, Miner, Transaction } from './schema.s';
+import { Body, CommitteeConfig, DBBody, Forger, ForkChain, Header, Height2Hash, Miner, Transaction } from './schema.s';
 import { calcTxHash, merkleRootHash, serializeTx } from './transaction';
 
-export const generateBlock = (forger: Forger, chainHead: ChainHead, miner: Miner, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
+export const generateBlock = (forger: Forger, chainHead: ForkChain, miner: Miner, committeeCfg: CommitteeConfig, txs: Transaction[]): Block => {
     const header = new Header();
     header.forger = miner.address;
     header.pubkey = miner.pubKey;
     header.forgerPubkey = miner.blsPubKey;
-    header.height = chainHead.height + 1;
+    header.height = chainHead.currentHeight + 1;
     header.prevHash = chainHead.headHash;
     // not used right now
     header.receiptRoot = EMPTY_RECEIPT_ROOT_HASH;

@@ -3,7 +3,7 @@ import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { buf2Hex, number2Uint8Array } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { Account, Body, Header, Transaction, TxHashIndex } from './schema.s';
+import { Account, Body, Header, HeightChainId2HashIndex, Transaction, TxHashIndex } from './schema.s';
 
 const logger = new Logger('CHAIN_ACCESSOR', LogLevel.DEBUG);
 
@@ -183,4 +183,27 @@ export const deleteAccount = (txn: Txn, address: string, chainId: number): void 
         , 1000
         , false
     );
+};
+
+export const writeBlockIndex = (txn: Txn, block: Block, chainId: number): void => {
+    const val = new HeightChainId2HashIndex();
+    val.heightChainId = `${block.header.height}${chainId}`;
+    val.hash = block.header.bhHash;
+    txn.modify(
+        [{ ware: DEFAULT_FILE_WARE, tab: HeightChainId2HashIndex._$info.name, key: val.heightChainId, value: val }], 1000, false
+    );
+    logger.debug(`write block index height: ${block.header.height} hash: ${block.header.bhHash}`);
+};
+
+export const readBlockIndex = (txn: Txn, height: number, chainId: number): string => {
+    const index = txn.query(
+        [{ ware: DEFAULT_FILE_WARE, tab: HeightChainId2HashIndex._$info.name, key: `${height}${chainId}` }], 1000, false
+    );
+
+    if (index) {
+        const hash = (<HeightChainId2HashIndex>index[0].value).hash;
+        logger.debug(`read block height: ${height} hash: ${hash} chainId: ${chainId}`);
+        return hash;
+    }
+    logger.warn(`read block hash failed height: ${height} chainId: ${chainId}`);
 };

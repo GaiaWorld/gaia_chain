@@ -1,15 +1,22 @@
 // cpos implemention
 // need snapshot every round 
+import { notifyPeerNewBlockHash } from '../p2p/block_sync';
+import { ReceiveBlockHashReq } from '../p2p/p2p.s';
+import { localForgers } from '../params/config';
 import { CAN_FORGE_AFTER_BLOCKS, MAX_TIME_STAMP, VERSION, WITHDRAW_AFTER_BLOCKS } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { BonBuffer } from '../pi/util/bon';
 import { DEFAULT_FILE_WARE } from '../pi_pt/constant';
 import { buf2Hex, hex2Buf, number2Uint8Array, sha256, verify } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
+import { generateBlock } from './block';
 import { Block } from './blockchain';
 import { readAccount, updateAccount } from './chain_accessor';
+import { addBlockChunk, getAllPeerInfo, getCommiteeConfig, getLocalIp } from './common';
+import { getCanonicalForkChain } from './fork_manager';
 import { calcHeaderHash } from './header';
-import { CommitteeConfig, Forger, ForgerCommittee, Header, Height2ForgersIndex } from './schema.s';
+import { CommitteeConfig, Forger, ForgerCommittee, Header, Height2ForgersIndex, Miner } from './schema.s';
+import { getTxsFromPool } from './txpool';
 
 const logger = new Logger('CPOS', LogLevel.DEBUG);
 
@@ -168,4 +175,44 @@ export const verifyHeader = (txn: Txn, header: Header, chainId: number): boolean
     }
 
     return true;
+};
+
+export const selectMostWeightMiner = (txn: Txn, height: number, committeeCfg: CommitteeConfig): [Miner, Forger] => {
+    const forgers = (<ForgerCommittee>txn.query([
+        { ware: DEFAULT_FILE_WARE, tab: ForgerCommittee._$info.name, key: (height % committeeCfg.totalGroupNumber).toString() }
+    ], 1000, false)[0].value).forgers;
+    forgers.sort((a: Forger, b: Forger) => calcForgerWeightAtHeight(b, height, committeeCfg) - calcForgerWeightAtHeight(a, height, committeeCfg));
+    logger.info(`\n\nheight ${height} Most weight forger ${JSON.stringify(localForgers.forgers[0])}`);
+
+    for (const forger of localForgers.forgers) {
+        if (forger.address === forgers[0].address) {
+            const miner = <Miner>txn.query([
+                { ware: DEFAULT_FILE_WARE, tab: Miner._$info.name, key: forger.address }
+            ], 1000, false)[0].value;
+            return [miner, forgers[0]];
+        }
+    }
+};
+
+export const startMining = (txn: Txn): void => {
+    const bestChain = getCanonicalForkChain(txn);
+    const commitee = getCommiteeConfig(txn);
+    const res = selectMostWeightMiner(txn, bestChain.currentHeight, commitee);
+    if (res) {
+        const txs = getTxsFromPool(txn);
+        const block = generateBlock(res[1], bestChain, res[0], commitee, txs);
+        console.log('\n============================= generate new block at tip height ============================', bestChain.currentHeight);
+        console.log(block);
+        console.log('\n\n');
+        addBlockChunk(txn, block);
+        const peers = getAllPeerInfo(txn);
+        const req = new ReceiveBlockHashReq();
+        req.hash = block.header.bhHash;
+        req.height = block.header.height;
+        req.peerAddr = getLocalIp();
+        for (const p of peers) {
+            notifyPeerNewBlockHash(p.ip, req);
+        }
+    }
+    return;
 };

@@ -5,6 +5,7 @@ import { buf2Hex, hex2Buf, pubKeyToAddress, sha256 } from '../util/crypto';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
 import { readAccount, updateAccount, writeBlock, writeTxLookupEntries } from './chain_accessor';
+import { removeBlockChunk } from './common';
 import { addForger, calcInitialGroupNumber, deriveInitWeight, removeForger, verifyHeader } from './cpos';
 import { getForkChainIdOfHeader, newForkChain, shouldFork, updateCanonicalForkChain, updateForkPoint } from './fork_manager';
 import { Account, Forger, Header, Transaction, TxType } from './schema.s';
@@ -22,8 +23,6 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
     // 1. verify header
     if (!verifyHeader(txn, block.header, chainId)) {
-        txn.rollback();
-
         return false;
     }
 
@@ -35,8 +34,6 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
     // 3. apply txs
     for (let i = 0; i < block.body.txs.length; i++) {
         if (!applyTransaction(txn, block.header, block.body.txs[i], chainId)) {
-            txn.rollback();
-
             return false;
         }
     }
@@ -48,9 +45,8 @@ export const processBlock = (txn: Txn, block: Block): boolean => {
 
     // 5. insert block
     writeBlock(txn, block);
-
-    // 6. persist changes
-    txn.commit();
+    // 6. remove from block chunk, as it has been processed
+    removeBlockChunk(txn, block);
 
     return true;
 };

@@ -170,6 +170,13 @@ struct Height2Hash {
     bhHash: String,
 }
 
+#[db=file,primary=heightChainId]
+struct HeightChainId2HashIndex {
+    // height || chainid => hash
+    heightChainId: String,
+    hash: String,
+}
+
 #[db=file,primary=txHash]
 struct TxHashIndex {
     txHash: String,
@@ -177,11 +184,30 @@ struct TxHashIndex {
     bhHash: String,
 }
 
-#[db=file,primary]
+#[db=file,primary=blockId]
 struct Block2ForkChainIdIndex {
     // 区块哈希 || 高度
     blockId: String,
     ids: [usize]
+}
+
+// blocks that we have received but not handled yet
+// TODO: prune cache
+#[db=memory,primary=blockId]
+struct BlockHashCache {
+    // 区块哈希 || 高度
+    blockId: String,
+    hash: String
+}
+
+// periodically check whether need to sync with peer
+#[db=memory,primary=id]
+struct SyncState {
+    id: String,
+    synced: bool,
+    peerHeight: usize,
+    peerWeight: usize,
+    peerAddr: String,
 }
 
 // 新到的区块应该在哪个分叉链上执行交易
@@ -231,6 +257,15 @@ struct Body {
     txs: [Transaction],
 }
 
+// blocks fetching from peer and wait to be persisted 
+#[db=memory,primary=blockId]
+struct BlockChunk {
+    // 高度 || 区块哈希
+    blockId: String,
+    header: Header,
+    body: Body
+}
+
 // blockchain head info
 #[db=file,primary=forkChainId]
 struct ChainHead {
@@ -251,6 +286,13 @@ struct Account {
     inputAmount: usize,
     outputAmount: usize,
     codeHash: Option<String>,
+}
+
+#[db=file,primary=nodeId]
+struct PeerInfo {
+    // node id is node public key
+    nodeId: String,
+    ip: String,
 }
 
 #[db=memory,primary=txHash]

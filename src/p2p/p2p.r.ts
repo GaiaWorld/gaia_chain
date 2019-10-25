@@ -1,11 +1,21 @@
 /**
  * rpcs
  */
+import { Block } from '../chain/blockchain';
+import { readBlock, readBlockIndex, readBody, readHeader } from '../chain/chain_accessor';
+import { addBlockChunk, getLocalIp, getLocalNodeId, getLocalNodeVersion, hasBlock, savePeerInfo, setSyncState, writeBlockCache } from '../chain/common';
+import { getCanonicalForkChain } from '../chain/fork_manager';
+import { PeerInfo, SyncState } from '../chain/schema.s';
+import { addTx2Pool, getSingleTx } from '../chain/txpool';
+import { Env } from '../pi/lang/env';
+import { fetchPeerBlock, fetchPeerTx } from './block_sync';
+import { DownloadBlockReq, DownloadBlockResp, GetBlockReq, GetBlockResp, GetBodyReq, GetBodyResp, GetHeaderReq, GetHeaderResp, GetTxReq, GetTxResp, HandShakeReq, PeerBestChainChangedReq, ReceiveBlockHashReq, ReceiveHeaderReq, ReceiveTxHashReq } from './p2p.s';
+
+declare var env: Env;
 
 // #[rpc=rpcServer]
-export const handShake = (): void => {
-    // determine how to sync with peers
-    return;
+export const onReceiveHandShake = (req: HandShakeReq): HandShakeResp => {
+    return req;
 };
 
 // #[rpc=rpcServer]
@@ -15,38 +25,192 @@ export const onReceivePing = (): void => {
 };
 
 // #[rpc=rpcServer]
-export const onReceiveBlockHash = (): void => {
+export const onReceivePong = (): void => {
+    // send ping
     return;
 };
 
+// we will receive this req when peer announce a new block
 // #[rpc=rpcServer]
-export const onReceiveTxHash = (): void => {
+export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
+    // check if we are behind this block
+    const txn = env.dbMgr.transaction(true);
+    // read block cache
+    if (hasBlock(txn, req.hash, req.height)) {
+        return;
+    }
+    // read canonical block if not in cache
+    if (readBlock(txn, req.hash, req.height)) {
+        return;
+    }
+    
+    // local node doesn't have this block , fetch from peer
+    const blkReq = new GetBlockReq();
+    blkReq.hash = req.hash;
+    blkReq.height = req.height;
+    fetchPeerBlock(req.peerAddr, blkReq, (resp: GetBlockResp) => {
+        const block = new Block(resp.header, resp.body);
+        // write block cache
+        writeBlockCache(txn, block.header.bhHash, block.header.height);
+        // add block for later use
+        addBlockChunk(txn, block);
+        txn.prepare();
+        txn.commit();
+    });
+};
+
+// we will receive this req when peer announce a new tx
+// #[rpc=rpcServer]
+export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
     // if local node does not exsit, fetch and put it to tx pool
-    return;
+    const txn = env.dbMgr.transaction(true);
+    if (getSingleTx(txn, req.hash)) {
+        return;
+    }
+    const txReq = new GetTxReq();
+    txReq.peerAddr = req.peerAddr;
+    txReq.txHash = req.hash;
+    // local node doesn't have this tx , fetch from peer
+    fetchPeerTx(req.peerAddr, txReq, (resp: GetTxResp) => {
+        // add it to tx pool
+        addTx2Pool(txn, resp.resp);
+        txn.prepare();
+        txn.commit();
+    });
 };
 
-// #[rpc=rpcServer]
-export const onReceiveHeader = (): void => {
-    return;
-};
+// // #[rpc=rpcServer]
+// export const onReceiveHeader = (req: ReceiveHeaderReq): void => {
+//     const txn = new Mgr().transaction(true);
+//     if (readHeader(txn, req.header.bhHash, req.header.height)) {
+//         return;
+//     }
+// };
 
 // reaction to peer best chain changed
 // #[rpc=rpcServer]
-export const onPeerBestChainChanged = (): void => {
-    return;
+export const onPeerBestChainChanged = (req: PeerBestChainChangedReq): void => {
+    // check if we should change head
+    const txn = env.dbMgr.transaction(true);
+    const localBestChain = getCanonicalForkChain(txn);
+    if (req.totallWeight > localBestChain.totalWeight) {
+        // peer has more weight
+        // TODO: reorg
+    }
+};
+
+// ----------------------  passive to react to peer action ---------------------------
+
+// #[rpc=rpcServer]
+export const downloadBlocks = (req: DownloadBlockReq): DownloadBlockResp => {
+    const resp = new DownloadBlockResp();
+    const txn = env.dbMgr.transaction(true);
+    // fetch canonical height to hash index
+    // TODO: constrain user request frequency
+    const localBestChain = getCanonicalForkChain(txn);
+    for (let i = req.start; i < req.start + req.offset; i++) {
+        const hash = readBlockIndex(txn, i, localBestChain.forkChainId);
+        const block = readBlock(txn, hash, i);
+        resp.headers.push(block.header);
+        resp.body.push(block.body);
+    }
+    txn.prepare();
+    txn.commit();
+    return resp;
 };
 
 // #[rpc=rpcServer]
-export const getTransaction = (txHash: string): void => {
-    return;
+export const handShake = (req: HandShakeReq): HandShakeResp => {
+    const txn = env.dbMgr.transaction(true);
+    const peerInfo = new PeerInfo();
+    peerInfo.nodeId = req.nodeId;
+    peerInfo.ip = req.peerAddr;
+    // save peer info
+    savePeerInfo(txn, peerInfo);
+    const localBestChain = getCanonicalForkChain(txn);
+
+    // we leave behind peer, need sync
+    if (localBestChain.currentHeight < req.height) {
+        const syncState = new SyncState();
+        syncState.id = 'syncstate';
+        syncState.peerAddr = req.peerAddr;
+        syncState.peerHeight = req.height;
+        syncState.peerWeight = req.totallWeight;
+        syncState.synced = false;
+        setSyncState(txn, syncState);
+    }
+
+    const resp = new HandShakeReq();
+    // ack peer
+    resp.nodeId = getLocalNodeId(txn);
+    resp.nodeVersion = getLocalNodeVersion(txn);
+    resp.peerAddr = getLocalIp();
+    resp.genesisHash = localBestChain.genesisHash;
+    resp.height = localBestChain.currentHeight;
+    resp.headHash = localBestChain.headHash;
+    resp.totallWeight = localBestChain.totalWeight;
+
+    txn.prepare();
+    txn.commit();
+
+    return resp;
 };
 
 // #[rpc=rpcServer]
-export const getBlock = (): void => {
-    return;
+export const getTransaction = (req: GetTxReq): GetTxResp => {
+    const txn = env.dbMgr.transaction(true);
+    const resp = new GetTxResp();
+    const tx = getSingleTx(txn, req.txHash);
+    txn.prepare();
+    txn.commit();
+    if (tx) {
+        resp.resp = tx;
+    }
+
+    return resp;
 };
 
 // #[rpc=rpcServer]
-export const getHeader = (): void => {
-    return;
+export const getBlock = (req: GetBlockReq): GetBlockResp => {
+    const txn = env.dbMgr.transaction(true);
+    const resp = new GetBlockResp();
+    const block = readBlock(txn, req.hash, req.height);
+    txn.prepare();
+    txn.commit();
+    
+    if (block) {
+        resp.header = block.header;
+        resp.body = block.body;
+        return resp;
+    }
 };
+
+// #[rpc=rpcServer]
+export const getHeader = (req: GetHeaderReq): GetHeaderResp => {
+    const txn = env.dbMgr.transaction(true);
+    const resp = new GetHeaderResp();
+    const header = readHeader(txn, req.hash, req.height);
+    txn.prepare();
+    txn.commit();
+
+    if (header) {
+        resp.header = header;
+        return resp;
+    }
+};
+
+// #[rpc=rpcServer]
+export const getBody = (req: GetBodyReq): GetBodyResp => {
+    const txn = env.dbMgr.transaction(true);
+    const resp = new GetBodyResp();
+    const body = readBody(txn, req.hash, req.height);
+    txn.prepare();
+    txn.commit();
+
+    if (body) {
+        resp.body = body;
+        return resp;
+    }
+};
+
+type HandShakeResp = HandShakeReq;

@@ -34,6 +34,8 @@
         "no-suspicious-comment": false,
         "no-multiline-string": false,
         "no-use-before-declare": false,
+        "no-unnecessary-local-variable": false,
+        "newline-before-return": false,
         // tslint-eslint-rules
         // 在数组内部不允许空格，错误的例子：const arr = [ 1, 2 ];
         "array-bracket-spacing": [
