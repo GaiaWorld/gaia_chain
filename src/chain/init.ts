@@ -202,3 +202,7 @@ export const initGenesisAccounts = (txn: Txn): void => {
         ], 1000, false);
     }
 };
+
+export const handShakeWithPeers = (txn: Txn): void => {
+    return;
+};

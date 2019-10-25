@@ -1,8 +1,9 @@
+import { COMMITTEECONFIG_PRIMARY_KEY } from '../params/constants';
 import { Tr as Txn } from '../pi/db/mgr';
 import { DEFAULT_FILE_WARE, DEFAULT_WARE } from '../pi_pt/constant';
 import { Logger, LogLevel } from '../util/logger';
 import { Block } from './blockchain';
-import { BlockChunk, BlockHashCache, PeerInfo, SyncState } from './schema.s';
+import { BlockChunk, BlockHashCache, CommitteeConfig, PeerInfo, SyncState } from './schema.s';
 
 const logger = new Logger('COMMON', LogLevel.DEBUG);
 
@@ -42,6 +43,14 @@ export const getAllPeerInfo = (txn: Txn): PeerInfo[] => {
         res.push(p);
     }
     return res;
+};
+
+export const getCommiteeConfig = (txn: Txn): CommitteeConfig => {
+    const config = txn.query([
+        { ware: DEFAULT_FILE_WARE, tab: CommitteeConfig._$info.name, key: COMMITTEECONFIG_PRIMARY_KEY }
+    ], 1000, false);
+
+    return <CommitteeConfig>config[0].value;
 };
 
 // check if we have this block or not
