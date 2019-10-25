@@ -5,7 +5,6 @@ import { Block } from '../chain/blockchain';
 import { readBlock, readBlockIndex, readBody, readHeader } from '../chain/chain_accessor';
 import { addBlockChunk, getLocalIp, getLocalNodeId, getLocalNodeVersion, hasBlock, savePeerInfo, setSyncState, writeBlockCache } from '../chain/common';
 import { getCanonicalForkChain } from '../chain/fork_manager';
-import { processBlock } from '../chain/processor';
 import { PeerInfo, SyncState } from '../chain/schema.s';
 import { addTx2Pool, getSingleTx } from '../chain/txpool';
 import { Mgr } from '../pi/db/mgr_impl';
@@ -49,17 +48,12 @@ export const onReceiveBlockHash = (req: ReceiveBlockHashReq): void => {
     blkReq.height = req.height;
     fetchPeerBlock(req.peerAddr, blkReq, (resp: GetBlockResp) => {
         const block = new Block(resp.header, resp.body);
-        // TODO: prefer not process block here, queue block only for later use
-        // process new block
-        if (processBlock(txn, block)) {
-            txn.commit();
-        } else {
-            txn.rollback();
-        }
         // write block cache
         writeBlockCache(txn, block.header.bhHash, block.header.height);
+        // add block for later use
+        addBlockChunk(txn, block);
+        txn.commit();
     });
-    txn.commit();
 };
 
 // we will receive this req when peer announce a new tx
@@ -77,8 +71,8 @@ export const onReceiveTxHash = (req: ReceiveTxHashReq): void => {
     fetchPeerTx(req.peerAddr, txReq, (resp: GetTxResp) => {
         // add it to tx pool
         addTx2Pool(txn, resp.resp);
+        txn.commit();
     });
-    txn.commit();
 };
 
 // // #[rpc=rpcServer]
