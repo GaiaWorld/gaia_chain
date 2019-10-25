@@ -112,3 +112,11 @@ export const setSyncState = (txn: Txn, syncState: SyncState): void => {
         { ware: DEFAULT_WARE, tab: SyncState._$info.name, key: syncState.id, value: syncState }
     ], 1000, false);
 };
+
+export const tableInitialized = (txn: Txn, ware: string, tabName: string): boolean => {
+    const iter = txn.iter_raw(ware, tabName, undefined, true, '');
+    if (iter.next()) {
+        return true;
+    }
+    return false;
+};
