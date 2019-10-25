@@ -170,7 +170,7 @@ struct Height2Hash {
     bhHash: String,
 }
 
-#[db=file,primary=]
+#[db=file,primary=heightChainId]
 struct HeightChainId2HashIndex {
     // height || chainid => hash
     heightChainId: String,
@@ -206,11 +206,11 @@ struct BlockChunk {
     // 高度 || 区块哈希
     blockId: String,
     header: Header,
-    body: Body,
+    body: Body
 }
 
 // periodically check whether need to sync with peer
-#[db=memory,primary]
+#[db=memory,primary=id]
 struct SyncState {
     id: String,
     synced: bool,
